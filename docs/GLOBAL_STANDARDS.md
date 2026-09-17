@@ -1,5 +1,7 @@
 # Genel Proje Özellikleri ve Standartlar Spesifikasyonu
 
+> **Tamamlanma Durumu:** %100 | **Son Güncelleme:** 2026-09-17 21:35:00 (+03:00) | **Onay Durumu:** Kullanıcı Tarafından Onaylandı ✅
+
 ## 1. Dokümanın Amacı
 Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
 
@@ -216,6 +218,36 @@ Bu projede birden fazla yapay zeka veya geliştirici eşzamanlı olarak çalış
    - Harici bir değişiklik tespit edilirse bu değişiklik korunacak, yeni özellikler onunla uyumlu biçimde birleştirilecektir.
 3. **Atomik ve Küçük Adımlarla İlerleme**:
    - Değişiklikler tek bir devasa blok halinde değil, izole ve doğrulanabilir küçük adımlarla yapılarak çakışma riski en aza indirilecektir.
+
+---
+
+## 10. Markdown (.md) Dokümantasyon Tamamlanma ve Loglama Standardı
+
+Onaylanan, düzenlenen ve tamamlanan tüm Markdown (`.md`) dosyaları için aşağıdaki takip ve loglama kuralları zorunludur:
+
+1. **İlk Satır / Başlık Göstergesi (Tamamlanma Yüzdesi ve Zamanı)**:
+   - Her `.md` dosyasının ilk satırında (başlığın hemen altında veya ilk satırda) dokümanın yüzde kaç tamamlandığı (`%`) ve tamamlanma/onaylanma zamanı (`Tarih/Saat`) mutlaka belirtilecektir:
+     ```markdown
+     > **Tamamlanma Durumu:** %100 | **Son Güncelleme:** 2026-09-17 21:35:00 (+03:00)
+     ```
+2. **Dosya Sonu Detaylı İşlem ve Değişiklik Özeti (Footer Change Log)**:
+   - Dokümanın en altında, o doküman için neler yapıldığı, hangi maddelerin eklendiği veya düzeltildiği adım adım detaylı olarak listelenecektir.
+
+---
+
+## 11. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
+
+| Tarih / Saat | Yapılan Değişiklikler ve Eklenen Standartlar | Durum |
+| :--- | :--- | :--- |
+| **2026-09-17 20:58:24** | Genel proje özellikleri, Master Layout, Dark Theme renk paleti, Toast ve hata yönetim standartları tanımlandı. | Tamamlandı |
+| **2026-09-17 21:02:19** | Git commit zorunluluğu, fonksiyon başına unit test kuralı ve otomatik test raporlama standartları eklendi. | Tamamlandı |
+| **2026-09-17 21:04:04** | REST API standartları, `/docs` Swagger UI ve ReDoc entegrasyon kuralları eklendi. | Tamamlandı |
+| **2026-09-17 21:07:49** | Backend resmi dili olarak Python (FastAPI, CCXT, Pandas, Pytest) standardı tescillendi. | Tamamlandı |
+| **2026-09-17 21:20:29** | Python sanal ortamı (`.venv`), yönetim scriptleri (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) ve `requirements.txt` senkronizasyonu eklendi. | Tamamlandı |
+| **2026-09-17 21:23:55** | Eşzamanlı geliştirme ve çoklu AI (multi-agent) çakışma önleme koordinasyon kuralları eklendi. | Tamamlandı |
+| **2026-09-17 21:35:00** | Markdown (`.md`) dosyaları için ilk satır tamamlanma yüzdesi ve dosya sonu detaylı işlem logu standardı eklendi. | Onaylandı & Tamamlandı (%100) |
+
+
 
 
 

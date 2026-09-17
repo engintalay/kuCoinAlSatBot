@@ -1,5 +1,7 @@
 # Modül 2 Spesifikasyonu: Anlık Fiyat Verileri ve Analiz Altyapısı
 
+> **Tamamlanma Durumu:** %100 (Modül 2 Tasarım & Spesifikasyon Fazı) | **Son Güncelleme:** 2026-09-17 21:35:00 (+03:00) | **Onay Durumu:** Kullanıcı Tarafından Onaylandı ✅
+
 ## 1. Modülün Amacı
 Bu modül, KuCoin borsasından canlı ticker fiyatlarını ve mum (OHLCV) verilerini toplar. Gelecekte tanımlanacak al-sat stratejilerinin (indikatörler, formasyonlar vb.) sorunsuz entegre edilebileceği modüler bir analiz altyapısı sağlar.
 
@@ -60,3 +62,14 @@ Swagger Tag: `Market Data & Analysis`
 | `GET` | `/api/v1/market/candles` | Belirtilen zaman dilimindeki (`1m`, `5m`, `15m`, `1h`, `1d`) geçmiş mum verilerini getirir. | `CandlesResponse` |
 | `GET` | `/api/v1/market/symbols` | KuCoin'de işlem gören aktif ve geçerli kripto işlem çiftlerini listeler. | `SymbolListResponse` |
 | `GET` | `/api/v1/market/analysis` | Canlı mum verileri üzerinden hesaplanan analiz çıktısını ve sinyali (`BUY`/`SELL`/`HOLD`) döner. | `AnalysisSignalResponse` |
+
+---
+
+## 5. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
+
+| Tarih / Saat | Yapılan Değişiklikler ve İşlem Özeti | Durum |
+| :--- | :--- | :--- |
+| **2026-09-17 20:53:20** | Modül 2 ilk spesifikasyonu (Ticker, OHLCV, tak-çıkar analiz motoru) hazırlandı. | Tamamlandı |
+| **2026-09-17 21:04:23** | REST API endpoint tablosu ve Swagger modelleri tanımlandı. | Tamamlandı |
+| **2026-09-17 21:35:00** | Tamamlanma rozeti ve detaylı işlem günlüğü eklendi. | Onaylandı & Tamamlandı (%100) |
+

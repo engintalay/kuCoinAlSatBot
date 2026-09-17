@@ -40,9 +40,9 @@ echo "Durdurmak için: CTRL + C"
 echo ""
 
 # 4. Backend Uygulama Kontrolü ve Başlatma
-if [ -f "$PROJECT_DIR/backend/app.py" ]; then
-    uvicorn backend.app:app --host "$HOST" --port "$PORT" --reload
+if [ -f "$PROJECT_DIR/src/main.py" ]; then
+    uvicorn src.main:app --host "$HOST" --port "$PORT" --reload
 else
-    echo "ℹ️  'backend/app.py' henüz oluşturulmadı (Şu an analiz ve tasarım aşamasındayız)."
+    echo "ℹ️  'src/main.py' henüz oluşturulmadı (Şu an analiz ve tasarım aşamasındayız)."
     echo "   Modül 1 analizi tamamlanıp kodlamaya onay verildiğinde sunucu burada çalışacaktır."
 fi

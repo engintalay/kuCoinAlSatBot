@@ -1,5 +1,7 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
+> **Tamamlanma Durumu:** %100 (Tasarım ve Planlama Fazı) | **Son Güncelleme:** 2026-09-17 21:35:00 (+03:00) | **Onay Durumu:** Kullanıcı Tarafından Onaylandı ✅
+
 ---
 
 ## 1. Mevcut Durum
@@ -7,10 +9,12 @@
 | Öğe | Durum |
 |-----|-------|
 | Tasarım Dokümantasyonu | ✅ Tamamlandı (`docs/`) |
-| Proje İskeleti | ❌ Oluşturulmadı |
-| Kaynak Kod | ❌ Henüz yazılmadı |
-| Test Dosyaları | ❌ Henüz oluşturulmadı |
-| `requirements.txt` | ✅ Oluşturuldu |
+| `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
+| Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
+| `requirements.txt` | ✅ Oluşturuldu & Sanal ortama kuruldu |
+| Proje İskeleti (`src/`) | ⏳ Kodlama fazında oluşturulacak |
+| Kaynak Kod | ⏳ Kodlama fazında yazılacak |
+| Test Dosyaları (`tests/`) | ⏳ Kodlama fazında eklenecek |
 
 ---
 
@@ -65,10 +69,11 @@ kuCoinAlSatBot/
 
 ## 3. Sıralı Geliştirme Adımları
 
-### ✅ Adım 1 — Proje İskeleti & `requirements.txt`
-- ✅ Tüm dizinler ve `__init__.py` dosyaları oluştur
-- ✅ `requirements.txt` yaz
-- ❌ `.env` dosyası oluştur (`.env.example` şablonundan)
+### ⏳ Adım 1 — Proje İskeleti & Ortam Hazırlığı
+- ✅ `requirements.txt` yazıldı ve sanal ortama kuruldu
+- ✅ `.env.example` şablonu ve kök dizinde `.env` dosyası oluşturuldu
+- ✅ Yönetim betikleri (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) hazırlandı
+- ⏳ `src/` alt dizinleri ve `__init__.py` dosyalarının oluşturulması (Kodlama fazında)
 
 ### Adım 2 — Modül 1: KuCoin Bağlantısı & Hesap Durumu
 - `config.py` — `.env` okuma, yapılandırma
@@ -126,7 +131,7 @@ kuCoinAlSatBot/
 
 ## 4. Kütlemler (Checklist)
 
-### Modül 1 ✅
+### Modül 1 (Tasarım Hazır / Kodlama Bekliyor ⏳)
 - [ ] `.env` okuma & yapılandırma
 - [ ] Zaman senkronizasyonu
 - [ ] API anahtarı doğrulama (HMAC-SHA256)
@@ -139,7 +144,7 @@ kuCoinAlSatBot/
 - [ ] `/api/v1/account/summary`
 - [ ] `/api/v1/account/test-connection`
 
-### Modül 2 ✅
+### Modül 2 (Tasarım Hazır / Kodlama Bekliyor ⏳)
 - [ ] REST ticker & candle çekme
 - [ ] WebSocket canlı fiyat
 - [ ] Önbellek sistemi
@@ -148,7 +153,7 @@ kuCoinAlSatBot/
 - [ ] `/api/v1/market/symbols`
 - [ ] `/api/v1/market/analysis`
 
-### Modül 3 ✅
+### Modül 3 (Tasarım Hazır / Kodlama Bekliyor ⏳)
 - [ ] Market emir oluşturma
 - [ ] Limit emir oluşturma
 - [ ] Açık emir takibi
@@ -191,4 +196,11 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 
 ---
 
-*Bu dosya her geliştirme adımından sonra güncellenecektir.*
+## 7. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
+
+| Tarih / Saat | Yapılan Değişiklikler ve İşlem Özeti | Durum |
+| :--- | :--- | :--- |
+| **2026-09-17 21:20:00** | İlk workflow ve geliştirme fazları taslağı oluşturuldu. | Tamamlandı |
+| **2026-09-17 21:22:13** | Dizin ağacına `install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`, `.env.example` eklendi. | Tamamlandı |
+| **2026-09-17 21:35:00** | Review bulguları düzeltildi: `.env` durumu gerçeğe göre güncellendi, yanıltıcı checklist başlıkları düzeltildi, tamamlama göstergesi ve footer log eklendi. | Onaylandı & Tamamlandı (%100) |
+
