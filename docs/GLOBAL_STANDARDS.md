@@ -235,7 +235,27 @@ Onaylanan, düzenlenen ve tamamlanan tüm Markdown (`.md`) dosyaları için aşa
 
 ---
 
-## 11. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
+## 11. İnceleme (Review) Süreci ve `review/` Klasörü Standartları
+
+Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek için bağımsız inceleme süreçleri uygulanır:
+
+1. **`review/` Klasörü Standartı**:
+   - Tüm inceleme, denetim ve geri bildirim raporları projenin kök dizinindeki `review/` klasöründe tutulacaktır.
+   - Dosya adlandırma şablonu: `{rol}-AI_review_{YYYY-MM-DD_HH-mm-ss}.md` (Örn: `analiz-AI_review_2026-09-17_21-28-17.md`, `coding-AI_review_2026-09-17_21-28-17.md`).
+2. **Roller ve Sorumluluk Alanları**:
+   - **Analiz AI**: Analiz dokümanları (`docs/`), mimari şemalar, veri modelleri, iş akışı ve standartlar arasındaki uyumu denetler ve tutarsızlıkları çözer.
+   - **Coding AI**: Kaynak kod (`src/`), birim testler (`tests/`), çalıştırma betikleri (`scripts`) ve API implementasyonunu denetler ve uygular.
+3. **Review Bulgularının Hayata Geçirilmesi Prosedürü**:
+   - **Adım 1 (Oku)**: İlgili AI `review/` klasöründeki kendi raporunu dikkatle okur.
+   - **Adım 2 (Planı Sun)**: Yapacağı düzeltmeleri açık ve net bir eylem planı olarak kullanıcıya sunar.
+   - **Adım 3 (Onay Al)**: Kullanıcıdan açık onay almadan kesinlikle hiçbir dosyada değişiklik yapmaz.
+   - **Adım 4 (Uygula & Commit)**: Onay alındıktan sonra düzeltmeleri uygular, doğrular ve Git'e commit eder.
+4. **Doküman ve Rapor Dokunulmazlığı**:
+   - Hiçbir geliştirici veya yapay zeka `review/` altındaki raporları izinsiz silemez veya değiştiremez.
+
+---
+
+## 12. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
 
 | Tarih / Saat | Yapılan Değişiklikler ve Eklenen Standartlar | Durum |
 | :--- | :--- | :--- |
@@ -245,7 +265,9 @@ Onaylanan, düzenlenen ve tamamlanan tüm Markdown (`.md`) dosyaları için aşa
 | **2026-09-17 21:07:49** | Backend resmi dili olarak Python (FastAPI, CCXT, Pandas, Pytest) standardı tescillendi. | Tamamlandı |
 | **2026-09-17 21:20:29** | Python sanal ortamı (`.venv`), yönetim scriptleri (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) ve `requirements.txt` senkronizasyonu eklendi. | Tamamlandı |
 | **2026-09-17 21:23:55** | Eşzamanlı geliştirme ve çoklu AI (multi-agent) çakışma önleme koordinasyon kuralları eklendi. | Tamamlandı |
-| **2026-09-17 21:35:00** | Markdown (`.md`) dosyaları için ilk satır tamamlanma yüzdesi ve dosya sonu detaylı işlem logu standardı eklendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-17 21:35:00** | Markdown (`.md`) dosyaları için ilk satır tamamlanma yüzdesi ve dosya sonu detaylı işlem logu standardı eklendi. | Tamamlandı |
+| **2026-09-17 21:38:00** | İnceleme (Review) süreci, `review/` klasörü işleyişi ve kullanıcı onay prosedürü kuralları eklendi. | Onaylandı & Tamamlandı (%100) |
+
 
 
 
