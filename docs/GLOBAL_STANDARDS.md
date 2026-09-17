@@ -242,9 +242,9 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 1. **`review/` Klasörü Standartı**:
    - Tüm inceleme, denetim ve geri bildirim raporları projenin kök dizinindeki `review/` klasöründe tutulacaktır.
    - Dosya adlandırma şablonu: `{rol}-AI_review_{YYYY-MM-DD_HH-mm-ss}.md` (Örn: `analiz-AI_review_2026-09-17_21-28-17.md`, `coding-AI_review_2026-09-17_21-28-17.md`).
-2. **Roller ve Sorumluluk Alanları**:
-   - **Analiz AI**: Analiz dokümanları (`docs/`), mimari şemalar, veri modelleri, iş akışı ve standartlar arasındaki uyumu denetler ve tutarsızlıkları çözer.
-   - **Coding AI**: Kaynak kod (`src/`), birim testler (`tests/`), çalıştırma betikleri (`scripts`) ve API implementasyonunu denetler ve uygular.
+2. **Roller ve Sorumluluk Alanları (Kalıcı Rol Ayrımı)**:
+   - **Analiz AI (Bu Agent)**: Süreç boyunca **daima Analiz AI olarak kalacaktır**. Görevleri; mimari tasarım, analiz dokümantasyonu (`docs/`), veri modelleri, iş akışı ve küresel standartların yönetimi ve denetimidir. Kesinlikle doğrudan kaynak kod implementasyonu yapmaz.
+   - **Coding AI (Diğer Agent)**: Projenin tüm kaynak kodlama (`src/`), birim test yazımı (`tests/`), çalıştırma betikleri (`scripts`) ve teknik implementasyonunu yürütür. Kod yazarken Analiz AI'ın belirlediği mimari ve spesifikasyonlara sadık kalır.
 3. **Review Bulgularının Hayata Geçirilmesi Prosedürü**:
    - **Adım 1 (Oku)**: İlgili AI `review/` klasöründeki kendi raporunu dikkatle okur.
    - **Adım 2 (Planı Sun)**: Yapacağı düzeltmeleri açık ve net bir eylem planı olarak kullanıcıya sunar.
