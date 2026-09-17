@@ -1,6 +1,6 @@
 # Genel Proje Özellikleri ve Standartlar Spesifikasyonu
 
-> **Tamamlanma Durumu:** %100 | **Son Güncelleme:** 2026-09-17 21:35:00 (+03:00) | **Onay Durumu:** Kullanıcı Tarafından Onaylandı ✅
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:06:00 (+03:00)
 
 ## 1. Dokümanın Amacı
 Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
@@ -204,7 +204,13 @@ Geliştiricinin ve kullanıcının projeyi zahmetsizce kurabilmesi, ilk kez çal
 * Projeye yeni bir Python kütüphanesi eklendiğinde, kütüphane sürümü güncellendiğinde veya bir kütüphane projeden çıkarıldığında **`requirements.txt` dosyası anında güncellenecektir**.
 * Hiçbir kod değişikliği, `requirements.txt` güncellenmeden tamamlanmış sayılmayacaktır.
 
+### 8.4. Çevre Değişkenleri (`.env`) ve Yapılandırma (`config.py`) Senkronizasyon Kuralı
+* `.env.example` şablon dosyasında tanımlanan tüm konfigürasyon değişkenleri (`DEFAULT_TRADING_MODE`, `SIMULATION_INITIAL_BALANCE_USDT`, `HOST`, `PORT`, `LOG_LEVEL`, `LOG_TO_FILE`, `DEFAULT_SYMBOL`, `DEFAULT_TIMEFRAME` vb.) zorunlu olarak `src/config.py` içerisinde bir alan olarak okunmalı ve doğrulanmalıdır.
+* `src/config.py` içerisinde `HOST` varsayılan değeri güvenlik standardı gereği `"127.0.0.1"` olarak ayarlanmalıdır (dış ağa kontrolsüz açılmayı önlemek için).
+* Yapılandırmaya yeni bir değişken eklendiğinde hem `.env.example` hem de `src/config.py` eşzamanlı olarak güncellenecektir.
+
 ---
+
 
 ## 9. Eşzamanlı Geliştirme ve Çoklu AI (Multi-Agent) Koordinasyon Standartları
 
@@ -280,7 +286,9 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-17 21:23:55** | Eşzamanlı geliştirme ve çoklu AI (multi-agent) çakışma önleme koordinasyon kuralları eklendi. | Tamamlandı |
 | **2026-09-17 21:35:00** | Markdown (`.md`) dosyaları için ilk satır tamamlanma yüzdesi ve dosya sonu detaylı işlem logu standardı eklendi. | Tamamlandı |
 | **2026-09-17 21:38:00** | İnceleme (Review) süreci, `review/` klasörü işleyişi ve kullanıcı onay prosedürü kuralları eklendi. | Tamamlandı |
-| **2026-09-17 21:40:00** | Kullanıcı 'review' komutu tetikleyicisi ve Analiz AI otomatik kontrol protokolü eklendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-17 21:40:00** | Kullanıcı 'review' komutu tetikleyicisi ve Analiz AI otomatik kontrol protokolü eklendi. | Tamamlandı |
+| **2026-09-17 22:06:00** | Rozet ayrımı (Spec %100 vs Kod %20) yapıldı ve .env ↔ config.py senkronizasyon kuralı (Bölüm 8.4) eklendi. | Onaylandı & Tamamlandı (%100) |
+
 
 
 

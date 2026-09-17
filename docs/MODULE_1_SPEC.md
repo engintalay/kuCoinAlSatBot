@@ -1,6 +1,6 @@
 # Modül 1 Spesifikasyonu: KuCoin Bağlantısı ve Hesap Durumu
 
-> **Tamamlanma Durumu:** %100 (Modül 1 Tasarım & Spesifikasyon Fazı) | **Son Güncelleme:** 2026-09-17 21:35:00 (+03:00) | **Onay Durumu:** Kullanıcı Tarafından Onaylandı ✅
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:06:00 (+03:00)
 
 ## 1. Modülün Amacı
 Bu modül, kullanıcının KuCoin API kimlik bilgilerini yerel `.env` dosyasından güvenli bir şekilde okur, KuCoin sunucularına bağlanarak kimlik ve yetki doğrulamasını yapar ve hesaptaki varlıkların (Spot/Trade hesabı) detaylı durumunu sunar.
@@ -147,7 +147,24 @@ Swagger Tag: `Account & Connection`
 
 ---
 
-## 7. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
+## 7. Spesifikasyon ↔ Uygulama (Kod) İzlenebilirlik Tablosu (Traceability Matrix)
+
+Bu tablo, Analiz AI tarafından tanımlanan spesifikasyon maddeleri ile Coding AI tarafından yazılan gerçek kodun (`src/`) uyum durumunu denetler:
+
+| Spesifikasyon Gereksinimi | Doküman Referansı | Kod Konumu | Uygulama Durumu | Not / Aksiyon |
+| :--- | :--- | :--- | :--- | :--- |
+| **KuCoin Borsa Bağlantısı** | Bölüm 1 & 2.1 | `src/modules/module1_account.py` | ❌ Hatalı | `ccxt.binance` yazılmış; `ccxt.async_support.kucoin` yapılmalı. |
+| **Async / Await Entegrasyonu** | GLOBAL_STANDARDS | `src/modules/module1_account.py` | ❌ Hatalı | Metodlar async ama ccxt senkron çağrılıyor ve testlerde await eksik. |
+| **Zaman Senkronizasyonu (3sn Drift)** | Bölüm 3.1 | `src/utils/time_sync.py` | ❌ Eksik | Sadece ping ölçüyor; yerel saat ile sunucu saati arasındaki fark (drift) hesaplanmalı. |
+| **Bakiye Sorgulama Veri Yapısı** | Bölüm 3.2 | `src/modules/module1_account.py` | ❌ Hatalı | ccxt `fetch_balance()` dict yapısı yerine liste formatında taranıyor. |
+| **Toplam Portföy (USDT) Hesabı** | Bölüm 3.2 | `src/modules/module1_account.py` | ❌ Eksik | Sadece USDT toplanıyor; diğer kriptoların USDT karşılıkları hesaba katılmalı. |
+| **WebSocket Canlı Bakiye** | Bölüm 3.3 | `src/modules/module1_account.py` | ⏳ Bekliyor | REST sonrası WebSocket aboneliği eklenecek. |
+| **.env ↔ config.py Uyumu** | Bölüm 2.1 | `src/config.py` | ❌ Eksik | `DEFAULT_TRADING_MODE`, `DEFAULT_SYMBOL` vb. alanlar config'te tanımlanmamış. |
+| **Birim Test Kapsamı & Doğruluğu**| GLOBAL_STANDARDS | `tests/test_module_1_account.py` | ❌ Başarısız | 17 testten 7'si mantık/async/mock hatasıyla kalıyor. Düzeltilmeli. |
+
+---
+
+## 8. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
 
 | Tarih / Saat | Yapılan Değişiklikler ve İşlem Özeti | Durum |
 | :--- | :--- | :--- |
@@ -155,6 +172,8 @@ Swagger Tag: `Account & Connection`
 | **2026-09-17 20:57:22** | `.env` dosya güvenliği, zaman senkronizasyonu ve yetki denetimi detaylandırıldı. | Tamamlandı |
 | **2026-09-17 21:04:11** | REST API endpoint tablosu ve Swagger modelleri eklendi. | Tamamlandı |
 | **2026-09-17 21:14:23** | `.env.example` senkronizasyonu tamamlandı. | Tamamlandı |
-| **2026-09-17 21:35:00** | Tamamlanma rozeti ve detaylı işlem günlüğü eklendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-17 21:35:00** | Tamamlanma rozeti ve detaylı işlem günlüğü eklendi. | Tamamlandı |
+| **2026-09-17 22:06:00** | Rozet ayrımı (Spec %100 vs Kod %20) yapıldı ve Spesifikasyon ↔ Kod İzlenebilirlik Tablosu (Bölüm 7) eklendi. | Onaylandı & Tamamlandı (%100) |
+
 
 

@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tamamlanma Durumu:** %100 (Tasarım ve Planlama Fazı) | **Son Güncelleme:** 2026-09-17 21:35:00 (+03:00) | **Onay Durumu:** Kullanıcı Tarafından Onaylandı ✅
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:06:00 (+03:00)
 
 ---
 
@@ -11,10 +11,11 @@
 | Tasarım Dokümantasyonu | ✅ Tamamlandı (`docs/`) |
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
-| `requirements.txt` | ✅ Oluşturuldu & Sanal ortama kuruldu |
-| Proje İskeleti (`src/`) | ⏳ Kodlama fazında oluşturulacak |
-| Kaynak Kod | ⏳ Kodlama fazında yazılacak |
-| Test Dosyaları (`tests/`) | ⏳ Kodlama fazında eklenecek |
+| `requirements.txt` | ✅ Güncellendi (`aiosqlite` dahil) & Sanal ortama kuruldu |
+| Proje İskeleti (`src/`) | 🛠️ Coding AI tarafından oluşturuldu |
+| Kaynak Kod (`src/modules/`) | ⚠️ Coding AI tarafından yazıldı ancak testler başarısız |
+| Test Dosyaları (`tests/`) | ⚠️ Yazıldı ancak mantık ve mock hataları düzeltilmeli |
+
 
 ---
 
@@ -202,5 +203,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | :--- | :--- | :--- |
 | **2026-09-17 21:20:00** | İlk workflow ve geliştirme fazları taslağı oluşturuldu. | Tamamlandı |
 | **2026-09-17 21:22:13** | Dizin ağacına `install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`, `.env.example` eklendi. | Tamamlandı |
-| **2026-09-17 21:35:00** | Review bulguları düzeltildi: `.env` durumu gerçeğe göre güncellendi, yanıltıcı checklist başlıkları düzeltildi, tamamlama göstergesi ve footer log eklendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-17 21:35:00** | Review bulguları düzeltildi: `.env` durumu gerçeğe göre güncellendi, yanıltıcı checklist başlıkları düzeltildi, tamamlama göstergesi ve footer log eklendi. | Tamamlandı |
+| **2026-09-17 22:06:00** | Rozet ayrımı (Tasarım %100 vs Kodlama %20) yapıldı, Mevcut Durum tablosu Coding AI ilerlemesiyle senkronlandı. | Onaylandı & Tamamlandı (%100) |
+
 
