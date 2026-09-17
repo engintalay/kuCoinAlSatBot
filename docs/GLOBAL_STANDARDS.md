@@ -143,3 +143,20 @@ Tüm API servisleri önceden tahmin edilebilir, standart bir JSON zarfı (envelo
 * **ReDoc Dokümantasyonu**: Alternatif temiz teknik doküman arayüzü `/redoc` adresinde hazır bulunacaktır.
 * **Şema ve Model Doğrulama**: Tüm istek ve yanıt modelleri Pydantic şemaları ile tipleştirilecek; her parametrenin açıklaması, varsayılan değeri ve örnek veri seti (Example Payload) Swagger arayüzünde görünür olacaktır.
 * **OpenAPI Şeması**: `/openapi.json` yolu üzerinden ham OpenAPI 3.0+ spesifikasyonu dışa aktarılabilecektir.
+
+---
+
+## 7. Teknoloji Yığını ve Dil Standardı (Backend: Python)
+
+Uygulamanın sunucu ve iş mantığı (backend) katmanında resmi standart olarak **Python** dili ve ekosistemi belirlenmiştir:
+
+* **Programlama Dili**: Python `3.14+`
+* **Web / REST API Framework**: `FastAPI` (Yüksek performanslı, asenkron, tip korumalı ve dahili Swagger UI destekli)
+* **ASGI Sunucusu**: `Uvicorn` (Standart asenkron web sunucusu)
+* **Borsa ve Kripto Entegrasyonu**: `CCXT` (KuCoin REST API ve WebSocket asenkron istemcisi)
+* **Veri Doğrulama & Şemalar**: `Pydantic v2` (Katı tip güvenliği ve otomatik API şema üretimi)
+* **Veri Analizi & Matematiksel Modelleme**: `Pandas` & `NumPy` (Mum verileri, istatistiksel analizler ve indikatör hesaplamaları)
+* **Test Çatısı**: `Pytest` + `pytest-asyncio` + `pytest-cov` (Asenkron birim testleri ve kod kapsamı raporlaması)
+* **Çevre Değişkenleri Yöneticisi**: `python-dotenv` (`.env` dosyasından güvenli okuma)
+* **Paket & Bağımlılık Yönetimi**: `requirements.txt` ve izole Python sanal ortamı (`venv`)
+

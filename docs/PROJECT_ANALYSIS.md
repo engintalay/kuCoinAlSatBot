@@ -78,13 +78,18 @@ Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler
 
 ---
 
-## 3. Teknoloji Stack Seçenekleri
+## 3. Kesinleşen Teknoloji Yığını
 
-| Katman | Önerilen Teknoloji | Alternatif Teknoloji | Açıklama |
+| Katman | Seçilen Teknoloji | Versiyon / Kütüphaneler | Belirlenme Nedeni |
 | :--- | :--- | :--- | :--- |
-| **Backend (Motor)** | Python (FastAPI / CCXT) | Node.js (TypeScript) | Python, veri analizi ve `CCXT` borsalar arası resmi kütüphane desteği ile sektör standardıdır. |
-| **Veritabanı** | SQLite | PostgreSQL / JSON | Emir geçmişi, bakiye logları ve yapılandırma için hafif ve kurulumsuz. |
-| **Kullanıcı Arayüzü** | Modern Web Dashboard (HTML5/CSS3/JS) | Terminal CLI / Telegram Bot | Kullanıcı dostu grafikler, bakiye paneli ve kolay yönetim için web arayüzü. |
+| **Backend Dili** | **Python** | Python `3.14+` | Yerel ortamda kurulu, veri analizi ve borsa entegrasyonunda sektör standardı. |
+| **Web / REST Framework** | **FastAPI + Uvicorn** | FastAPI v0.110+ | Asenkron mimari, katı tip denetimi ve yerleşik interaktif Swagger UI (`/docs`). |
+| **Borsa Entegrasyonu** | **CCXT** | ccxt (async) | KuCoin REST API ve WebSocket akışlarını resmi ve standart yönetir. |
+| **Veri Analizi & Hesaplama** | **Pandas & NumPy** | Son stabil sürüm | OHLCV mum verileri, teknik indikatörler ve hızlı matris hesaplamaları. |
+| **Test Altyapısı** | **Pytest** | pytest, pytest-cov | Fonksiyon bazlı bağımsız birim testleri ve otomatik test raporlama. |
+| **Veritabanı** | **SQLite** | Dahili Python sqlite3 / aiosqlite | Emir geçmişi, bakiye logları ve yapılandırma için hafif ve kurulumsuz. |
+| **Kullanıcı Arayüzü** | **Modern Web Dashboard** | HTML5 / CSS3 / JavaScript | Canlı grafikler, bakiye paneli ve kolay yönetim için responsive karanlık tema. |
+
 
 ---
 
