@@ -16,6 +16,7 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 
 source "$VENV_DIR/bin/activate"
+export PYTHONPATH="$PROJECT_DIR"
 
 echo "=================================================================="
 echo "🧪 KuCoin Al-Sat Botu: Otomatik Birim Test ve Kalite Raporu"
