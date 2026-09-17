@@ -202,3 +202,14 @@ class TestDatabase:
         if os.path.exists("test_db.db"):
             os.remove("test_db.db")
         assert True
+
+    def test_database_connect(self):
+        """Veritabanı bağlantısı kurulmalı."""
+        from src.database import Database
+        db = Database("test_connect.db")
+        import asyncio
+        asyncio.run(db.connect())
+        assert db.database is not None
+        import os
+        if os.path.exists("test_connect.db"):
+            os.remove("test_connect.db")
