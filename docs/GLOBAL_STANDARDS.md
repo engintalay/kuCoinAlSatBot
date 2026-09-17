@@ -258,6 +258,12 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
      - **Adım B**: Analiz AI'ın görev alanına giren (dokümantasyon, mimari, veri modelleri, standartlar, iş akışı) tüm review bulgularını inceler.
      - **Adım C**: Tespit edilen aksiyonları kullanıcıya maddeler halinde sunar ve onay ister.
      - **Adım D**: Kullanıcı onayından sonra düzeltmeleri uygular ve Git commit yapar.
+6. **Aynı Review Dosyası Üzerinde Çalışma Kuralı (In-Place Review Update)**:
+   - Yeni bir review raporu dosyası türetilmez; ilgili agent doğrudan **aynı mevcut review dosyası** üzerinde işlem yapar.
+   - Dosyanın en üst satırına tamamlanma oranı ve zaman bilgisi yazılır:
+     `> **Tamamlanma Durumu:** %100 | **Son Güncelleme:** 2026-09-17 21:45:00 (+03:00) | **Onay Durumu:** Onaylandı & Uygulandı ✅`
+   - Dosyanın en altına yapılan işlemler, düzeltilen tutarsızlıklar ve çözüm detayları adım adım detaylı olarak eklenir.
+
 
 
 ---
