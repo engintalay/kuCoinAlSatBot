@@ -1,0 +1,113 @@
+# Genel Proje Özellikleri ve Standartlar Spesifikasyonu
+
+## 1. Dokümanın Amacı
+Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
+
+---
+
+## 2. Genel Uygulama Ayarları ve Temel Özellikler
+
+### 2.1. Arayüz ve Tasarım Sistemi (UI/UX Design System)
+Tüm ekranlarda tutarlı, modern ve göz yormayan bir kripto borsa paneli deneyimi sunulacaktır.
+
+* **Tema**: Koyu Tema (Dark Mode) varsayılandır.
+  * **Arka Plan**: Derin Koyu Kömür (`#0d1117`, `#161b22`)
+  * **Kartlar / Paneller**: Cam efekti (Glassmorphism & Border `#30363d`)
+  * **Yükseliş / Alış / Kar (Positive/Buy)**: Canlı Yeşil (`#00e676`)
+  * **Düşüş / Satış / Zarar (Negative/Sell)**: Canlı Kırmızı (`#ff5252`)
+  * **Vurgu / Bilgi (Accent/Info)**: Neon Mavi (`#2979ff`)
+* **Tipografi**: Modern, yüksek okunabilirlikli sans-serif yazı tipleri (`Inter`, `Outfit` veya `Roboto Mono`).
+* **Sayısal Formatlama Kuralları**:
+  * **Fiyatlar**: Kripto çiftine göre hassas ondalık gösterimi (Örn: BTC için 2 basamak `70,050.50 USDT`, SHIB için 6-8 basamak `0.00001850 USDT`).
+  * **Bakiyeler**: USDT tutarları her zaman 2 ondalık basamak ve binlik ayraçlı (`1,250.45 USDT`).
+
+### 2.2. Bildirim ve Uyarı Sistemi (Toast & Modal Alerts)
+Ekranın sağ üst köşesinde tüm modüllerden gelen canlı bildirimler gösterilecektir:
+* 🟢 **Başarı (Success)**: *Emir gerçekleşti, KuCoin bağlantısı sağlandı.*
+* 🟡 **Uyarı (Warning)**: *Bakiye sınırına yaklaşıldı, API yanıt süresi yüksek (High Latency).*
+* 🔴 **Hata (Error)**: *API anahtarı geçersiz, İnternet bağlantısı koptu, Emir reddedildi.*
+
+---
+
+## 3. Ekran Düzeni ve Ortak Arayüz İskeleti (Global Layout)
+
+Tüm sayfa ve ekranlarda sabit kalacak **Ortak İskelet (Master Layout)** yapısı:
+
+```
++-----------------------------------------------------------------------------------+
+| HEADER: Logo | Portföy Özeti (USDT) | KuCoin Canlı Fiyat Marquee | Mod (Test/Canlı) |
++-----------------------------------------------------------------------------------+
+|               |                                                                   |
+|  SOL MENÜ     |                     ANA İÇERİK ALANI                              |
+|  / DOCK       |  (Modül 1: Hesap | Modül 2: Grafikler | Modül 3: Emir Tablosu)    |
+|               |                                                                   |
+|  - Ana Sayfa  |                                                                   |
+|  - Hesap      |                                                                   |
+|  - Analiz     |                                                                   |
+|  - Emirler    |                                                                   |
+|               |                                                                   |
+|  [PANİC STOP] |                                                                   |
++-----------------------------------------------------------------------------------+
+| FOOTER: WebSocket: CANLI | Gecikme: 35ms | Son Güncelleme: 20:58:14 | Canlı Log Stream|
++-----------------------------------------------------------------------------------+
+```
+
+### 3.1. Üst Bar (Global Header)
+* **Logo & Uygulama Adı**: KuCoin Al-Sat Botu
+* **Canlı Portföy Özeti**: Toplam Bakiye (USDT) ve günlük kar/zarar (%)
+* **Çalışma Modu Rozeti**:
+  * 🧪 **SIMULATION MODE (Sanal Test)**: Sanal bakiye ile güvenli test.
+  * ⚡ **LIVE KUCOIN API (Canlı İşlem)**: Gerçek KuCoin hesabı.
+* **Global Acil Durum (Panic Stop) Butonu**: Kırmızı renkte, tek tıkla tüm emirleri durduran ve pozisyonları güvene alan buton.
+
+### 3.2. Alt Bar (Global Footer & Status Bar)
+* **Bağlantı Durumu**: WebSocket bağlantı durumu (Yeşil / Kırmızı).
+* **Gecikme Süresi (Latency Ping)**: KuCoin API yanıt süresi (ms).
+* **Sistem Log Akışı**: Son gerçekleşen işlem veya sistem olayının tek satırlık canlı metin özeti.
+
+---
+
+## 4. Genel Hata Yönetimi ve Log Standartları
+
+### 4.1. Hata Yönetimi (Error Handling)
+1. **İnternet / API Kesintisi**:
+   - İnternet veya KuCoin API kesintilerinde uygulama çökmeyecek (crash olmayacak).
+   - Otomatik yeniden bağlanma (Auto-reconnect) mekanizması çalışacak (Her 5 saniyede bir dene).
+2. **Kullanıcı Dostu Hata Mesajları**:
+   - Karmaşık yazılım hataları (stack trace) yerine kullanıcıya açık Türkçe açıklama gösterilecek (Örn: `"300001: API saati uyumsuz"` yerine `"Bilgisayarınızın saati ile KuCoin sunucu saati arasında kayma var. Lütfen saatinizi güncelleyin."`).
+
+### 4.2. Günlük Tutma (Logging Standards)
+* Tüm uygulama olayları hem ekrandaki canlı konsola hem de yerel `logs/app.log` dosyasına yazılacaktır.
+* Log seviyeleri: `INFO`, `WARNING`, `ERROR`, `CRITICAL`.
+
+---
+
+## 5. Yazılım Geliştirme, Versiyon Kontrolü ve Test Standartları
+
+### 5.1. Git Commit Standardı
+* **Her Değişiklikte Commit**: Yapılan her mantıksal geliştirme, özellik ekleme veya hata düzeltmesinde mutlaka Git commit yapılacaktır.
+* **Commit Mesaj Formatı (Conventional Commits)**:
+  * `feat:` Yeni bir özellik eklendiğinde (Örn: `feat: add kucoin time sync check`)
+  * `test:` Birim test eklendiğinde veya güncellendiğinde (Örn: `test: add unit test for balance calculator`)
+  * `fix:` Hata düzeltildiğinde (Örn: `fix: handle websocket disconnect error`)
+  * `docs:` Dokümantasyon değişikliklerinde (Örn: `docs: update module 1 spec`)
+  * `refactor:` Kod iyileştirmelerinde (Örn: `refactor: optimize ticker cache`)
+
+### 5.2. Birim Test (Unit Test) Standardı
+* **Fonksiyon Başına Test Kuralı**: Geliştirilen her fonksiyonun mutlaka karşılık gelen en az bir birim testi (`unit test`) olacaktır.
+* **Ayrı Test Klasörü**: Tüm test dosyaları projenin ana dizininde yer alan bağımsız `tests/` klasöründe tutulacaktır:
+  ```
+  tests/
+  ├── test_module_1_account.py     # Modül 1 testleri (Bakiye, bağlantı, .env)
+  ├── test_module_2_market.py      # Modül 2 testleri (Ticker, mum verisi, analiz)
+  ├── test_module_3_orders.py      # Modül 3 testleri (Emirler, simülasyon, iptal)
+  └── test_utils.py                # Yardımcı fonksiyon testleri
+  ```
+* **Mock Mekanizması**: Canlı borsa API'si test edilirken gerçek API limitlerini tüketmemek ve ağ kesintilerinden bağımsız test yapabilmek için harici API çağrıları testlerde mock'lanacaktır.
+
+### 5.3. Otomatik Test Prosedürü ve Raporlama
+* **Tek Komutla Otomatik Koşum**: Tüm testler tek bir komutla veya test çalıştırıcı script (`run_tests.sh`) ile otomatik koşturulacaktır.
+* **Otomatik Raporlama**:
+  * Konsol çıktısında geçen/kalan testler renkli olarak özetlenecektir.
+  * Test prosedürü kod kapsamını (Coverage %) ölçecek ve test raporunu özetleyecektir.
+  * Herhangi bir test başarısız olursa neden başarısız olduğu açık hata detayıyla raporlanacaktır.
