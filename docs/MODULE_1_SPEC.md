@@ -17,12 +17,26 @@ KUCOIN_API_KEY=your_api_key_here
 KUCOIN_API_SECRET=your_api_secret_here
 KUCOIN_API_PASSPHRASE=your_api_passphrase_here
 
-# Çalışma Modu (True: KuCoin Sandbox/Testnet, False: Gerçek KuCoin Borsası)
+# Çalışma Modu (false: Canlı Borsa, true: Sandbox)
 KUCOIN_IS_SANDBOX=false
 
-# Uygulama Ayarları
+# Bot Varsayılan İşlem Modu ('paper': Sanal Simülasyon, 'live': Gerçek API)
+DEFAULT_TRADING_MODE=paper
+SIMULATION_INITIAL_BALANCE_USDT=10000.0
+
+# Sunucu & REST API (Host & Port)
+HOST=127.0.0.1
+PORT=8000
+
+# Log Detay Seviyesi (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 LOG_LEVEL=INFO
+LOG_TO_FILE=true
+
+# Varsayılan Piyasa & Mum Periyodu (1m, 5m, 15m, 1h, 4h, 1d)
+DEFAULT_SYMBOL=BTC-USDT
+DEFAULT_TIMEFRAME=15m
 ```
+*(Detaylı seçenekler ve açıklamalar `.env.example` dosyasında yer almaktadır).*
 
 #### Güvenlik Standartları:
 1. **`.gitignore` Entegrasyonu**: `.env` dosyası kesinlikle `.gitignore` dosyasına eklenerek Git versiyon kontrol sistemine veya kaynak kod depolarına (GitHub vb.) aktarılması engellenecektir.
