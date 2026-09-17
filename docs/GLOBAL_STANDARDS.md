@@ -157,6 +157,49 @@ Uygulamanın sunucu ve iş mantığı (backend) katmanında resmi standart olara
 * **Veri Doğrulama & Şemalar**: `Pydantic v2` (Katı tip güvenliği ve otomatik API şema üretimi)
 * **Veri Analizi & Matematiksel Modelleme**: `Pandas` & `NumPy` (Mum verileri, istatistiksel analizler ve indikatör hesaplamaları)
 * **Test Çatısı**: `Pytest` + `pytest-asyncio` + `pytest-cov` (Asenkron birim testleri ve kod kapsamı raporlaması)
-* **Çevre Değişkenleri Yöneticisi**: `python-dotenv` (`.env` dosyasından güvenli okuma)
 * **Paket & Bağımlılık Yönetimi**: `requirements.txt` ve izole Python sanal ortamı (`venv`)
+
+---
+
+## 8. Python Sanal Ortamı (venv), Yönetim Scriptleri ve Bağımlılık Standartları
+
+### 8.1. Sanal Ortam (Virtual Environment - `venv`) Zorunluluğu
+* Proje kesinlikle işletim sisteminin global Python ortamında değil, projenin kök dizininde yer alan izole **`.venv`** (veya `venv/`) sanal ortamında çalışacaktır.
+* Bu sanal ortam `.gitignore` içerisine dahil edilerek kaynak kod reposundan hariç tutulacaktır.
+* Tüm paket kurulumları ve script çalıştırmaları sanal ortam üzerinden yürütülecektir.
+
+### 8.2. Standart Yönetim ve Çalıştırma Scriptleri
+Geliştiricinin ve kullanıcının projeyi zahmetsizce kurabilmesi, ilk kez çalıştırabilmesi ve test edebilmesi için kök dizinde çalıştırılabilir kabuk scriptleri (`shell scripts`) bulundurulacaktır:
+
+1. **`install.sh` (Kurulum Scripti)**:
+   - Python 3.14+ varlığını doğrular.
+   - `venv` sanal ortamını oluşturur (mevcut değilse).
+   - Sanal ortamı aktive eder ve `pip` paket yöneticisini en güncel sürüme yükseltir.
+   - `requirements.txt` içerisindeki tüm bağımlılıkları sanal ortama kurar.
+
+2. **`first_run.sh` (İlk Çalıştırma ve Hazırlık Scripti)**:
+   - İlk kez projeyi açan kullanıcı için tam hazırlık yapar.
+   - `.env` dosyasını kontrol eder; yoksa `.env.example` üzerinden otomatik kopyalar ve kullanıcıyı uyarır.
+   - `install.sh` scriptini çağırarak bağımlılıkların eksiksiz olduğunu doğrular.
+   - Gerekli klasörleri (`logs/`, `tests/` vb.) hazır hale getirir.
+   - İlk doğrulama testlerini (`run_tests.sh`) koşturur.
+
+3. **`run.sh` (Uygulamayı Başlatma Scripti)**:
+   - Sanal ortamı (`venv`) otomatik aktive eder.
+   - `.env` dosyasının mevcudiyetini denetler.
+   - FastAPI REST API ve Web Dashboard sunucusunu `uvicorn` ile ayağa kaldırır (Geliştirme modunda hot-reload aktif).
+   - Terminalde kullanıcıya Swagger UI (`http://127.0.0.1:8000/docs`) ve Dashboard bağlantı linklerini gösterir.
+
+4. **`run_tests.sh` (Otomatik Test ve Raporlama Scripti)**:
+   - Sanal ortamı aktive eder.
+   - `tests/` klasöründeki tüm birim testleri `pytest` ile çalıştırır.
+   - Test başarı oranını, hata ayrıntılarını ve kod kapsamını (Coverage %) terminalde renkli olarak raporlar.
+
+> [!IMPORTANT]
+> **Scriptlerin Güncel Tutulması Kuralı**: Projenin her yeni aşamasında (Modül 1, 2, 3 ve sonrası) bu scriptlerin çalışırlığı kontrol edilecek, yeni ortam değişkenleri veya adımlar eklendiğinde scriptler eşzamanlı olarak güncellenecektir.
+
+### 8.3. Bağımlılık (`requirements.txt`) Senkronizasyon Kuralı
+* Projeye yeni bir Python kütüphanesi eklendiğinde, kütüphane sürümü güncellendiğinde veya bir kütüphane projeden çıkarıldığında **`requirements.txt` dosyası anında güncellenecektir**.
+* Hiçbir kod değişikliği, `requirements.txt` güncellenmeden tamamlanmış sayılmayacaktır.
+
 

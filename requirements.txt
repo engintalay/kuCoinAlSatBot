@@ -1,0 +1,31 @@
+# ==============================================================================
+# KuCoin Al-Sat Botu - Python Bağımlılıkları (requirements.txt)
+# ==============================================================================
+# KURAL: Yeni bir kütüphane eklendiğinde, sürümler değiştiğinde veya kütüphane
+# çıkarıldığında bu dosya anında güncellenmelidir!
+# ==============================================================================
+
+# Web Framework & REST API
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+
+# Ortam Değişkenleri & Konfigürasyon
+python-dotenv>=1.0.1
+
+# KuCoin & Kripto Borsa Entegrasyonu
+ccxt>=4.2.0
+
+# Veri Analizi, Zaman Serileri & Matematiksel Modelleme
+pandas>=2.2.0
+numpy>=1.26.0
+
+# HTTP İstemcisi & Ağ Araçları (API Testleri ve REST istekleri için)
+httpx>=0.27.0
+aiohttp>=3.9.0
+
+# Birim Test (Unit Test) ve Kod Kapsamı (Coverage)
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
