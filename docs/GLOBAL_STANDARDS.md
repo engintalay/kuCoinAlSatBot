@@ -202,4 +202,20 @@ Geliştiricinin ve kullanıcının projeyi zahmetsizce kurabilmesi, ilk kez çal
 * Projeye yeni bir Python kütüphanesi eklendiğinde, kütüphane sürümü güncellendiğinde veya bir kütüphane projeden çıkarıldığında **`requirements.txt` dosyası anında güncellenecektir**.
 * Hiçbir kod değişikliği, `requirements.txt` güncellenmeden tamamlanmış sayılmayacaktır.
 
+---
+
+## 9. Eşzamanlı Geliştirme ve Çoklu AI (Multi-Agent) Koordinasyon Standartları
+
+Bu projede birden fazla yapay zeka veya geliştirici eşzamanlı olarak çalışabileceğinden aşağıdaki çakışma önleme kuralları zorunludur:
+
+1. **Değişiklik Öncesi Güncel Durum Kontrolü (Read Before Write)**:
+   - Herhangi bir dosya değiştirilmeden önce dosyanın diskteki en son içeriği okunacak ve kontrol edilecektir.
+   - Diğer AI'ın veya geliştiricinin eklediği işlevler, dosyalar (örn. `workflow.md`) ya da yapılandırmalar asla izinsiz silinmeyecek veya üzerine körü körüne yazılmayacaktır (no destructive overwrite).
+2. **Git Durumu ve Çakışma Yönetimi**:
+   - Her işlemden önce `git status` denetlenerek çalışma ağacında harici bir değişiklik olup olmadığı izlenecektir.
+   - Harici bir değişiklik tespit edilirse bu değişiklik korunacak, yeni özellikler onunla uyumlu biçimde birleştirilecektir.
+3. **Atomik ve Küçük Adımlarla İlerleme**:
+   - Değişiklikler tek bir devasa blok halinde değil, izole ve doğrulanabilir küçük adımlarla yapılarak çakışma riski en aza indirilecektir.
+
+
 
