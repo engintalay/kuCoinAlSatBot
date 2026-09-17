@@ -47,3 +47,16 @@ Bu modül, KuCoin borsasından canlı ticker fiyatlarını ve mum (OHLCV) verile
                                                                       v
                                                           [ Sinyal: AL / SAT / BEKLE ]
 ```
+
+---
+
+## 4. Modül 2 REST API Endpoint'leri ve Swagger Spesifikasyonu
+
+Swagger Tag: `Market Data & Analysis`
+
+| Metod | Endpoint | Açıklama | Swagger Yanıt Modeli |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/market/ticker` | Belirtilen sembolün (örn. `BTC-USDT`) anlık fiyat ve 24s verilerini getirir. | `TickerResponse` |
+| `GET` | `/api/v1/market/candles` | Belirtilen zaman dilimindeki (`1m`, `5m`, `15m`, `1h`, `1d`) geçmiş mum verilerini getirir. | `CandlesResponse` |
+| `GET` | `/api/v1/market/symbols` | KuCoin'de işlem gören aktif ve geçerli kripto işlem çiftlerini listeler. | `SymbolListResponse` |
+| `GET` | `/api/v1/market/analysis` | Canlı mum verileri üzerinden hesaplanan analiz çıktısını ve sinyali (`BUY`/`SELL`/`HOLD`) döner. | `AnalysisSignalResponse` |

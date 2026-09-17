@@ -29,3 +29,19 @@ Bu modül, gelen al-sat sinyallerine veya kullanıcının manuel komutlarına g�
 ### 2.4. Güvenlik ve Risk Kontrolleri
 * **Bakiye Kontrolü**: Bakiyeden fazla tutarda emir verilmesini engelleme.
 * **Acil Durum Butonu (Panic Stop)**: Tek tıkla tüm açık emirleri iptal etme ve bot çalışmasını durdurma.
+
+---
+
+## 3. Modül 3 REST API Endpoint'leri ve Swagger Spesifikasyonu
+
+Swagger Tag: `Orders & Execution`
+
+| Metod | Endpoint | Açıklama | Swagger Yanıt Modeli |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/orders/create` | Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal). | `OrderCreateResponse` |
+| `GET` | `/api/v1/orders/open` | Borsada dolmayı bekleyen açık emirleri listeler. | `OpenOrdersResponse` |
+| `GET` | `/api/v1/orders/history` | Geçmişte dolan veya kapanan emir geçmişini döner. | `OrderHistoryResponse` |
+| `DELETE` | `/api/v1/orders/{order_id}` | Belirtilen açık emri iptal eder. | `OrderCancelResponse` |
+| `POST` | `/api/v1/orders/panic-stop` | **Acil Durum**: Tüm açık emirleri anında iptal eder ve botu durdurur. | `PanicStopResponse` |
+| `POST` | `/api/v1/orders/switch-mode` | Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar. | `SwitchModeResponse` |
+

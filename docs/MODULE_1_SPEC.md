@@ -115,3 +115,17 @@ Bot başlatıldığında sırasıyla şu adımları kontrol eder:
   2. Kullanılabilir Serbest Nakit ($ USDT)
   3. Açık Emirlerde Kilitli Tutar ($ USDT)
 * **Varlık Dağılım Tablosu**: Kripto Çifti, Serbest, Kilitli, Toplam Miktar, Birim Fiyat (USDT), Toplam USDT Değeri ve Portföy Yüzdesi (%).
+
+---
+
+## 6. Modül 1 REST API Endpoint'leri ve Swagger Spesifikasyonu
+
+Swagger Tag: `Account & Connection`
+
+| Metod | Endpoint | Açıklama | Swagger Yanıt Modeli |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/account/status` | KuCoin API bağlantı durumu, gecikme süresi (ms) ve yetkileri döndürür. | `ConnectionStatusResponse` |
+| `GET` | `/api/v1/account/balances` | Tüm kripto varlıkların serbest, kilitli ve USDT karşılığı bakiyelerini listeler. | `AccountBalancesResponse` |
+| `GET` | `/api/v1/account/summary` | Toplam portföy değeri ve serbest nakit özetini döndürür. | `PortfolioSummaryResponse` |
+| `POST` | `/api/v1/account/test-connection` | `.env` dosyasındaki şifreleri anlık olarak test eder ve doğrular. | `TestConnectionResponse` |
+

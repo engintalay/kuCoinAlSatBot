@@ -111,3 +111,35 @@ Tüm sayfa ve ekranlarda sabit kalacak **Ortak İskelet (Master Layout)** yapıs
   * Konsol çıktısında geçen/kalan testler renkli olarak özetlenecektir.
   * Test prosedürü kod kapsamını (Coverage %) ölçecek ve test raporunu özetleyecektir.
   * Herhangi bir test başarısız olursa neden başarısız olduğu açık hata detayıyla raporlanacaktır.
+
+---
+
+## 6. Servis Mimarisi, REST API ve Swagger (OpenAPI) Standartları
+
+### 6.1. REST API Standartları
+* **Kaynak Odaklı Endpoint Mimarisi**: Tüm servisler standart REST API formatında geliştirilecek ve modüler öneklerle (`/api/v1/...`) ayrılacaktır:
+  * `/api/v1/account/*` -> Modül 1 (KuCoin bağlantısı, bakiye ve yetkiler)
+  * `/api/v1/market/*`  -> Modül 2 (Canlı ticker, mum verileri ve analiz sinyalleri)
+  * `/api/v1/orders/*`  -> Modül 3 (Emir verme, açık emirler, iptal ve simülasyon)
+* **Standart HTTP Metodları ve Durum Kodları**:
+  * `GET`: Veri sorgulama (`200 OK`)
+  * `POST`: Yeni emir veya işlem oluşturma (`201 Created` / `200 OK`)
+  * `DELETE`: Açık emir iptali (`200 OK`)
+  * Hata Durumları: `400 Bad Request` (geçersiz parametre), `401 Unauthorized` (geçersiz API Key), `429 Too Many Requests` (Rate limit), `500 Internal Server Error`.
+
+### 6.2. Standart JSON Yanıt Şablonu
+Tüm API servisleri önceden tahmin edilebilir, standart bir JSON zarfı (envelope) ile yanıt dönecektir:
+```json
+{
+  "success": true,
+  "data": {},
+  "error": null,
+  "timestamp": "2026-09-17T21:04:00Z"
+}
+```
+
+### 6.3. Swagger (OpenAPI) Entegrasyonu ve Canlı Dokümantasyon
+* **İnteraktif Swagger UI**: Servis ayağa kalktığında `/docs` adresinde tam teşekküllü, tarayıcı üzerinden doğrudan test edilebilen Swagger arayüzü sunulacaktır.
+* **ReDoc Dokümantasyonu**: Alternatif temiz teknik doküman arayüzü `/redoc` adresinde hazır bulunacaktır.
+* **Şema ve Model Doğrulama**: Tüm istek ve yanıt modelleri Pydantic şemaları ile tipleştirilecek; her parametrenin açıklaması, varsayılan değeri ve örnek veri seti (Example Payload) Swagger arayüzünde görünür olacaktır.
+* **OpenAPI Şeması**: `/openapi.json` yolu üzerinden ham OpenAPI 3.0+ spesifikasyonu dışa aktarılabilecektir.
