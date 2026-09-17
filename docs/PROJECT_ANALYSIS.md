@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu - Proje Analiz ve Tasarım Dokümanı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:06:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:50:00 (+03:00)
 
 ## 1. Proje Genel Bakışı
 Bu doküman, KuCoin kripto para borsasında çalışacak modüler **Al-Sat Botu** uygulamasının mimarisini, veri akışını ve modül detaylarını içerir. 
@@ -49,17 +49,19 @@ Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler
 
 ---
 
-### Modül 2: Anlık Piyasa Verisi Akışı ve Analiz Altyapısı
-**Amaca Uygunluk**: KuCoin'den canlı fiyat verilerini çekmek, mum (OHLCV) verilerini toplamak ve gelecekte eklenecek stratejiler için analiz altyapısını hazır tutmak.
+### Modül 2: Anlık Piyasa Verisi Akışı ve Çok Katmanlı Analiz Motoru
+**Amaca Uygunluk**: KuCoin'den canlı fiyat (ticker), L2 derinlik ve mum (OHLCV) verilerini toplamak; 10 katmanlı indikatör ve Market Structure (SMC) feature'larını hesaplayarak çoklu zaman dilimi (MTF) destekli 0-100 Bileşik Puanlama Motoru (Composite Scoring Engine) ile doğrulanmış sinyaller üretmek.
 
 #### İşlevsel Gereksinimler:
-1. **Canlı Fiyat Akışı (Ticker & WebSocket)**:
-   - Seçilen işlem çiftlerinin (Örn: BTC/USDT, ETH/USDT, KCS/USDT) son fiyat, 24s hacim ve değişim oranlarını çekme.
-2. **Geçmiş Mum (OHLCV) Verisi Çekme**:
-   - Belirlenen zaman dilimlerinde (1m, 5m, 15m, 1h, 4h, 1d) mum verilerinin çekilmesi.
-3. **Esnek Analiz Motoru Altyapısı**:
-   - Stratejilerin tak-çıkar (pluggable) mimaride çalışabilmesi için analiz veri modülü.
-   - *Not: Strateji mantığı ve indikatör detayları bu fazdan sonra belirlenecektir.*
+1. **Canlı Fiyat ve Derinlik Akışı (Ticker & L2 Order Book)**:
+   - Seçilen işlem çiftlerinin (BTC-USDT vb.) son fiyat, 24s hacim, değişim oranları ve alış-satış spread dengesizliğinin takibi.
+2. **Geçmiş Mum (OHLCV) Yönetimi & Rolling Ring Buffer**:
+   - Belirlenen zaman dilimlerinde (1m, 5m, 15m, 1h, 4h, 1d) 300-500 mumluk kayan önbellek.
+   - Kapanmış mum (confirmed candle) ile geçici mum (intrabar provisional) ayrımı ve repainting/lookahead koruması.
+3. **10 Katmanlı Analiz Motoru & Feature Engine**:
+   - Trend (EMA, Supertrend, Ichimoku), Momentum (RSI, StochRSI, MACD), Güç (ADX, Choppiness), Hacim (RVOL, VWAP, CMF), Volatilite (ATR, Bollinger, Squeeze), Seviyeler (Pivots, Fib), Fiyat Hareketi/SMC (BOS, CHoCH, FVG, OB), Türevler (OI, Funding, CVD) ve MTF (4H rejim → 1H setup → 15m tetikleyici).
+4. **Bileşik Puanlama (0-100 Score) & Gerekçelendirme Motoru**:
+   - Boğa/Ayı puanlaması, sahte sinyal filtreleri ve insan tarafından okunabilir gerekçe/risk uyarısı çıktıları.
 
 ---
 
@@ -115,5 +117,6 @@ Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler
 | **2026-09-17 21:07:56** | Kesinleşen teknoloji yığını tablosunda Python FastAPI standart olarak tescillendi. | Tamamlandı |
 | **2026-09-17 21:35:00** | Review düzeltmeleri tamamlandı, proje iskeleti standardı `src/` olarak teyit edildi, tamamlama rozeti ve log tablosu eklendi. | Tamamlandı |
 | **2026-09-17 22:06:00** | Rozet ayrımı (Tasarım %100 vs Kodlama %20) yapıldı ve güncellendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-17 22:50:00** | Modül 2 analizi `crypto_indicators_coding_agent_reference.md` doğrultusunda 10 katmanlı indikatör mimarisi, SMC, MTF ve 0-100 composite scoring motoru ile senkronize edilerek genişletildi. | Onaylandı & Genişletildi (%100) |
 
 

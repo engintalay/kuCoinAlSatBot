@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:06:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:50:00 (+03:00)
 
 ---
 
@@ -89,13 +89,23 @@ kuCoinAlSatBot/
   - WebSocket bakiye aboneliği
 - `main.py` — `/api/v1/account/*` endpoint'leri
 
-### Adım 3 — Modül 2: Piyasa Verileri & Analiz Altyapısı
-- `models/market.py` — Pydantic şemaları (`TickerResponse`, `CandlesResponse`, `SymbolListResponse`, `AnalysisSignalResponse`)
-- `module2_market.py` — Piyasa veri çekme
-  - REST ticker & candle çekme
-  - WebSocket canlı fiyat
-  - Önbellek sistemi
-- `main.py` — `/api/v1/market/*` endpoint'leri
+### Adım 3 — Modül 2: Çok Katmanlı Piyasa Verileri & Analiz Motoru
+- `models/market.py` — Pydantic veri sözleşmeleri (`TickerData`, `Candle`, `IndicatorLayersData`, `MarketStructureData`, `SignalEvaluation`, `MTFAnalysisResponse`)
+- `module2_market.py` — Ticker, L2 Derinlik, OHLCV verisi & Ring Buffer (300-500 mum)
+- `indicators/` — Modüler indikatör katmanları:
+  - `trend.py` (EMA 20/50/100/200, SMA, Supertrend, Ichimoku, SAR)
+  - `momentum.py` (RSI, StochRSI, MACD, CCI, %R, ROC)
+  - `strength.py` (ADX, Aroon, Choppiness Index)
+  - `volume.py` (RVOL, OBV, VWAP, Anchored VWAP, MFI, CMF, Volume Profile)
+  - `volatility.py` (ATR, Bollinger Bands, Keltner Channels, Squeeze)
+  - `levels.py` (Pivot Points, PDH/PDL, Fibonacci, Donchian)
+  - `structure.py` (Swing High/Low, HH/HL/LH/LL, BOS, CHoCH, FVG, Order Block)
+- `analysis/` — Analiz motoru ve strateji:
+  - `feature_engine.py` (Normalize özellik vektörü çıkarımı)
+  - `scoring_engine.py` (0-100 Bileşik Puanlama & İnsan Okunabilir Gerekçelendirme)
+  - `filters.py` (Düşük Hacim, Düşük ADX, Overextended, MTF çelişki filtreleri)
+  - `mtf_engine.py` (4H Rejim → 1H Setup → 15m Tetikleyici)
+- `main.py` & `routes/market.py` — `/api/v1/market/*` endpoint'leri
 
 ### Adım 4 — Modül 3: Al-Sat Emir Yönetimi
 - `models/orders.py` — Pydantic şemaları (`OrderCreateResponse`, `OpenOrdersResponse`, `OrderHistoryResponse`, `OrderCancelResponse`, `PanicStopResponse`, `SwitchModeResponse`)
@@ -145,14 +155,32 @@ kuCoinAlSatBot/
 - [ ] `/api/v1/account/summary`
 - [ ] `/api/v1/account/test-connection`
 
-### Modül 2 (Tasarım Hazır / Kodlama Bekliyor ⏳)
-- [ ] REST ticker & candle çekme
-- [ ] WebSocket canlı fiyat
-- [ ] Önbellek sistemi
-- [ ] `/api/v1/market/ticker`
-- [ ] `/api/v1/market/candles`
-- [ ] `/api/v1/market/symbols`
-- [ ] `/api/v1/market/analysis`
+### Modül 2 (Tasarım Genişletildi / Kodlama Bekliyor ⏳)
+- [ ] KuCoin Ticker & L2 Order Book veri akışı (`module2_market.py`)
+- [ ] Rolling Ring Buffer (300-500 mum) & Repaint koruması (`confirmed_candle`)
+- [ ] Modüler İndikatör Katmanları (`indicators/`):
+  - [ ] Trend Katmanı: EMA (20/50/100/200), SMA, Supertrend, Ichimoku, Parabolic SAR
+  - [ ] Momentum Katmanı: RSI, StochRSI, MACD, CCI, Williams %R, ROC
+  - [ ] Trend Gücü: ADX, Aroon, Choppiness Index
+  - [ ] Hacim ve Akış: RVOL, OBV, VWAP, AVWAP, MFI, CMF, Volume Profile (POC/VAH/VAL)
+  - [ ] Volatilite: ATR, Bollinger Bands, Keltner Channels, BB-KC Squeeze
+  - [ ] Seviyeler: Pivot Points, PDH/PDL, Fibonacci Retracement, Donchian
+  - [ ] Fiyat Hareketi / SMC: Swing tespiti (lookahead-proof), HH/HL/LH/LL, BOS, CHoCH, FVG, Order Block
+- [ ] Analiz ve Puanlama Motoru (`analysis/`):
+  - [ ] Feature Engine (Normalize JSON özellik seti)
+  - [ ] Composite Scoring Engine (0-100 Boğa/Ayı Skoru)
+  - [ ] False Signal & Risk Filtreleri (Düşük Hacim, Range Trap, Overextended)
+  - [ ] İnsan Okunabilir Gerekçelendirme & Risk Uyarıları (Explainable AI)
+  - [ ] Multi-Timeframe (MTF) Hiyerarşisi (4H Rejim → 1H Setup → 15m Tetikleyici)
+- [ ] Modül 2 REST API Endpoint'leri:
+  - [ ] `/api/v1/market/ticker`
+  - [ ] `/api/v1/market/orderbook`
+  - [ ] `/api/v1/market/candles`
+  - [ ] `/api/v1/market/symbols`
+  - [ ] `/api/v1/market/analysis/indicators`
+  - [ ] `/api/v1/market/analysis/structure`
+  - [ ] `/api/v1/market/analysis/score`
+  - [ ] `/api/v1/market/analysis/mtf`
 
 ### Modül 3 (Tasarım Hazır / Kodlama Bekliyor ⏳)
 - [ ] Market emir oluşturma
@@ -205,5 +233,6 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-17 21:22:13** | Dizin ağacına `install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`, `.env.example` eklendi. | Tamamlandı |
 | **2026-09-17 21:35:00** | Review bulguları düzeltildi: `.env` durumu gerçeğe göre güncellendi, yanıltıcı checklist başlıkları düzeltildi, tamamlama göstergesi ve footer log eklendi. | Tamamlandı |
 | **2026-09-17 22:06:00** | Rozet ayrımı (Tasarım %100 vs Kodlama %20) yapıldı, Mevcut Durum tablosu Coding AI ilerlemesiyle senkronlandı. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-17 22:50:00** | Modül 2 geliştirme planı ve checklist'i `crypto_indicators_coding_agent_reference.md` doğrultusunda 10 indikatör katmanı, SMC, Feature & Scoring Engine ve yeni API endpoint'leri ile genişletildi. | Onaylandı & Genişletildi (%100) |
 
 
