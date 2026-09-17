@@ -252,6 +252,13 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
    - **Adım 4 (Uygula & Commit)**: Onay alındıktan sonra düzeltmeleri uygular, doğrular ve Git'e commit eder.
 4. **Doküman ve Rapor Dokunulmazlığı**:
    - Hiçbir geliştirici veya yapay zeka `review/` altındaki raporları izinsiz silemez veya değiştiremez.
+5. **Kullanıcı 'review' Komutu Tetikleyicisi (Review Command Trigger)**:
+   - Kullanıcı 'review' mesajı gönderdiğinde:
+     - **Adım A**: Analiz AI, doğrudan `review/` klasöründeki dosyaları kontrol eder.
+     - **Adım B**: Analiz AI'ın görev alanına giren (dokümantasyon, mimari, veri modelleri, standartlar, iş akışı) tüm review bulgularını inceler.
+     - **Adım C**: Tespit edilen aksiyonları kullanıcıya maddeler halinde sunar ve onay ister.
+     - **Adım D**: Kullanıcı onayından sonra düzeltmeleri uygular ve Git commit yapar.
+
 
 ---
 
@@ -266,7 +273,9 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-17 21:20:29** | Python sanal ortamı (`.venv`), yönetim scriptleri (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) ve `requirements.txt` senkronizasyonu eklendi. | Tamamlandı |
 | **2026-09-17 21:23:55** | Eşzamanlı geliştirme ve çoklu AI (multi-agent) çakışma önleme koordinasyon kuralları eklendi. | Tamamlandı |
 | **2026-09-17 21:35:00** | Markdown (`.md`) dosyaları için ilk satır tamamlanma yüzdesi ve dosya sonu detaylı işlem logu standardı eklendi. | Tamamlandı |
-| **2026-09-17 21:38:00** | İnceleme (Review) süreci, `review/` klasörü işleyişi ve kullanıcı onay prosedürü kuralları eklendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-17 21:38:00** | İnceleme (Review) süreci, `review/` klasörü işleyişi ve kullanıcı onay prosedürü kuralları eklendi. | Tamamlandı |
+| **2026-09-17 21:40:00** | Kullanıcı 'review' komutu tetikleyicisi ve Analiz AI otomatik kontrol protokolü eklendi. | Onaylandı & Tamamlandı (%100) |
+
 
 
 
