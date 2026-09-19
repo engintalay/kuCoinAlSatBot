@@ -4,6 +4,9 @@ KuCoin Al-Sat Botu — FastAPI Uygulama Giriş Noktası
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 from src.modules.module1_account import KuCoinAccount
 from src.modules.module2_market import KuCoinMarket
@@ -55,9 +58,21 @@ async def shutdown_event():
     await orders.close()
 
 
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+
+
 @app.get("/")
-async def root():
-    """Uygulama root endpoint."""
+async def dashboard():
+    """Web Dashboard (tek sayfa uygulama)."""
+    index = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index):
+        return FileResponse(index)
+    return {"success": False, "error": "Dashboard bulunamadı", "timestamp": timestamp()}
+
+
+@app.get("/api")
+async def api_info():
+    """API bilgi endpoint'i."""
     return {
         "success": True,
         "data": {
@@ -238,3 +253,7 @@ async def switch_mode(req: SwitchModeRequest):
     """Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar."""
     result = await orders.switch_mode(req.mode)
     return result
+
+
+# Statik dosyaları (CSS/JS) sun — API rotalarından sonra mount edilir.
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

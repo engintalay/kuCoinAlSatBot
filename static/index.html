@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KuCoin Al-Sat Botu</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <!-- Toast bildirim konteyneri (sağ üst) -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- HEADER -->
+  <header class="app-header glass">
+    <div class="brand">
+      <span class="logo-dot"></span>
+      <span class="brand-name">KuCoin Al-Sat Botu</span>
+    </div>
+    <div class="header-portfolio">
+      <span class="label">Portföy</span>
+      <span id="header-portfolio-usdt" class="value">-- USDT</span>
+    </div>
+    <div class="header-right">
+      <span id="mode-badge" class="mode-badge sim">🧪 SIMULATION</span>
+      <button id="panic-btn" class="panic-btn" title="Tüm emirleri iptal et ve botu durdur">
+        ⛔ PANIC STOP
+      </button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- SOL MENÜ -->
+    <nav class="sidebar glass">
+      <a class="nav-item active" data-view="dashboard">🏠 Ana Sayfa</a>
+      <a class="nav-item" data-view="account">👛 Hesap</a>
+      <a class="nav-item" data-view="analysis">📈 Analiz</a>
+      <a class="nav-item" data-view="orders">📋 Emirler</a>
+    </nav>
+
+    <!-- ANA İÇERİK -->
+    <main class="content">
+      <!-- Dashboard görünümü -->
+      <section id="view-dashboard" class="view active">
+        <div class="cards-row">
+          <div class="card glass">
+            <div class="card-title">Toplam Portföy</div>
+            <div id="dash-total" class="card-value">-- USDT</div>
+          </div>
+          <div class="card glass">
+            <div class="card-title">Serbest Nakit</div>
+            <div id="dash-free" class="card-value">-- USDT</div>
+          </div>
+          <div class="card glass">
+            <div class="card-title">Bağlantı</div>
+            <div id="dash-conn" class="card-value">--</div>
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="card-title">Canlı Fiyat — <span id="dash-symbol">BTC/USDT</span></div>
+          <div id="dash-ticker" class="ticker-grid">Yükleniyor...</div>
+        </div>
+      </section>
+
+      <!-- Hesap görünümü -->
+      <section id="view-account" class="view">
+        <div class="card glass">
+          <div class="card-title">Varlık Dağılımı</div>
+          <table class="data-table" id="balances-table">
+            <thead>
+              <tr><th>Varlık</th><th>Serbest</th><th>Kilitli</th><th>Toplam</th><th>Fiyat (USDT)</th><th>Değer (USDT)</th><th>Pay %</th></tr>
+            </thead>
+            <tbody><tr><td colspan="7">Yükleniyor...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Analiz görünümü -->
+      <section id="view-analysis" class="view">
+        <div class="toolbar">
+          <input id="analysis-symbol" class="input" value="BTC/USDT" />
+          <select id="analysis-tf" class="input">
+            <option>15m</option><option selected>1h</option><option>4h</option><option>1d</option>
+          </select>
+          <button id="analysis-run" class="btn btn-accent">Analiz Et</button>
+        </div>
+        <div class="cards-row">
+          <div class="card glass">
+            <div class="card-title">Sinyal</div>
+            <div id="analysis-signal" class="card-value">--</div>
+          </div>
+          <div class="card glass">
+            <div class="card-title">Boğa / Ayı Skoru</div>
+            <div id="analysis-score" class="card-value">-- / --</div>
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="card-title">Gerekçeler</div>
+          <ul id="analysis-reasons" class="reason-list"></ul>
+        </div>
+        <div class="card glass">
+          <div class="card-title">Risk Uyarıları</div>
+          <ul id="analysis-warnings" class="reason-list warn"></ul>
+        </div>
+      </section>
+
+      <!-- Emirler görünümü -->
+      <section id="view-orders" class="view">
+        <div class="card glass">
+          <div class="card-title">Yeni Emir</div>
+          <div class="order-form">
+            <input id="order-symbol" class="input" value="BTC/USDT" />
+            <select id="order-side" class="input"><option value="buy">AL</option><option value="sell">SAT</option></select>
+            <select id="order-type" class="input"><option value="market">Market</option><option value="limit">Limit</option></select>
+            <input id="order-amount" class="input" type="number" step="0.0001" placeholder="Miktar" value="0.001" />
+            <input id="order-price" class="input" type="number" step="0.01" placeholder="Fiyat (limit)" />
+            <button id="order-submit" class="btn btn-buy">Emir Ver</button>
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="card-title">Açık Emirler</div>
+          <table class="data-table" id="open-orders-table">
+            <thead><tr><th>ID</th><th>Sembol</th><th>Yön</th><th>Tür</th><th>Miktar</th><th>Fiyat</th><th>Durum</th><th></th></tr></thead>
+            <tbody><tr><td colspan="8">Yükleniyor...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="app-footer glass">
+    <span id="footer-conn" class="footer-item">🔴 Bağlantı: --</span>
+    <span id="footer-latency" class="footer-item">Gecikme: -- ms</span>
+    <span id="footer-updated" class="footer-item">Son Güncelleme: --</span>
+    <span id="footer-log" class="footer-item footer-log">Sistem hazır.</span>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

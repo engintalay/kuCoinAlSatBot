@@ -1,0 +1,120 @@
+/* KuCoin Al-Sat Botu — Dashboard Teması (GLOBAL_STANDARDS 2.1) */
+:root {
+  --bg-0: #0d1117;
+  --bg-1: #161b22;
+  --border: #30363d;
+  --green: #00e676;
+  --red: #ff5252;
+  --accent: #2979ff;
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --glass: rgba(22, 27, 34, 0.72);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', 'Outfit', 'Segoe UI', system-ui, sans-serif;
+  background: linear-gradient(135deg, var(--bg-0), var(--bg-1));
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* HEADER */
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; margin: 10px; gap: 16px;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.logo-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+.brand-name { font-size: 1.1rem; }
+.header-portfolio { display: flex; flex-direction: column; align-items: center; }
+.header-portfolio .label { font-size: 0.7rem; color: var(--text-dim); }
+.header-portfolio .value { font-weight: 700; color: var(--green); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.mode-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+.mode-badge.sim { background: rgba(41,121,255,0.15); color: var(--accent); border: 1px solid var(--accent); }
+.mode-badge.live { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid var(--green); }
+.panic-btn {
+  background: var(--red); color: #fff; border: none; padding: 8px 16px;
+  border-radius: 8px; font-weight: 700; cursor: pointer; transition: transform .1s;
+}
+.panic-btn:hover { transform: scale(1.05); box-shadow: 0 0 16px rgba(255,82,82,0.5); }
+
+/* BODY */
+.app-body { display: flex; flex: 1; gap: 10px; margin: 0 10px; }
+.sidebar { width: 200px; padding: 12px; display: flex; flex-direction: column; gap: 6px; height: fit-content; }
+.nav-item {
+  padding: 10px 14px; border-radius: 8px; cursor: pointer; color: var(--text-dim);
+  transition: all .15s; user-select: none;
+}
+.nav-item:hover { background: rgba(41,121,255,0.1); color: var(--text); }
+.nav-item.active { background: rgba(41,121,255,0.18); color: var(--accent); font-weight: 600; }
+
+.content { flex: 1; padding: 4px; }
+.view { display: none; flex-direction: column; gap: 12px; }
+.view.active { display: flex; }
+
+/* CARDS */
+.cards-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.card { padding: 16px; flex: 1; min-width: 180px; }
+.card-title { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 8px; }
+.card-value { font-size: 1.5rem; font-weight: 700; }
+
+/* TICKER */
+.ticker-grid { display: flex; gap: 24px; flex-wrap: wrap; font-size: 0.95rem; }
+.ticker-grid .up { color: var(--green); }
+.ticker-grid .down { color: var(--red); }
+
+/* TABLES */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.data-table th, .data-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+.data-table th:first-child, .data-table td:first-child { text-align: left; }
+.data-table th { color: var(--text-dim); font-weight: 600; }
+
+/* FORMS */
+.toolbar, .order-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.input {
+  background: var(--bg-0); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 12px; border-radius: 8px; font-size: 0.9rem;
+}
+.btn { border: none; padding: 8px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; color: #fff; }
+.btn-accent { background: var(--accent); }
+.btn-buy { background: var(--green); color: #06210f; }
+.btn-sell { background: var(--red); }
+.btn:hover { filter: brightness(1.1); }
+.btn-mini { background: var(--red); padding: 4px 10px; font-size: 0.78rem; border-radius: 6px; }
+
+/* SIGNAL COLORS */
+.signal-strong-bullish, .signal-bullish { color: var(--green); }
+.signal-strong-bearish, .signal-bearish { color: var(--red); }
+.signal-neutral { color: var(--text-dim); }
+
+/* REASONS */
+.reason-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.reason-list li { padding: 6px 10px; background: rgba(41,121,255,0.08); border-radius: 6px; font-size: 0.85rem; }
+.reason-list.warn li { background: rgba(255,82,82,0.1); color: var(--red); }
+
+/* FOOTER */
+.app-footer { display: flex; gap: 20px; padding: 8px 20px; margin: 10px; font-size: 0.8rem; color: var(--text-dim); flex-wrap: wrap; }
+.footer-log { margin-left: auto; color: var(--accent); }
+
+/* TOAST */
+.toast-container { position: fixed; top: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  padding: 12px 18px; border-radius: 8px; color: #fff; font-size: 0.9rem;
+  min-width: 240px; animation: slideIn .2s ease; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.toast.success { background: rgba(0,230,118,0.9); color: #06210f; }
+.toast.warning { background: rgba(255,193,7,0.9); color: #3d2c00; }
+.toast.error { background: rgba(255,82,82,0.95); }
+@keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
