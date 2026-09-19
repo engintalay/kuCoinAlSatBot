@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 & Modül 2 Analiz Motoru %100 Tamamlandı (74/74 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:33:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 & Modül 2 (Tüm İndikatör Katmanları Dahil) %100 Tamamlandı (84/84 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:48:00 (+03:00)
 
 ---
 
@@ -16,16 +16,18 @@
 | Modül 1 (Hesap & Bağlantı) | ✅ **%100 Tamamlandı** (Bağlantı, bakiye, portföy payı, yetki denetimi, WebSocket stream) — 29 test |
 | Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) |
 | Modül 2 — Faz 2b (İleri SMC, Scoring & MTF) | ✅ **%100 Tamamlandı** (Supertrend, Ichimoku, Parabolic SAR, ADX, Aroon, Choppiness, Squeeze, SMC Swings/BOS/CHoCH/FVG/OB, 0-100 Puanlama Motoru, MTF Hiyerarşisi, 3 REST endpoint'i) |
-| Modül 2 — Test Dağılımı | ✅ 45 test: `market: 8`, `indicators: 19`, `structure: 8`, `analysis: 10` |
-| Modül 3 (Emir Yönetimi & Simülasyon) | ⏳ Tasarım %100 hazır; Modül 2 analiz motoru üzerine başlanacak |
-| Toplam Birim Test Durumu | ✅ **74/74 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Modül 2 — İleri Katmanlar (Hacim & Seviyeler) | ✅ **%100 Tamamlandı** (`indicators/volume.py`: RVOL, OBV, VWAP, MFI, CMF, Volume Profile; `indicators/levels.py`: Pivots, Fib, Donchian; Hacim Puanlaması) — 10 test |
+| Modül 2 — Kapsam Notu (Ertelenen) | ⚠️ **Spot analiz motoru tamam; ancak spec'in tamamı değil.** Eksik: Katman 8 (Türev — OI/Funding/CVD/Basis, KuCoin Futures API gerektirir), Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D, harici veri gerektirir), ek momentum indikatörleri (StochRSI, CCI, Williams %R, ROC). Bu kalemler ayrı bir faza (2c) ertelendi. |
+| Modül 2 — Test Dağılımı | ✅ 55 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10` |
+| Modül 3 (Emir Yönetimi & Simülasyon) | ⏳ Tasarım ve İzlenebilirlik Matrisi %100 hazır; kodlama başlayacak |
+| Toplam Birim Test Durumu | ✅ **84/84 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 ---
 
 ## 2. Proje Yapısı
 
-> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Şu an fiilen mevcut olanlar: `src/config.py`, `src/database.py`, `src/main.py`, `src/utils/*`, `src/models/*`, `src/modules/module1_account.py`, `src/modules/module2_market.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py` ve `tests/test_module_1_account.py`, `tests/test_module_2_market.py`, `tests/test_module_2_indicators.py`, `tests/test_module_2_structure.py`, `tests/test_module_2_analysis.py`. Henüz oluşturulmayanlar: `module3_orders.py`, `indicators/volume.py`, `indicators/levels.py`, `analysis/feature_engine.py`, `analysis/filters.py`, `conftest.py`, `test_module_3_orders.py`, `test_utils.py` ve türev/piyasa-geneli (Katman 8-9) katmanları.
+> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Şu an fiilen mevcut olanlar: `src/config.py`, `src/database.py`, `src/main.py`, `src/utils/*`, `src/models/*`, `src/modules/module1_account.py`, `src/modules/module2_market.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py` ve `tests/test_module_1_account.py`, `tests/test_module_2_market.py`, `tests/test_module_2_indicators.py`, `tests/test_module_2_structure.py`, `tests/test_module_2_analysis.py`, `tests/test_module_2_volume_levels.py`. Henüz oluşturulmayanlar: `module3_orders.py`, `analysis/feature_engine.py`, `analysis/filters.py`, `conftest.py`, `test_module_3_orders.py`, `test_utils.py` ve türev/piyasa-geneli (Katman 8-9) katmanları.
 
 ```
 kuCoinAlSatBot/
@@ -102,13 +104,13 @@ kuCoinAlSatBot/
   - ✅ `trend.py` (EMA 20/50/100/200, SMA, Supertrend, Ichimoku, SAR)
   - ✅ `momentum.py` (RSI 14, MACD) — *StochRSI, CCI, %R, ROC kapsam dışı (sonraki)*
   - ✅ `strength.py` (ADX, Aroon, Choppiness Index)
-  - ❌ `volume.py` (RVOL, OBV, VWAP, AVWAP, MFI, CMF, Volume Profile) — *yazılmadı*
+  - ✅ `volume.py` (RVOL, OBV, VWAP, MFI 14, CMF 20, Volume Profile POC/VAH/VAL)
   - ✅ `volatility.py` (ATR, Bollinger Bands, Keltner Channels, Squeeze)
-  - ❌ `levels.py` (Pivot Points, PDH/PDL, Fibonacci, Donchian) — *yazılmadı*
+  - ✅ `levels.py` (Pivot Points, PDH/PDL, Fibonacci Retracement, Donchian Channels)
   - ✅ `structure.py` (Swing High/Low, HH/HL/LH/LL, BOS, CHoCH, FVG, Order Block)
 - `analysis/` — Analiz motoru ve strateji:
-  - ✅ Feature Engine (`module2_market.py:_all_features` — tüm katmanların birleşimi)
-  - ✅ `scoring_engine.py` (0-100 Bileşik Puanlama & İnsan Okunabilir Gerekçelendirme + risk filtreleri)
+  - ✅ Feature Engine (`module2_market.py:_all_features` — tüm 6 katmanın birleşimi)
+  - ✅ `scoring_engine.py` (0-100 Bileşik Puanlama: Hacim katkısı dahil max_points 80, Gerekçelendirme + risk filtreleri)
   - ✅ `mtf_engine.py` (4H Rejim → 1H Setup → 15m Tetikleyici)
 - ✅ `main.py` — `/api/v1/market/*` endpoint'leri (8 adet: 4 veri + 4 analiz)
 - ❌ Katman 8-9 (Türev/OI/Funding/CVD & BTC.D/piyasa geneli) — *ayrı veri kaynağı gerektirir, sonraki faza ertelendi*
@@ -136,11 +138,12 @@ kuCoinAlSatBot/
 - ✅ `tests/test_module_1_account.py` (29 test)
 - ✅ `tests/test_module_2_market.py` (8 test)
 - ✅ `tests/test_module_2_indicators.py` (19 test)
+- ✅ `tests/test_module_2_volume_levels.py` (10 test)
 - ✅ `tests/test_module_2_structure.py` (8 test)
 - ✅ `tests/test_module_2_analysis.py` (10 test)
 - ❌ `tests/test_module_3_orders.py` (Modül 3 ile birlikte)
 - ❌ `tests/test_utils.py` (henüz yok)
-- ✅ `run_tests.sh` — Tek komut test koşturma scripti (74/74 yeşil)
+- ✅ `run_tests.sh` — Tek komut test koşturma scripti (84/84 yeşil)
 
 ### Adım 7 — Son Kontroller
 - Tüm endpoint'lerin Swagger dokümantasyonu doğrulanması
@@ -185,10 +188,12 @@ kuCoinAlSatBot/
 - [x] İleri Trend Katmanı: Supertrend (10, 3.0), Ichimoku Kinko Hyo (9/26/52 Kumo), Parabolic SAR (0.02/0.20) (`indicators/trend.py`)
 - [x] İleri Momentum & Güç: ADX 14 (Wilder), Aroon 25, Choppiness Index 14 (`indicators/strength.py`)
 - [x] İleri Volatilite & Squeeze: Bollinger Bands (20, 2.0), Keltner Channels (EMA20, 1.5*ATR), BB-KC Squeeze (`indicators/volatility.py`)
+- [x] Hacim & Sermaye Akışı: RVOL, OBV, VWAP, MFI 14, CMF 20, Volume Profile (POC/VAH/VAL) (`indicators/volume.py`)
+- [x] Destek/Direnç Seviyeleri: Pivot Points, Önceki High/Low, Fibonacci Retracement, Donchian (`indicators/levels.py`)
 - [x] Market Structure (SMC / Fiyat Hareketi): Lookahead-proof Swings, HH/HL/LH/LL, BOS, CHoCH, FVG, Order Block (`indicators/structure.py`)
 - [x] Analiz ve Puanlama Motoru (`analysis/`):
   - [x] Feature Engine (`module2_market.py:_all_features` tüm katmanların birleştirilmesi)
-  - [x] Composite Scoring Engine (`analysis/scoring_engine.py` — 0-100 Boğa/Ayı Bileşik Skoru, Net Skor)
+  - [x] Composite Scoring Engine (`analysis/scoring_engine.py` — 0-100 Boğa/Ayı Bileşik Skoru, Hacim katkısı, Net Skor)
   - [x] False Signal & Risk Filtreleri (ADX zayıf trend, Choppiness range, BB-KC Squeeze uyarıları)
   - [x] İnsan Okunabilir Gerekçelendirme & Risk Uyarıları (Explainable AI: `reasons` ve `warnings`)
   - [x] Multi-Timeframe (MTF) Hiyerarşisi (`analysis/mtf_engine.py` — 4H Rejim → 1H Setup → 15m Tetikleyici)
@@ -197,7 +202,7 @@ kuCoinAlSatBot/
   - [x] `/api/v1/market/analysis/score`
   - [x] `/api/v1/market/analysis/mtf`
 
-> **Modül 2 Nihai Test Durumu:** 45 Modül 2 testi (`market: 8`, `indicators: 19`, `structure: 8`, `analysis: 10`). Proje genelinde **74/74 test %100 yeşil**.
+> **Modül 2 Nihai Test Durumu:** 55 Modül 2 testi (`market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`). Proje genelinde **84/84 test %100 yeşil**.
 
 ### Modül 3 (Tasarım Hazır / Kodlama Bekliyor ⏳)
 - [ ] Market emir oluşturma
@@ -257,5 +262,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-19 23:10:00** | **Modül 2 Faz 2a Çekirdek İndikatörler %100 Tamamlandı**: `indicators/trend.py`, `momentum.py`, `volatility.py` ve `/api/v1/market/analysis/indicators` endpoint'i yazıldı. Repaint guard (yalnızca confirmed kapanmış mumlar) ve warm-up (min 250 mum ile DEGRADED/OK data_quality) doğrulandı. 11 yeni birim test eklendi ve toplam **48/48 birim test başarıyla geçti** (`run_tests.sh` %100 yeşil). | **Faz 2a %100 Tamamlandı ✅** |
 | **2026-09-19 23:25:00** | **Modül 2 Faz 2b SMC, Scoring ve MTF %100 Tamamlandı**: İleri trend, ADX/Aroon/Choppiness, BB-KC Squeeze, SMC (Swings, BOS, CHoCH, FVG, OB), 0-100 Bileşik Puanlama Motoru ve MTF (4H $\rightarrow$ 1H $\rightarrow$ 15m) tamamlandı. 3 yeni API (`/analysis/structure`, `/analysis/score`, `/analysis/mtf`) devreye alındı. 26 yeni birim test ile Modül 2 toplam 45 teste, proje genelinde **74/74 birim teste** ulaştı. | **Modül 2 Analiz Motoru Tamamlandı ✅** |
 | **2026-09-19 23:33:00** | **Sıralı Adımlar checklist'i gerçek durumla işaretlendi**: Adım 2 (Modül 1) ve Adım 3 (Modül 2) alt maddeleri ✅/❌ ile işaretlendi; yazılmayan katmanlar (`volume.py`, `levels.py`, Katman 8-9 türev/piyasa-geneli) ve `analysis/filters.py`→scoring içine gömülü olarak dürüstçe belirtildi. Adım 6 test dosyaları mevcut/eksik olarak işaretlendi. Faz 2a/2b test sayıları dosya bazlı gerçek dağılıma göre (market 8, indicators 19, structure 8, analysis 10 = 45) düzeltildi. | Güncellendi (Kanıta Dayalı) ✅ |
+| **2026-09-19 23:48:00** | **Modül 2 Hacim ve Destek/Direnç Seviyeleri Katmanları Tamamlandı**: `indicators/volume.py` (RVOL, OBV, VWAP, MFI, CMF, Volume Profile) ve `indicators/levels.py` (Pivot Points, önceki H/L, Fib retracement, Donchian) yazıldı; `scoring_engine.py` içine hacim katkısı entegre edildi. 10 yeni test (`test_module_2_volume_levels.py`) eklendi ve toplam test sayısı **84/84 birim teste** ulaştı (`run_tests.sh` %100 yeşil). | **Hacim & Seviyeler Tamamlandı ✅** |
+
 
 

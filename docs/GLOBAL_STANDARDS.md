@@ -1,6 +1,6 @@
 # Genel Proje Özellikleri ve Standartlar Spesifikasyonu
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** Modül 1 & 2 %100 ✅ (74/74 Test Geçiyor) | **Son Güncelleme:** 2026-09-19 23:25:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** Modül 1 & 2 (Hacim & Seviyeler Dahil) %100 ✅ (84/84 Test Geçiyor) | **Son Güncelleme:** 2026-09-19 23:48:00 (+03:00)
 
 ## 1. Dokümanın Amacı
 Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
@@ -291,6 +291,7 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-19 22:52:00** | Modül 2 Faz 2a temel veri katmanı tamamlandı (8 yeni test, toplam 37/37 test geçti). Rozet güncellendi. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-19 23:10:00** | Modül 2 Faz 2a çekirdek indikatörler tamamlandı (11 yeni test, toplam 48/48 test geçti). Rozet güncellendi. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-19 23:25:00** | Modül 2 Faz 2b analiz motoru, SMC, 0-100 puanlama ve MTF tamamlandı (26 yeni test, toplam 74/74 test geçti). Rozet güncellendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-19 23:48:00** | Modül 2 Hacim (RVOL, OBV, VWAP, MFI, CMF) ve Seviyeler (Pivots, Fib, Donchian) katmanları ile hacim puanlaması tamamlandı (10 yeni test, toplam 84/84 test geçti). Rozet güncellendi. | Onaylandı & Tamamlandı (%100) |
 
 
 

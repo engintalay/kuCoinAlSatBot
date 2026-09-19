@@ -1,6 +1,6 @@
 # Modül 2 Spesifikasyonu: Piyasa Verileri, Çok Katmanlı İndikatörler ve Analiz Motoru
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 2 Analiz & Puanlama Motoru Tamamlandı (45 Modül 2 Testi, Toplam 74/74 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:25:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 2 (Hacim ve Seviyeler Katmanları Dahil) Tamamlandı (55 Modül 2 Testi, Toplam 84/84 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:48:00 (+03:00)
 
 ---
 
@@ -549,9 +549,9 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **M2-C06** | **Faz 2a** | Temel REST API & Swagger Entegrasyonu | `src/main.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (5 endpoint aktif, 2 test) |
 | **M2-C07** | **Faz 2b** | İleri Trend (Supertrend, Ichimoku, SAR) | `src/modules/indicators/trend.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (3 test geçiyor) |
 | **M2-C08** | **Faz 2b** | Trend Gücü Katmanı (ADX, Aroon, Choppiness) | `src/modules/indicators/strength.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (3 test geçiyor) |
-| **M2-C09** | **Faz 2b** | Hacim & Akış (RVOL, OBV, VWAP, CMF, Profile) | `src/modules/indicators/volume.py` | `tests/test_indicators_volume.py` | ⏳ İsteğe Bağlı Ek Katman |
+| **M2-C09** | **Faz 2b** | Hacim & Akış (RVOL, OBV, VWAP, CMF, Profile) | `src/modules/indicators/volume.py` | `tests/test_module_2_volume_levels.py` | ✅ Tamamlandı (5 test geçiyor) |
 | **M2-C10** | **Faz 2b** | İleri Volatilite (Bollinger Bands, Keltner Squeeze) | `src/modules/indicators/volatility.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (2 test geçiyor) |
-| **M2-C11** | **Faz 2b** | Destek/Direnç (Pivots, Fib, Donchian, Prev H/L) | `src/modules/indicators/levels.py` | `tests/test_indicators_levels.py` | ⏳ İsteğe Bağlı Ek Katman |
+| **M2-C11** | **Faz 2b** | Destek/Direnç (Pivots, Fib, Donchian, Prev H/L) | `src/modules/indicators/levels.py` | `tests/test_module_2_volume_levels.py` | ✅ Tamamlandı (4 test geçiyor) |
 | **M2-C12** | **Faz 2b** | Market Structure SMC (Swings, BOS, CHoCH, FVG, OB) | `src/modules/indicators/structure.py` | `tests/test_module_2_structure.py` | ✅ Tamamlandı (8 test geçiyor) |
 | **M2-C13** | **Faz 2b** | Türev Veriler & Uyumsuzluk (OI, Funding, CVD, Div) | `src/modules/indicators/derivatives.py` | `tests/test_indicators_derivatives.py` | ⏳ İsteğe Bağlı Ek Katman |
 | **M2-C14** | **Faz 2b** | Feature Engine & Normalizasyon | `src/modules/module2_market.py` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (`_all_features`) |
@@ -564,7 +564,7 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 ## 8. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
 
 | Tarih / Saat | Versiyon | Yapılan Değişiklikler ve İşlem Özeti | Durum |
-| :--- | :---: | :--- | :---: |
+| :--- | :---: | :--- | :--- :
 | **2026-09-17 20:53:20** | v0.1 | Modül 2 ilk taslağı (Basit Ticker, OHLCV ve modüler analiz arayüzü) oluşturuldu. | Tamamlandı |
 | **2026-09-17 21:04:23** | v0.2 | REST API ilk taslak endpoint'leri ve modelleri eklendi. | Tamamlandı |
 | **2026-09-17 21:35:00** | v0.3 | Global standartlara uygun tamamlama rozetleri eklendi. | Tamamlandı |
@@ -572,4 +572,5 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **2026-09-19 22:00:00** | v1.1 | Aşamalı Uygulama Optimizasyonu: Kapsam riski yönetildi; Modül 2 iki mantıksal aşamaya bölündü (Faz 2a: Çekirdek Piyasa Verisi, Faz 2b: Gelişmiş SMC & Scoring). | Tamamlandı |
 | **2026-09-19 22:52:00** | v1.2 | Faz 2a Temel Veri Katmanı Doğrulandı: Ticker, L2 orderbook, ring buffer ve repaint guard eklendi. (8 birim test) | Tamamlandı |
 | **2026-09-19 23:10:00** | v1.3 | Faz 2a Çekirdek İndikatörler %100 Tamamlandı: Trend (EMA/SMA), Momentum (RSI/MACD), Volatilite (ATR) ve API yazıldı. (11 birim test, toplam 48/48 test) | Tamamlandı |
-| **2026-09-19 23:25:00** | **v1.4** | **Faz 2b Analiz, SMC, Scoring ve MTF Motoru %100 Tamamlandı**: `indicators/strength.py` (ADX/Aroon/Choppiness), `indicators/structure.py` (SMC Swings, BOS, CHoCH, FVG, OB), `analysis/scoring_engine.py` (0-100 Boğa/Ayı Bileşik Puanı, Explainable AI, Risk Filtreleri), `analysis/mtf_engine.py` (4H Rejim $\rightarrow$ 1H Setup $\rightarrow$ 15m Tetikleyici) ve 3 yeni API (`/analysis/structure`, `/analysis/score`, `/analysis/mtf`) yazıldı. 26 yeni test ile Modül 2 toplam 45 teste, proje genelinde **74/74 birim teste** ulaştı. | **Modül 2 Analiz Motoru Tamamlandı ✅** |
+| **2026-09-19 23:25:00** | v1.4 | Faz 2b Analiz, SMC, Scoring ve MTF Motoru %100 Tamamlandı: Trend, Güç, SMC, Puanlama ve MTF yazıldı. (26 yeni test, toplam 74/74 test) | Tamamlandı |
+| **2026-09-19 23:48:00** | **v1.5** | **Hacim ve Destek/Direnç Seviyeleri Katmanları %100 Tamamlandı**: `indicators/volume.py` (RVOL, OBV, VWAP, MFI, CMF, Volume Profile) ve `indicators/levels.py` (Pivot Points, önceki H/L, Fib retracement, Donchian) yazıldı. `scoring_engine.py` içerisine hacim skorlaması eklendi. 10 yeni test (`tests/test_module_2_volume_levels.py`) ile Modül 2 test sayısı 55'e, proje geneli **84/84 teste** ulaştı. | **Modül 2 Tüm İndikatörler Tamamlandı ✅** |
