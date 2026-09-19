@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1, 2 (spot motor) ve 3 %100 ✅ — Backend tamam; Modül 2 Katman 8-9 (türev/piyasa-geneli) Faz 2c'ye ertelendi, Frontend (Adım 5) bekliyor ⏳ (100/100 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 00:01:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1, 2 (Faz 2a+2b+2c) ve 3 %100 ✅ — Backend tamam; yalnızca Katman 9 (piyasa-geneli, harici API) ve Frontend (Adım 5) kaldı ⏳ (110/110 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 00:06:00 (+03:00)
 
 ---
 
@@ -17,17 +17,18 @@
 | Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) |
 | Modül 2 — Faz 2b (İleri SMC, Scoring & MTF) | ✅ **%100 Tamamlandı** (Supertrend, Ichimoku, Parabolic SAR, ADX, Aroon, Choppiness, Squeeze, SMC Swings/BOS/CHoCH/FVG/OB, 0-100 Puanlama Motoru, MTF Hiyerarşisi, 3 REST endpoint'i) |
 | Modül 2 — İleri Katmanlar (Hacim & Seviyeler) | ✅ **%100 Tamamlandı** (`indicators/volume.py`: RVOL, OBV, VWAP, MFI, CMF, Volume Profile; `indicators/levels.py`: Pivots, Fib, Donchian; Hacim Puanlaması) — 10 test |
-| Modül 2 — Kapsam Notu (Ertelenen) | ⚠️ **Spot analiz motoru tamam; ancak spec'in tamamı değil.** Eksik: Katman 8 (Türev — OI/Funding/CVD/Basis, KuCoin Futures API gerektirir), Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D, harici veri gerektirir), ek momentum indikatörleri (StochRSI, CCI, Williams %R, ROC). Bu kalemler ayrı bir faza (2c) ertelendi. |
-| Modül 2 — Test Dağılımı | ✅ 55 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10` |
+| Modül 2 — Faz 2c (Ek Osilatörler & Türev) | ✅ **%100 Tamamlandı** (StochRSI, CCI, Williams %R, ROC; `indicators/derivatives.py`: KuCoin Futures Funding Rate + Open Interest, `include_derivatives` flag) — 10 test |
+| Modül 2 — Kapsam Notu (Kalan) | ⚠️ Yalnızca **Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D)** kaldı; KuCoin'de yok, harici API (ör. CoinGecko) gerektirir — kullanıcı onayı ile eklenebilir. CVD/L-S Ratio da taker-akış verisi gerektirir. |
+| Modül 2 — Test Dağılımı | ✅ 65 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`, `phase2c: 10` |
 | Modül 3 (Emir Yönetimi & Simülasyon) | ✅ **%100 Tamamlandı** (Market/Limit emir, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k sanal USDT, mod geçişi, pre-trade risk; 6 REST endpoint'i) — 16 test |
-| Toplam Birim Test Durumu | ✅ **100/100 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Toplam Birim Test Durumu | ✅ **110/110 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 ---
 
 ## 2. Proje Yapısı
 
-> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Şu an fiilen mevcut olanlar: `src/config.py`, `src/database.py`, `src/main.py`, `src/utils/*`, `src/models/*`, `src/modules/module1_account.py`, `src/modules/module2_market.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py` ve `tests/test_module_1_account.py`, `tests/test_module_2_market.py`, `tests/test_module_2_indicators.py`, `tests/test_module_2_structure.py`, `tests/test_module_2_analysis.py`, `tests/test_module_2_volume_levels.py`. Henüz oluşturulmayanlar: `module3_orders.py`, `analysis/feature_engine.py`, `analysis/filters.py`, `conftest.py`, `test_module_3_orders.py`, `test_utils.py` ve türev/piyasa-geneli (Katman 8-9) katmanları.
+> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Şu an fiilen mevcut olanlar: `src/config.py`, `src/database.py`, `src/main.py`, `src/utils/*`, `src/models/*`, `src/modules/{module1_account,module2_market,module3_orders}.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels,derivatives}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py` ve 7 test dosyası (`test_module_1_account`, `test_module_2_{market,indicators,structure,analysis,volume_levels,phase2c}`, `test_module_3_orders`). Henüz oluşturulmayanlar: `analysis/feature_engine.py`, `analysis/filters.py` (mantık `_all_features`/`scoring_engine` içine gömülü), `conftest.py`, `test_utils.py`, Frontend (Adım 5) ve Katman 9 (piyasa-geneli).
 
 ```
 kuCoinAlSatBot/
@@ -113,7 +114,8 @@ kuCoinAlSatBot/
   - ✅ `scoring_engine.py` (0-100 Bileşik Puanlama: Hacim katkısı dahil max_points 80, Gerekçelendirme + risk filtreleri)
   - ✅ `mtf_engine.py` (4H Rejim → 1H Setup → 15m Tetikleyici)
 - ✅ `main.py` — `/api/v1/market/*` endpoint'leri (8 adet: 4 veri + 4 analiz)
-- ⏳ **Faz 2c'ye ertelendi:** Katman 8 (Türev — OI/Funding/CVD/Basis, KuCoin Futures API gerektirir), Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D, harici veri gerektirir), ek momentum indikatörleri (StochRSI, CCI, Williams %R, ROC) — *ayrı veri kaynağı / opsiyonel*
+- ✅ **Faz 2c yapıldı:** Ek momentum osilatörleri (StochRSI, CCI, Williams %R, ROC) `indicators/momentum.py`'ye; Katman 8 (Türev — Funding Rate + Open Interest) `indicators/derivatives.py`'ye eklendi (`include_derivatives` flag).
+- ⏳ **Kalan:** Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D) — KuCoin'de yok, harici API (CoinGecko vb.) gerektirir; CVD/L-S Ratio taker-akış verisi gerektirir. Kullanıcı onayı ile eklenebilir.
 
 ### ✅ Adım 4 — Modül 3: Al-Sat Emir Yönetimi (Tamamlandı)
 - ✅ `models/orders.py` — Pydantic şemaları (`OrderCreateResponse`, `OpenOrdersResponse`, `OrderHistoryResponse`, `OrderCancelResponse`, `PanicStopResponse`, `SwitchModeResponse`)
@@ -140,6 +142,7 @@ kuCoinAlSatBot/
 - ✅ `tests/test_module_2_market.py` (8 test)
 - ✅ `tests/test_module_2_indicators.py` (19 test)
 - ✅ `tests/test_module_2_volume_levels.py` (10 test)
+- ✅ `tests/test_module_2_phase2c.py` (10 test)
 - ✅ `tests/test_module_2_structure.py` (8 test)
 - ✅ `tests/test_module_2_analysis.py` (10 test)
 - ✅ `tests/test_module_3_orders.py` (16 test)
@@ -269,6 +272,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-19 23:48:00** | **Modül 2 Hacim ve Destek/Direnç Seviyeleri Katmanları Tamamlandı**: `indicators/volume.py` (RVOL, OBV, VWAP, MFI, CMF, Volume Profile) ve `indicators/levels.py` (Pivot Points, önceki H/L, Fib retracement, Donchian) yazıldı; `scoring_engine.py` içine hacim katkısı entegre edildi. 10 yeni test (`test_module_2_volume_levels.py`) eklendi ve toplam test sayısı **84/84 birim teste** ulaştı (`run_tests.sh` %100 yeşil). | **Hacim & Seviyeler Tamamlandı ✅** |
 | **2026-09-19 23:49:00** | **Modül 2 kapsam durumu dürüstleştirildi**: "Tüm katmanlar %100" ifadesi yanıltıcıydı; başlık rozeti ve Mevcut Durum tablosu düzeltildi. Spot analiz motoru tam (6/7 katman + scoring + MTF, 8 endpoint) ancak Katman 8 (Türev: OI/Funding/CVD), Katman 9 (Piyasa geneli: BTC.D) ve ek momentum indikatörleri (StochRSI/CCI/%R/ROC) kodda **yok** — kanıtla doğrulandı (`grep`) ve **Faz 2c** olarak ertelendi. | Güncellendi (Kanıta Dayalı) ⚠️ |
 | **2026-09-20 00:01:00** | **Modül 3 (Al-Sat Emir Yönetimi) %100 Tamamlandı**: `module3_orders.py` yazıldı — Market/Limit emir, açık emir & geçmiş, tekil iptal, Panic Stop, Paper Trading motoru ($10k sanal USDT, canlı fiyat eşleşmesi), pre-trade risk (bakiye/min notional/bot durumu) ve paper↔live mod geçişi (M3-C01..C08). 6 REST endpoint (`/api/v1/orders/*`) eklendi (M3-C09). Varsayılan güvenli `paper` mod. 16 yeni test (`test_module_3_orders.py`) ile proje genelinde **100/100 birim teste** ulaşıldı; paper akışı gerçek BTC/USDT fiyatıyla uçtan uca doğrulandı. Backend (Modül 1-2-3) tamam. | **Modül 3 Tamamlandı (%100) ✅** |
+| **2026-09-20 00:06:00** | **Modül 2 Faz 2c Tamamlandı**: Ek momentum osilatörleri (StochRSI 14, CCI 20, Williams %R 14, ROC 9) `momentum.py`'ye; Katman 8 türev veriler (Funding Rate + Open Interest, KuCoin Futures) yeni `indicators/derivatives.py`'ye eklendi (`include_derivatives` flag ile opsiyonel). 10 yeni test (`test_module_2_phase2c.py`) ile proje genelinde **110/110 birim teste** ulaşıldı; gerçek BTC/USDT + Futures verisiyle doğrulandı. Kalan tek kalem Katman 9 (piyasa-geneli, harici API gerektirir). | **Faz 2c Tamamlandı (%100) ✅** |
 
 
 
