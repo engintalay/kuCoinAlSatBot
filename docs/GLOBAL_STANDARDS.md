@@ -1,6 +1,6 @@
 # Genel Proje Özellikleri ve Standartlar Spesifikasyonu
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** Backend Modül 1, 2, 3 %100 ✅ (110/110 Test Geçiyor) | **Son Güncelleme:** 2026-09-20 00:10:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** Backend & Frontend Dashboard %100 ✅ (115/115 Test Geçiyor) | **Son Güncelleme:** 2026-09-20 00:40:00 (+03:00)
 
 ## 1. Dokümanın Amacı
 Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
@@ -293,6 +293,7 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-19 23:25:00** | Modül 2 Faz 2b analiz motoru, SMC, 0-100 puanlama ve MTF tamamlandı (26 yeni test, toplam 74/74 test geçti). Rozet güncellendi. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-19 23:48:00** | Modül 2 Hacim (RVOL, OBV, VWAP, MFI, CMF) ve Seviyeler (Pivots, Fib, Donchian) katmanları ile hacim puanlaması tamamlandı (10 yeni test, toplam 84/84 test geçti). Rozet güncellendi. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-20 00:10:00** | Modül 3 Emir Yönetimi & Paper Trading (16 test) ve Modül 2 Faz 2c ek momentum/türev katmanları (10 test) tamamlandı. Toplam **110/110 birim test %100 yeşil** geçti. Backend tamamen tamamlandı. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-20 00:40:00** | Adım 5 Frontend Dashboard (Dark glassmorphism SPA, `static/{index.html,css/style.css,js/app.js}`) ve 5 frontend testi tamamlandı. Toplam **115/115 birim test %100 yeşil** geçti. | Onaylandı & Tamamlandı (%100) |
 
 
 

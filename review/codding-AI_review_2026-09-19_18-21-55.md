@@ -1,4 +1,4 @@
-> **Kodlama & Test Durumu:** %100 (Modül 1, 2, 3 ve Faz 2c Tamamlandı ✅, 110/110 Test Başarılı) | **Son Güncelleme:** 2026-09-20 00:10:00 (+03:00)
+> **Kodlama & Test Durumu:** %100 (Backend & Frontend Tamamlandı ✅, 115/115 Test Başarılı) | **Son Güncelleme:** 2026-09-20 00:40:00 (+03:00)
 
 # Coding AI — Kontrol Raporu
 
@@ -152,15 +152,29 @@ Not: 3 hatanın 3'ü de **test dosyasındaki mock kurulumu** kaynaklı; kaynak k
 
 ---
 
-### 6. Güncel Genel Sistem Özeti
-| Katman / Modül | Durum | Birim Test Sayısı | API Endpoint'leri |
+### 6. Adım 5 — Frontend Dashboard (HTML5/CSS3/JS SPA) (%100 Tamamlandı)
+- ✅ **Statik Web Dosyaları (`static/`)**:
+  - `static/index.html`: Master Layout (Üst Bar, Sol Menü, Ana İçerik, Alt Bar, Panic Stop butonu, Toast bildirim alanı).
+  - `static/css/style.css`: GLOBAL_STANDARDS 2.1 renk paletine tam uyumlu (`#0d1117`, `#161b22`, Glassmorphism, neon vurgular).
+  - `static/js/app.js`: 4 ana görünüm (Ana Sayfa/Dashboard, Hesap/Bakiyeler, Analiz/İndikatörler/MTF/SMC, Emirler/İşlemler), 15sn periyodik veri yenileme, Panic Stop tetikleme, Toast mesaj sistemi.
+- ✅ **FastAPI Entegrasyonu (`src/main.py`)**:
+  - `StaticFiles(directory="static")` mount edildi.
+  - Root `/` endpoint'i HTML Dashboard dosyasını döndürür hale getirildi; API bilgisi `/api` rotasına taşındı.
+- **Birim Testler**: `tests/test_frontend.py` (5 test: dashboard, CSS, JS servis, API ve token kontrolleri) %100 geçiyor.
+
+---
+
+### 7. Güncel Genel Sistem Özeti
+| Katman / Modül | Durum | Birim Test Sayısı | API / Arayüz Endpoint'leri |
 | :--- | :---: | :---: | :--- |
 | **Modül 1 (Hesap & Bağlantı)** | ✅ %100 | 29/29 Geçti | `/status`, `/balances`, `/summary`, `/test-connection` |
 | **Modül 2 (Piyasa Verisi & Çekirdek)** | ✅ %100 | 19/19 Geçti | `/ticker`, `/orderbook`, `/candles`, `/symbols`, `/analysis/indicators` |
 | **Modül 2 (İleri SMC, Scoring, MTF)** | ✅ %100 | 26/26 Geçti | `/analysis/structure`, `/analysis/score`, `/analysis/mtf` |
 | **Modül 2 (Hacim, Seviyeler, Faz 2c Türev)** | ✅ %100 | 20/20 Geçti | Tüm indikatör & scoring katmanlarına entegre |
 | **Modül 3 (Emir Yönetimi & Simülasyon)** | ✅ %100 | 16/16 Geçti | `/create`, `/open`, `/history`, `/{order_id}`, `/panic-stop`, `/switch-mode` |
-| **Toplam Proje Test Durumu** | ✅ %100 | **110/110 Geçti** | **19 Aktif REST Endpoint'i (Backend Tamamlandı)** |
-| **Sıradaki Aşama** | ⏳ Hazır | — | **Adım 5: Frontend Dashboard (HTML5/CSS3/JS)** |
+| **Adım 5 (Frontend Dashboard SPA)** | ✅ %100 | 5/5 Geçti | `/` (Dashboard SPA), `/static/*`, `/api` |
+| **Toplam Proje Test Durumu** | ✅ %100 | **115/115 Geçti** | **19 REST API Endpoint'i + Web Dashboard (%100 Çalışır)** |
+| **Sıradaki Aşama** | ⏳ Hazır | — | **Adım 7: Son Kontroller & Canlı Yayın / Doğrulama** |
+
 
 
