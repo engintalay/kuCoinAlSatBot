@@ -1,4 +1,4 @@
-> **Kodlama & Test Durumu:** %100 (Modül 1 ve Modül 2 Faz 2a/2b Tamamlandı ✅, 74/74 Test Başarılı) | **Son Güncelleme:** 2026-09-19 23:25:00 (+03:00)
+> **Kodlama & Test Durumu:** %100 (Modül 1, 2, 3 ve Faz 2c Tamamlandı ✅, 110/110 Test Başarılı) | **Son Güncelleme:** 2026-09-20 00:10:00 (+03:00)
 
 # Coding AI — Kontrol Raporu
 
@@ -123,12 +123,44 @@ Not: 3 hatanın 3'ü de **test dosyasındaki mock kurulumu** kaynaklı; kaynak k
 
 ---
 
-### 4. Güncel Genel Sistem Özeti
+### 4. Modül 2 — Faz 2c ve İleri Katmanlar (Hacim, Seviyeler & Türevler) (%100 Tamamlandı)
+- ✅ **Hacim ve Sermaye Akışı (`src/modules/indicators/volume.py`)**: RVOL, OBV, VWAP, MFI 14, CMF 20, Volume Profile (POC/VAH/VAL).
+- ✅ **Destek ve Direnç Seviyeleri (`src/modules/indicators/levels.py`)**: Pivot Points, önceki gün yüksek/düşük, Fibonacci Retracement, Donchian Channels.
+- ✅ **Ek Momentum Osilatörleri (`src/modules/indicators/momentum.py`)**: StochRSI (%K/%D), CCI, Williams %R, ROC (Rate of Change).
+- ✅ **Türev Verileri (`src/modules/indicators/derivatives.py`)**: KuCoin Futures API üzerinden Funding Rate, Open Interest ve `include_derivatives` bayrağı ile entegrasyon.
+- **Birim Testler**: `tests/test_module_2_volume_levels.py` (10 test) + `tests/test_module_2_phase2c.py` (10 test) = 20 test %100 geçiyor.
+
+---
+
+### 5. Modül 3 — Al-Sat Emir Yönetimi & Paper Trading (%100 Tamamlandı)
+- ✅ **Kaynak Kod (`src/modules/module3_orders.py`)**:
+  - Pre-trade risk denetimi: Geçersiz yön/tür engelleme, yetersiz bakiye kontrolü, minimum işlem tutarı ($5 USDT) kontrolü, durdurulmuş bot koruması.
+  - Market ve Limit emir oluşturma, bakiye düşme/artırma mantığı.
+  - Açık emir listeleme (`get_open_orders`), sembol bazlı filtreleme.
+  - Tekil ve toplu emir iptali (`cancel_order`).
+  - **Panic Stop**: Tek çağrıda tüm açık emirleri iptal etme ve bot çalışmasını acil durdurma (`bot_active = False`).
+  - **Paper Trading Simülasyonu**: $10,000 USDT başlangıç bakiyesi, canlı tahta fiyatıyla anlık eşleşme, %0.1 sanal komisyon düşümü, SQLite emir geçmişi kaydı.
+  - Dinamik mod geçişi: `paper` $\leftrightarrow$ `live` geçişi, panic stop sonrası yeniden aktifleşme.
+- ✅ **FastAPI & Swagger Entegrasyonu (`src/main.py`)**:
+  - `POST /api/v1/orders/create`
+  - `GET /api/v1/orders/open`
+  - `GET /api/v1/orders/history`
+  - `DELETE /api/v1/orders/{order_id}`
+  - `POST /api/v1/orders/panic-stop`
+  - `POST /api/v1/orders/switch-mode`
+- **Birim Testler**: `tests/test_module_3_orders.py` (16 test) %100 geçiyor.
+
+---
+
+### 6. Güncel Genel Sistem Özeti
 | Katman / Modül | Durum | Birim Test Sayısı | API Endpoint'leri |
 | :--- | :---: | :---: | :--- |
 | **Modül 1 (Hesap & Bağlantı)** | ✅ %100 | 29/29 Geçti | `/status`, `/balances`, `/summary`, `/test-connection` |
 | **Modül 2 (Piyasa Verisi & Çekirdek)** | ✅ %100 | 19/19 Geçti | `/ticker`, `/orderbook`, `/candles`, `/symbols`, `/analysis/indicators` |
 | **Modül 2 (İleri SMC, Scoring, MTF)** | ✅ %100 | 26/26 Geçti | `/analysis/structure`, `/analysis/score`, `/analysis/mtf` |
-| **Toplam Proje Test Durumu** | ✅ %100 | **74/74 Geçti** | **13 Aktif REST Endpoint'i** |
-| **Sıradaki Aşama** | ⏳ Hazır | — | **Modül 3 (Emir Yönetimi & Simülasyon)** |
+| **Modül 2 (Hacim, Seviyeler, Faz 2c Türev)** | ✅ %100 | 20/20 Geçti | Tüm indikatör & scoring katmanlarına entegre |
+| **Modül 3 (Emir Yönetimi & Simülasyon)** | ✅ %100 | 16/16 Geçti | `/create`, `/open`, `/history`, `/{order_id}`, `/panic-stop`, `/switch-mode` |
+| **Toplam Proje Test Durumu** | ✅ %100 | **110/110 Geçti** | **19 Aktif REST Endpoint'i (Backend Tamamlandı)** |
+| **Sıradaki Aşama** | ⏳ Hazır | — | **Adım 5: Frontend Dashboard (HTML5/CSS3/JS)** |
+
 
