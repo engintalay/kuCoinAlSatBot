@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 %100 ✅; Modül 2 spot analiz motoru tam (6/7 katman + scoring + MTF) — Katman 8-9 (türev/piyasa-geneli) Faz 2c'ye ertelendi ⏳ (84/84 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:49:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1, 2 (spot motor) ve 3 %100 ✅ — Backend tamam; Modül 2 Katman 8-9 (türev/piyasa-geneli) Faz 2c'ye ertelendi, Frontend (Adım 5) bekliyor ⏳ (100/100 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 00:01:00 (+03:00)
 
 ---
 
@@ -19,8 +19,8 @@
 | Modül 2 — İleri Katmanlar (Hacim & Seviyeler) | ✅ **%100 Tamamlandı** (`indicators/volume.py`: RVOL, OBV, VWAP, MFI, CMF, Volume Profile; `indicators/levels.py`: Pivots, Fib, Donchian; Hacim Puanlaması) — 10 test |
 | Modül 2 — Kapsam Notu (Ertelenen) | ⚠️ **Spot analiz motoru tamam; ancak spec'in tamamı değil.** Eksik: Katman 8 (Türev — OI/Funding/CVD/Basis, KuCoin Futures API gerektirir), Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D, harici veri gerektirir), ek momentum indikatörleri (StochRSI, CCI, Williams %R, ROC). Bu kalemler ayrı bir faza (2c) ertelendi. |
 | Modül 2 — Test Dağılımı | ✅ 55 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10` |
-| Modül 3 (Emir Yönetimi & Simülasyon) | ⏳ Tasarım ve İzlenebilirlik Matrisi %100 hazır; kodlama başlayacak |
-| Toplam Birim Test Durumu | ✅ **84/84 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Modül 3 (Emir Yönetimi & Simülasyon) | ✅ **%100 Tamamlandı** (Market/Limit emir, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k sanal USDT, mod geçişi, pre-trade risk; 6 REST endpoint'i) — 16 test |
+| Toplam Birim Test Durumu | ✅ **100/100 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 ---
@@ -115,15 +115,16 @@ kuCoinAlSatBot/
 - ✅ `main.py` — `/api/v1/market/*` endpoint'leri (8 adet: 4 veri + 4 analiz)
 - ⏳ **Faz 2c'ye ertelendi:** Katman 8 (Türev — OI/Funding/CVD/Basis, KuCoin Futures API gerektirir), Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D, harici veri gerektirir), ek momentum indikatörleri (StochRSI, CCI, Williams %R, ROC) — *ayrı veri kaynağı / opsiyonel*
 
-### Adım 4 — Modül 3: Al-Sat Emir Yönetimi
-- `models/orders.py` — Pydantic şemaları (`OrderCreateResponse`, `OpenOrdersResponse`, `OrderHistoryResponse`, `OrderCancelResponse`, `PanicStopResponse`, `SwitchModeResponse`)
-- `module3_orders.py` — Emir yönetimi
-  - Market & Limit emir oluşturma
-  - Açık emir takibi
-  - Simülasyon (Paper Trading) modu
-  - Panic stop
-  - Bakiye limiti kontrolü
-- `main.py` — `/api/v1/orders/*` endpoint'leri
+### ✅ Adım 4 — Modül 3: Al-Sat Emir Yönetimi (Tamamlandı)
+- ✅ `models/orders.py` — Pydantic şemaları (`OrderCreateResponse`, `OpenOrdersResponse`, `OrderHistoryResponse`, `OrderCancelResponse`, `PanicStopResponse`, `SwitchModeResponse`)
+- ✅ `module3_orders.py` — Emir yönetimi
+  - ✅ Market & Limit emir oluşturma
+  - ✅ Açık emir takibi & işlem geçmişi
+  - ✅ Simülasyon (Paper Trading) modu — $10k sanal USDT
+  - ✅ Panic stop
+  - ✅ Bakiye limiti / pre-trade risk kontrolü
+  - ✅ Mod geçişi (paper ↔ live)
+- ✅ `main.py` — `/api/v1/orders/*` endpoint'leri (6 adet)
 
 ### Adım 5 — Frontend Dashboard (HTML5/CSS3/JS)
 - Dark mode tema (koyu kömür `#0d1117`)
@@ -141,7 +142,7 @@ kuCoinAlSatBot/
 - ✅ `tests/test_module_2_volume_levels.py` (10 test)
 - ✅ `tests/test_module_2_structure.py` (8 test)
 - ✅ `tests/test_module_2_analysis.py` (10 test)
-- ❌ `tests/test_module_3_orders.py` (Modül 3 ile birlikte)
+- ✅ `tests/test_module_3_orders.py` (16 test)
 - ❌ `tests/test_utils.py` (henüz yok)
 - ✅ `run_tests.sh` — Tek komut test koşturma scripti (84/84 yeşil)
 
@@ -204,20 +205,23 @@ kuCoinAlSatBot/
 
 > **Modül 2 Nihai Test Durumu:** 55 Modül 2 testi (`market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`). Proje genelinde **84/84 test %100 yeşil**.
 
-### Modül 3 (Tasarım Hazır / Kodlama Bekliyor ⏳)
-- [ ] Market emir oluşturma
-- [ ] Limit emir oluşturma
-- [ ] Açık emir takibi
-- [ ] Emir iptal etme
-- [ ] Simülasyon/Paper Trading modu
-- [ ] Panic stop
-- [ ] Bakiye limiti kontrolü
-- [ ] `/api/v1/orders/create`
-- [ ] `/api/v1/orders/open`
-- [ ] `/api/v1/orders/history`
-- [ ] `/api/v1/orders/{order_id}` (DELETE)
-- [ ] `/api/v1/orders/panic-stop`
-- [ ] `/api/v1/orders/switch-mode`
+### Modül 3 (Kodlama & Testler %100 Tamamlandı ✅)
+- [x] Market emir oluşturma (M3-C02 — paper anında dolum / live ccxt)
+- [x] Limit emir oluşturma (M3-C03 — açık kalır)
+- [x] Açık emir takibi (M3-C04 — sembol filtreli listeleme)
+- [x] Emir iptal etme (M3-C05 — tekil iptal)
+- [x] Simülasyon/Paper Trading modu (M3-C07 — $10k sanal USDT, canlı fiyat eşleşmesi)
+- [x] Panic stop (M3-C06 — tüm emirleri iptal + botu durdur)
+- [x] Bakiye limiti kontrolü (M3-C01 — pre-trade risk: bakiye, min notional, bot durumu)
+- [x] Mod geçişi (M3-C08 — paper ↔ live)
+- [x] `/api/v1/orders/create`
+- [x] `/api/v1/orders/open`
+- [x] `/api/v1/orders/history`
+- [x] `/api/v1/orders/{order_id}` (DELETE)
+- [x] `/api/v1/orders/panic-stop`
+- [x] `/api/v1/orders/switch-mode`
+
+> **Modül 3 Test Durumu:** `tests/test_module_3_orders.py` → **16 test geçiyor** (M3-C01..C08 kapsandı). Paper trading akışı gerçek BTC/USDT fiyatıyla uçtan uca doğrulandı. Proje genelinde **100/100 test %100 yeşil**.
 
 ---
 
@@ -264,6 +268,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-19 23:33:00** | **Sıralı Adımlar checklist'i gerçek durumla işaretlendi**: Adım 2 (Modül 1) ve Adım 3 (Modül 2) alt maddeleri ✅/❌ ile işaretlendi; yazılmayan katmanlar (`volume.py`, `levels.py`, Katman 8-9 türev/piyasa-geneli) ve `analysis/filters.py`→scoring içine gömülü olarak dürüstçe belirtildi. Adım 6 test dosyaları mevcut/eksik olarak işaretlendi. Faz 2a/2b test sayıları dosya bazlı gerçek dağılıma göre (market 8, indicators 19, structure 8, analysis 10 = 45) düzeltildi. | Güncellendi (Kanıta Dayalı) ✅ |
 | **2026-09-19 23:48:00** | **Modül 2 Hacim ve Destek/Direnç Seviyeleri Katmanları Tamamlandı**: `indicators/volume.py` (RVOL, OBV, VWAP, MFI, CMF, Volume Profile) ve `indicators/levels.py` (Pivot Points, önceki H/L, Fib retracement, Donchian) yazıldı; `scoring_engine.py` içine hacim katkısı entegre edildi. 10 yeni test (`test_module_2_volume_levels.py`) eklendi ve toplam test sayısı **84/84 birim teste** ulaştı (`run_tests.sh` %100 yeşil). | **Hacim & Seviyeler Tamamlandı ✅** |
 | **2026-09-19 23:49:00** | **Modül 2 kapsam durumu dürüstleştirildi**: "Tüm katmanlar %100" ifadesi yanıltıcıydı; başlık rozeti ve Mevcut Durum tablosu düzeltildi. Spot analiz motoru tam (6/7 katman + scoring + MTF, 8 endpoint) ancak Katman 8 (Türev: OI/Funding/CVD), Katman 9 (Piyasa geneli: BTC.D) ve ek momentum indikatörleri (StochRSI/CCI/%R/ROC) kodda **yok** — kanıtla doğrulandı (`grep`) ve **Faz 2c** olarak ertelendi. | Güncellendi (Kanıta Dayalı) ⚠️ |
+| **2026-09-20 00:01:00** | **Modül 3 (Al-Sat Emir Yönetimi) %100 Tamamlandı**: `module3_orders.py` yazıldı — Market/Limit emir, açık emir & geçmiş, tekil iptal, Panic Stop, Paper Trading motoru ($10k sanal USDT, canlı fiyat eşleşmesi), pre-trade risk (bakiye/min notional/bot durumu) ve paper↔live mod geçişi (M3-C01..C08). 6 REST endpoint (`/api/v1/orders/*`) eklendi (M3-C09). Varsayılan güvenli `paper` mod. 16 yeni test (`test_module_3_orders.py`) ile proje genelinde **100/100 birim teste** ulaşıldı; paper akışı gerçek BTC/USDT fiyatıyla uçtan uca doğrulandı. Backend (Modül 1-2-3) tamam. | **Modül 3 Tamamlandı (%100) ✅** |
 
 
 
