@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.modules.module1_account import KuCoinAccount
 from src.modules.module2_market import KuCoinMarket
+from src.modules.module3_orders import KuCoinOrders
 from src.config import Config
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
@@ -29,6 +30,7 @@ app.add_middleware(
 # KuCoin API bağlantısı instance
 account = KuCoinAccount()
 market = KuCoinMarket()
+orders = KuCoinOrders(market=market)
 
 
 @app.on_event("startup")
@@ -50,6 +52,7 @@ async def shutdown_event():
     """Uygulama kapanırken ccxt exchange kaynaklarını serbest bırak."""
     await account.close()
     await market.close()
+    await orders.close()
 
 
 @app.get("/")
@@ -170,4 +173,66 @@ async def get_market_mtf(symbol: str = "BTC/USDT", limit: int = 300):
     Multi-Timeframe hiyerarşik analiz: 4H rejim → 1H setup → 15m tetikleyici.
     """
     result = await market.get_mtf(symbol, limit)
+    return result
+
+
+# ============================================================================
+# Modül 3: Al-Sat Emir Yönetimi (Orders & Execution)
+# ============================================================================
+from pydantic import BaseModel
+
+
+class OrderCreateRequest(BaseModel):
+    symbol: str = "BTC/USDT"
+    side: str = "buy"          # buy | sell
+    order_type: str = "market"  # market | limit
+    amount: float = 0.001
+    price: float | None = None  # limit için gerekli
+
+
+class SwitchModeRequest(BaseModel):
+    mode: str = "paper"  # paper | live
+
+
+@app.post("/api/v1/orders/create")
+async def create_order(req: OrderCreateRequest):
+    """Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal)."""
+    result = await orders.create_order(
+        req.symbol, req.side, req.order_type, req.amount, req.price
+    )
+    return result
+
+
+@app.get("/api/v1/orders/open")
+async def get_open_orders(symbol: str | None = None):
+    """Borsada dolmayı bekleyen açık emirleri listeler."""
+    result = await orders.get_open_orders(symbol)
+    return result
+
+
+@app.get("/api/v1/orders/history")
+async def get_order_history(symbol: str | None = None, limit: int = 50):
+    """Geçmişte dolan veya kapanan emir geçmişini döner."""
+    result = await orders.get_history(symbol, limit)
+    return result
+
+
+@app.delete("/api/v1/orders/{order_id}")
+async def cancel_order(order_id: str, symbol: str | None = None):
+    """Belirtilen açık emri iptal eder."""
+    result = await orders.cancel_order(order_id, symbol)
+    return result
+
+
+@app.post("/api/v1/orders/panic-stop")
+async def panic_stop():
+    """Acil Durum: Tüm açık emirleri anında iptal eder ve botu durdurur."""
+    result = await orders.panic_stop()
+    return result
+
+
+@app.post("/api/v1/orders/switch-mode")
+async def switch_mode(req: SwitchModeRequest):
+    """Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar."""
+    result = await orders.switch_mode(req.mode)
     return result
