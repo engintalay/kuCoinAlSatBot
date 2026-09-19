@@ -27,6 +27,7 @@ from src.models.market import (
 from src.modules.indicators.trend import compute_trend
 from src.modules.indicators.momentum import compute_momentum
 from src.modules.indicators.volatility import compute_volatility
+from src.modules.indicators.strength import compute_strength
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
 
@@ -305,6 +306,7 @@ class KuCoinMarket:
                 "trend": compute_trend(df),
                 "momentum": compute_momentum(df),
                 "volatility": compute_volatility(df),
+                "strength": compute_strength(df),
             }
 
             return AnalysisSignalResponse(

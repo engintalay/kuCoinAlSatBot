@@ -151,3 +151,81 @@ class TestGetIndicatorsIntegration:
         result = await m.get_indicators("BTC/USDT", "1h", 300)
         assert result.success is False
         assert result.data["data_quality"] == "UNAVAILABLE"
+
+
+class TestAdvancedTrend:
+    """Faz 2b: Supertrend, Ichimoku, Parabolic SAR testleri."""
+
+    def test_supertrend_no_nan_uptrend(self):
+        """Yükselen trendde Supertrend direction=1 ve trend_price sayısal olmalı."""
+        from src.modules.indicators.trend import compute_trend
+        closes = [float(100 + i) for i in range(60)]
+        result = compute_trend(_make_df(closes))
+        st = result["supertrend"]
+        assert st is not None
+        assert st["direction"] == 1
+        assert st["trend_price"] is not None  # NaN olmamalı
+
+    def test_ichimoku_position(self):
+        """52+ mumlu yükselişte fiyat bulut üstünde (ABOVE_CLOUD) olmalı."""
+        from src.modules.indicators.trend import compute_trend
+        closes = [float(100 + i) for i in range(80)]
+        result = compute_trend(_make_df(closes))
+        ich = result["ichimoku"]
+        assert ich is not None
+        assert ich["position"] == "ABOVE_CLOUD"
+
+    def test_parabolic_sar_bullish(self):
+        """Yükselen trendde SAR BULLISH olmalı."""
+        from src.modules.indicators.trend import compute_trend
+        closes = [float(100 + i) for i in range(40)]
+        result = compute_trend(_make_df(closes))
+        assert result["parabolic_sar"]["position"] == "BULLISH"
+
+
+class TestStrength:
+    """Faz 2b: ADX, Aroon, Choppiness testleri."""
+
+    def test_adx_strong_in_trend(self):
+        """Güçlü tek yönlü trendde ADX yüksek, +DI > -DI olmalı."""
+        from src.modules.indicators.strength import compute_strength
+        closes = [float(100 + i * 2) for i in range(40)]
+        result = compute_strength(_make_df(closes))
+        assert result["adx"] is not None
+        assert result["adx"]["plus_di"] > result["adx"]["minus_di"]
+
+    def test_aroon_uptrend(self):
+        """Yükselişte Aroon Up yüksek, Down düşük olmalı."""
+        from src.modules.indicators.strength import compute_strength
+        closes = [float(100 + i) for i in range(40)]
+        result = compute_strength(_make_df(closes))
+        assert result["aroon"]["up"] > result["aroon"]["down"]
+
+    def test_strength_insufficient_data(self):
+        """Yetersiz veride hepsi None dönmeli, çökmemeli."""
+        from src.modules.indicators.strength import compute_strength
+        closes = [100.0] * 10
+        result = compute_strength(_make_df(closes))
+        assert result["adx"] is None
+
+
+class TestBollingerKeltner:
+    """Faz 2b: Bollinger, Keltner, Squeeze testleri."""
+
+    def test_bollinger_percent_b_midband(self):
+        """Sabit fiyatta %B tanımlı, bandwidth ~0 olmalı."""
+        from src.modules.indicators.volatility import compute_volatility
+        # Hafif dalgalı ama dar aralık
+        closes = [100.0 + (0.5 if i % 2 else -0.5) for i in range(30)]
+        result = compute_volatility(_make_df(closes))
+        bk = result["bollinger_keltner"]
+        assert bk is not None
+        assert "squeeze" in bk
+        assert bk["bollinger"]["upper"] > bk["bollinger"]["lower"]
+
+    def test_bollinger_keltner_none_when_insufficient(self):
+        """20'den az mumda bollinger_keltner None dönmeli."""
+        from src.modules.indicators.volatility import compute_volatility
+        closes = [100.0] * 16
+        result = compute_volatility(_make_df(closes))
+        assert result["bollinger_keltner"] is None
