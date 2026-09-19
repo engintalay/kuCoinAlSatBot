@@ -150,9 +150,15 @@ kuCoinAlSatBot/
   - [x] Ana sayfadan erişilebilir **Kullanım Kılavuzu Sayfası / Görünümü** (Uygulamanın nasıl çalıştığı, modlar, göstergelerin yorumu, panic stop rehberi) — `view-guide` + sol menü/header linki
   - [x] Önemli noktalarda **Bağlamsal Info Düğmeleri (`ℹ️`)** (Portföy, mod, panic stop, bileşik puan, MTF, SMC, emir formu açıklamaları) — 7 nokta + glass popover
   - [x] **Ayarlar Ekranı (`⚙️ Ayarlar` Görünümü)**: Çoklu coin izleme listesi (Watchlist ekle/çıkar), mod seçimi, varsayılan sembol/timeframe, maks emir tutarı — *not: sembol arama backend'de hazır (`/settings/symbols`), UI'da otomatik-tamamlama sonraki iterasyon*
+  - [ ] **İzleme Listesi (Watchlist) Global Arayüz Entegrasyonu**:
+    - [ ] Dashboard ve Header'a izleme listesindeki coin'leri gösteren **Aktif Koin Seçici (Hap Butonlar / Dropdown)** eklenmesi
+    - [ ] Koin seçildiğinde Dashboard Canlı Fiyatı, 24s verileri, SVG mum grafiği ve WebSocket akışının seçilen koine dinamik geçmesi
+    - [ ] Analiz ve Emirler ekranlarındaki sembol girişlerinin izleme listesinden beslenen açılır menü (`<select>`) haline getirilmesi
+    - [ ] Dashboard'a izlenen tüm koinlerin anlık fiyat ve % değişimini özetleyen **Mini Watchlist Widget** eklenmesi
   - [ ] **Akıllı Paket Emir Bileşeni**: Analiz motorundan otomatik seviye yükleme (Entry, TP1, TP2, SL, R:R), sadece USDT tutar girişi ile miktar ve risk/kâr hesaplama, "🚀 Akıllı Emri İlet" tek tıkla paket iletim butonu
   - [ ] **Açık Emir Düzenleme Modalı**: Açık emirler tablosunda "Düzenle" butonu, fiyat/miktar/SL/TP değiştirme modalı
   - [ ] **Dinamik Öneri Motoru Kartları**: Canlı piyasa değişikliklerinde veya hedeflere ulaşıldığında çıkan `[ ✅ Uygula ]` / `[ ✖ Yoksay ]` tavsiye bileşeni
+
 
 
 ### Adım 6 — Testler
