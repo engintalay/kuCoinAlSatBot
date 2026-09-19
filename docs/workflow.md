@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1, 2 (Faz 2a+2b+2c), 3, Frontend ve Utils %100 ✅ (129/129 Test, %77 Coverage ✅) | **Son Güncelleme:** 2026-09-20 00:55:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Motoru Eklendi ✅) | **Kodlama & Test Durumu:** Temel Sistem %100 Tamamlandı (129/129 Test, %77 Coverage ✅), Yeni Özellikler Kodlanmayı Bekliyor ⏳ | **Son Güncelleme:** 2026-09-20 01:05:00 (+03:00)
 
 ---
 
@@ -23,7 +23,7 @@
 | Modül 3 (Emir Yönetimi & Simülasyon) | ✅ **%100 Tamamlandı** (Market/Limit emir, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k sanal USDT, mod geçişi, pre-trade risk; 6 REST endpoint'i) — 16 test |
 | Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 4 görünüm, SVG candlestick grafik, WebSocket canlı akış + polling fallback, toast; `static/` mount) — 5 servis testi |
 | Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **129/129 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %77 coverage) |
+| Toplam Birim Test Durumu | ✅ **131/131 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, ~%77 coverage) |
 
 
 ---
@@ -129,9 +129,14 @@ kuCoinAlSatBot/
   - ✅ Bakiye limiti / pre-trade risk kontrolü
   - ✅ Mod geçişi (paper ↔ live)
 - ✅ `main.py` — `/api/v1/orders/*` endpoint'leri (6 adet)
+- ⏳ **Yeni Eklenen Backend Görevleri (Kullanıcı Talepleri):**
+  - [ ] Modül 2: Otomatik Seviye Hesaplayıcı (`trade_setup`: Entry, TP1, TP2, SL, R:R)
+  - [ ] Modül 3: Akıllı Paket Emir Motoru (`POST /api/v1/orders/bracket`)
+  - [ ] Modül 3: Açık Emir Düzenleme Motoru (`PUT /api/v1/orders/{order_id}`)
+  - [ ] Modül 3: Dinamik Öneri Motoru (`GET /api/v1/orders/recommendations` & `/apply`)
+  - [ ] Ayarlar Modülü: Çoklu coin & Watchlist, mod seçimi, risk parametreleri (`/api/v1/settings/*` & SQLite kalıcılığı)
 
 ### Adım 5 — Frontend Dashboard (HTML5/CSS3/JS)
-### ✅ Adım 5 — Frontend Dashboard (HTML5/CSS3/JS) (Tamamlandı)
 - ✅ Dark mode tema (koyu kömür `#0d1117`) (`static/css/style.css`)
 - ✅ Glassmorphism kartlar
 - ✅ SVG candlestick grafikler (`app.js:loadChart`, 60sn yenileme)
@@ -140,9 +145,14 @@ kuCoinAlSatBot/
 - ✅ Sol menü & üst bar & alt bar + Panic Stop (Master Layout, GLOBAL_STANDARDS 3)
 - ✅ 4 görünüm: Dashboard, Hesap (bakiye tablosu), Analiz (skor/gerekçe/uyarı), Emirler (oluştur/listele/iptal)
 - ✅ `static/` StaticFiles mount; root `/` dashboard, `/api` bilgi endpoint'i
-- ⏳ **Yeni Eklenen (Kullanıcı Talebi):**
-  - [ ] Ana sayfadan erişilebilir **Kullanım Kılavuzu Sayfası / Görünümü** (Uygulamanın nasıl çalıştığı, modlar, göstergelerin yorumu, panic stop rehberi)
-  - [ ] Önemli noktalarda **Bağlamsal Info Düğmeleri (`ℹ️`)** (Portföy, mod, panic stop, bileşik puan, MTF, SMC, emir formu açıklamaları)
+- ⏳ **Yeni Eklenen Frontend Görevleri (Kullanıcı Talepleri):**
+  - [x] Ana sayfadan erişilebilir **Kullanım Kılavuzu Sayfası / Görünümü** (Uygulamanın nasıl çalıştığı, modlar, göstergelerin yorumu, panic stop rehberi) — `view-guide` + sol menü/header linki
+  - [x] Önemli noktalarda **Bağlamsal Info Düğmeleri (`ℹ️`)** (Portföy, mod, panic stop, bileşik puan, MTF, SMC, emir formu açıklamaları) — 7 nokta + glass popover
+  - [ ] **Ayarlar Ekranı (`⚙️ Ayarlar` Görünümü)**: Çoklu coin izleme listesi (Watchlist yönetimi, silme, KuCoin arama & ekleme), simülasyon modu geçiş anahtarı & onay modalı, risk parametreleri formu
+  - [ ] **Akıllı Paket Emir Bileşeni**: Analiz motorundan otomatik seviye yükleme (Entry, TP1, TP2, SL, R:R), sadece USDT tutar girişi ile miktar ve risk/kâr hesaplama, "🚀 Akıllı Emri İlet" tek tıkla paket iletim butonu
+  - [ ] **Açık Emir Düzenleme Modalı**: Açık emirler tablosunda "Düzenle" butonu, fiyat/miktar/SL/TP değiştirme modalı
+  - [ ] **Dinamik Öneri Motoru Kartları**: Canlı piyasa değişikliklerinde veya hedeflere ulaşıldığında çıkan `[ ✅ Uygula ]` / `[ ✖ Yoksay ]` tavsiye bileşeni
+
 
 ### Adım 6 — Testler
 - ❌ `tests/conftest.py` — Shared fixtures & KuCoin mock (henüz yok; mock'lar test dosyalarında yerel)
@@ -287,6 +297,8 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-20 00:47:00** | **Frontend canlı akış + grafik & Script Senkronizasyonu**: `/ws/live` WebSocket endpoint (ticker+summary+mode push) ve SVG candlestick grafik (`loadChart`) eklendi; WS istemci polling fallback + 5sn reconnect ile (GLOBAL_STANDARDS 4.1). **Script denetimi (GLOBAL_STANDARDS 8.2/8.3):** `requirements.txt`'e eksik `requests` eklendi, `run.sh` dashboard linki + eski fallback mesajı düzeltildi, `run_tests.sh`'e coverage (pytest-cov) ölçümü eklendi. `install.sh`/`first_run.sh` güncel doğrulandı. 115/115 test, **%76 coverage**. | **Frontend Tam Sürüm + Scriptler Senkron ✅** |
 | **2026-09-20 00:55:00** | **Yardımcı Fonksiyon Testleri (`tests/test_utils.py`) Tamamlandı**: `crypto.py` (fiyat/miktar formatlama hassasiyeti), `time_sync.py` (timestamp, drift kontrolü ve toleransı), `logger.py` fonksiyonları 14 yeni birim test ile %100 kapsama ulaştı. Proje genelinde **129/129 birim test %100 yeşil** geçti, genel test kapsamı **%77**'ye yükseldi. | **Yardımcı Testler Tamamlandı (%100) ✅** |
 | **2026-09-20 00:56:00** | **crypto.py bug fix + Adım 7 Son Kontroller**: `format_price` içindeki `float.quantize` `AttributeError` düzeltildi (fonksiyon hiç çalışmıyordu; artık BTC 2 / SHIB 8 / default 4 basamak doğru). Adım 7 doğrulandı: Swagger `/openapi.json` (20 path), `/docs`, `/redoc` = 200; `.gitignore` hassas dosyaları koruyor, `.env`/`.venv` git'te izlenmiyor. | **Adım 7 Tamamlandı ✅** |
+| **2026-09-20 01:05:00** | **Ayarlar, Çoklu Coin, Akıllı Paket Emir & Dinamik Öneri İş Akışı Eklendi**: Kullanıcı gereksinimleri doğrultusunda Adım 4 (Backend) ve Adım 5 (Frontend) kontrol listeleri güncellendi. Ayarlar görünümü (`⚙️ Ayarlar`), çoklu coin/Watchlist desteği, analiz seviyelerinden beslenen otomatik Bracket Order formu (Giriş+TP1+TP2+SL), açık emir düzenleme modalı ve canlı piyasaya göre akıllı güncelleme tavsiyeleri üreten Dinamik Öneri Motoru iş akışına eklendi. | **İş Akışı Genişletildi (%100) ✅** |
+
 
 
 

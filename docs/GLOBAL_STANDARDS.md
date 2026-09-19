@@ -1,6 +1,6 @@
 # Genel Proje Özellikleri ve Standartlar Spesifikasyonu
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** Backend & Frontend Dashboard %100 ✅ (115/115 Test Geçiyor, Coverage %76) | **Son Güncelleme:** 2026-09-20 00:50:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Standartları Eklendi ✅) | **Kodlama & Test Durumu:** Temel Dashboard Tamamlandı (%100, 129/129 Test), Gelişmiş Arayüz Özellikleri Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:05:00 (+03:00)
 
 ## 1. Dokümanın Amacı
 Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
@@ -52,18 +52,19 @@ Tüm sayfa ve ekranlarda sabit kalacak **Ortak İskelet (Master Layout)** yapıs
 
 ```
 +-----------------------------------------------------------------------------------+
-| HEADER: Logo | Portföy Özeti (USDT) | KuCoin Canlı Fiyat Marquee | Mod (Test/Canlı) |
+| HEADER: Logo | Portföy Özeti (USDT) | Aktif Koin Dropdown | Mod Switch | [PANİC STOP] |
 +-----------------------------------------------------------------------------------+
 |               |                                                                   |
 |  SOL MENÜ     |                     ANA İÇERİK ALANI                              |
-|  / DOCK       |  (Modül 1: Hesap | Modül 2: Grafikler | Modül 3: Emir Tablosu)    |
+|  / DOCK       |  (Dashboard / Hesap / Analiz / Akıllı Emir / Kılavuz / Ayarlar)   |
 |               |                                                                   |
-|  - Ana Sayfa  |                                                                   |
-|  - Hesap      |                                                                   |
-|  - Analiz     |                                                                   |
-|  - Emirler    |                                                                   |
+|  - 🏠 Ana Sayfa|                                                                  |
+|  - 👛 Hesap   |                                                                   |
+|  - 📈 Analiz  |                                                                   |
+|  - 📋 Emirler |                                                                   |
+|  - 📖 Kılavuz |                                                                   |
+|  - ⚙️ Ayarlar |                                                                   |
 |               |                                                                   |
-|  [PANİC STOP] |                                                                   |
 +-----------------------------------------------------------------------------------+
 | FOOTER: WebSocket: CANLI | Gecikme: 35ms | Son Güncelleme: 20:58:14 | Canlı Log Stream|
 +-----------------------------------------------------------------------------------+
@@ -71,10 +72,11 @@ Tüm sayfa ve ekranlarda sabit kalacak **Ortak İskelet (Master Layout)** yapıs
 
 ### 3.1. Üst Bar (Global Header)
 * **Logo & Uygulama Adı**: KuCoin Al-Sat Botu
-* **Canlı Portföy Özeti**: Toplam Bakiye (USDT) ve günlük kar/zarar (%)
-* **Çalışma Modu Rozeti**:
-  * 🧪 **SIMULATION MODE (Sanal Test)**: Sanal bakiye ile güvenli test.
-  * ⚡ **LIVE KUCOIN API (Canlı İşlem)**: Gerçek KuCoin hesabı.
+* **Canlı Portföy Özeti**: Toplam Bakiye (USDT) ve serbest nakit
+* **Aktif Koin Seçici (Symbol Selector)**: İzleme listesindeki koinler (BTC/USDT, ETH/USDT, SOL/USDT vb.) arasında tek tıkla geçiş sağlayan şık dropdown/hap butonlar.
+* **Çalışma Modu Rozeti & Anahtarı**:
+  * 🧪 **SIMULATION**: Sanal $10,000 USDT ile güvenli test (Tıklandığında hızlı geçiş onay penceresi açılır).
+  * ⚡ **LIVE**: Gerçek KuCoin Spot hesabı ile canlı işlem.
 * **Global Acil Durum (Panic Stop) Butonu**: Kırmızı renkte, tek tıkla tüm emirleri durduran ve pozisyonları güvene alan buton.
 
 ### 3.2. Alt Bar (Global Footer & Status Bar)
@@ -82,12 +84,54 @@ Tüm sayfa ve ekranlarda sabit kalacak **Ortak İskelet (Master Layout)** yapıs
 * **Gecikme Süresi (Latency Ping)**: KuCoin API yanıt süresi (ms).
 * **Sistem Log Akışı**: Son gerçekleşen işlem veya sistem olayının tek satırlık canlı metin özeti.
 
----
+### 3.3. Ayarlar Ekranı Standartları (`⚙️ Ayarlar` Görünümü)
+Kullanıcının sistem parametrelerini kolayca yapılandırması için ayrılmış merkezi ayarlar paneli:
+1. **Kripto Varlık & İzleme Listesi Yönetimi (Watchlist)**:
+   - Aktif izlenen koinlerin etiketleri (Tag/Badge) ve yanlarında tek tıkla çıkarma (`✖`) butonu.
+   - **Yeni Koin Ekle**: KuCoin spot çiftleri (`/api/v1/settings/symbols`) üzerinden anlık arama (autocomplete) kutusu ve `[ Ekle ]` butonu.
+2. **İşlem Modu (Trading Mode)**:
+   - Radyo/Switch butonu: `[🧪 SIMULATION (Paper)]` $\longleftrightarrow$ `[⚡ LIVE (KuCoin Real)]`.
+   - Gerçek moda geçişte dikkat çekici risk uyarı modalı ("Gerçek para kullanılacaktır. Onaylıyor musunuz?").
+3. **Varsayılan Risk ve Para Yönetimi Parametreleri**:
+   - İşlem başına varsayılan USDT tutarı (Örn: $100 USDT veya serbest bakiyenin %5'i).
+   - Varsayılan Zarar Kes (Stop-Loss) çarpanı (Örn: 1.5x ATR).
+   - Varsayılan Kâr Al (Take-Profit) hedefleri (TP1: 1.5R, TP2: 3.0R).
+   - Dinamik öneri bildirimlerini açma/kapatma toggle'ı.
+4. **Kaydet Butonu**:
+   - Değişiklikler tek tıkla kalıcı SQLite veritabanına kaydedilir ve başarı Toast'ı gösterilir.
 
-## 4. Genel Hata Yönetimi ve Log Standartları
+### 3.4. Akıllı Paket Emir Bileşeni Standartları (Smart Bracket Order Form)
+Analiz motorundan beslenen otomatik ve hatasız emir girişi standardı:
+1. **Hazır Seviye Kartı (Trade Setup Summary)**:
+   - Yön: 🟢 AL (Long) / 🔴 SAT (Short)
+   - Giriş Fiyatı (Entry): Canlı tahta fiyatı veya pullback seviyesi.
+   - Stop-Loss (SL): Otomatik ATR / Swing low seviyesi (kırmızı metin).
+   - Take-Profit 1 (TP1): İlk hedef (%50 pozisyon - yeşil metin).
+   - Take-Profit 2 (TP2): İkinci hedef (kalan %50 pozisyon - parlak yeşil metin).
+   - Risk:Reward (R:R) Rozeti: Örn. `1:2.5 R:R`.
+2. **Kullanıcı Girişi (Sadece USDT Tutarı)**:
+   - Kullanıcı karmaşık ondalık miktar hesaplamaz; sadece girmek istediği **USDT Tutarını** yazar.
+   - Hızlı seçim butonları: `[%25]`, `[%50]`, `[%100 Serbest Nakit]`.
+3. **Canlı Risk / Kazanç Göstergeleri**:
+   - Alınacak Kripto Miktarı (Coin Amount).
+   - SL tetiklenirse Maksimum Risk ($ Zarar).
+   - TP1 ve TP2 gerçekleşirse Potansiyel Net Kazanç ($ Kâr).
+4. **Aksiyon Butonu**:
+   - **"🚀 Akıllı Emri İlet (Giriş + TP1/TP2 + SL)"** butonu ile tek tıkla atomik paket iletimi.
 
-### 4.1. Hata Yönetimi (Error Handling)
-1. **İnternet / API Kesintisi**:
+### 3.5. Dinamik Öneri Motoru ve Bildirim Standartları (Recommendation Engine Cards)
+Piyasa koşulları veya pozisyon hedefleri değiştikçe ekranda beliren akıllı tavsiye kutusu:
+* **Tasarım**: Cam efektli (`glass`), mavi/mor neon çerçeveli dinamik uyarı kartı.
+* **İçerik**:
+  * `💡 Dinamik Öneri`: *"BTC/USDT fiyatı TP1 seviyesine ulaştı. Stop-Loss seviyenizi başabaş ($64,200) noktasına çekerek risksiz kâr kilitlemeniz önerilir."*
+* **Aksiyonlar**:
+  * `[ ✅ Hemen Uygula ]` (Yeşil buton: İlgili emri anında günceller).
+  * `[ ✖ Yoksay ]` (Nötr buton: Öneriyi kapatır).
+
+### 3.6. Açık Emir Düzenleme (Order Modification Modal)
+Açık emirler tablosundaki her emir için "Düzenle" (Edit) fonksiyonu:
+* Açılan modal üzerinde Fiyat, Miktar ve bağlı TP/SL seviyeleri anlık değiştirilebilir.
+* "Değişiklikleri Kaydet" tıklandığında borsa üzerinde emir atomik olarak revize edilir.
    - İnternet veya KuCoin API kesintilerinde uygulama çökmeyecek (crash olmayacak).
    - Otomatik yeniden bağlanma (Auto-reconnect) mekanizması çalışacak (Her 5 saniyede bir dene).
 2. **Kullanıcı Dostu Hata Mesajları**:
@@ -311,6 +355,7 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-20 00:40:00** | Adım 5 Frontend Dashboard (Dark glassmorphism SPA, `static/{index.html,css/style.css,js/app.js}`) ve 5 frontend testi tamamlandı. Toplam **115/115 birim test %100 yeşil** geçti. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-20 00:50:00** | Canlı WebSocket akışı (`/ws/live`), interaktif SVG mum grafiği, script senkronizasyonu ve `pytest-cov` (%76 coverage) eklendi. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-20 01:00:00** | Kullanıcı Talebi Standartları: Kullanım kılavuzu bağlantısı ve 7 kritik arayüz noktasına bağlamsal Info (`ℹ️`) düğmeleri standardı eklendi. | Onaylandı & Genişletildi (%100) |
+| **2026-09-20 01:05:00** | **Ayarlar, Çoklu Coin, Akıllı Paket Emir & Dinamik Öneri Standartları Eklendi**: Master Layout'a `⚙️ Ayarlar` sekmesi eklendi. Çoklu coin yönetimi, simülasyon mod anahtarı, hazır seviyeli Smart Bracket Order formu, dinamik öneri kartları (`[ Uygula ]` / `[ Yoksay ]`) ve açık emir düzenleme modalı UI/UX standartları tanımlandı. | Onaylandı & Genişletildi (%100) |
 
 
 

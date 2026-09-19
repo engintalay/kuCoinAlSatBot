@@ -37,24 +37,35 @@ Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler
 #### İşlevsel Gereksinimler:
 1. **API Anahtarı Yönetimi (.env Saklama)**:
    - KuCoin `API Key`, `API Secret` ve `API Passphrase` bilgileri projenin kök dizinindeki `.env` dosyasında saklanacaktır.
-   - `.env` dosyası kesinlikle `.gitignore` içerisine dahil edilecek ve kod reposuna aktarılmayacaktır.
-   - Şifre içermeyen bir `.env.example` dosyası proje reposuna eklenerek şablon sağlanacaktır.
-   - Bağlantı ve yetki doğrulaması (Read ve Trade izinleri) otomatik yapılacaktır.
-2. **Hesap Bakiye Sorgulama**:
-   - Spot (Trade) hesabı toplam ve kullanılabilir varlıkların çekilmesi.
-   - Varlıkların USDT karşılığı toplam değerinin hesaplanması.
-3. **Hesap Durumu & Sağlık Göstergesi**:
-   - API yanıt süreleri ve bağlantı durumu (Bağlı / Bağlantı Koptu / Hatalı Key).
-   - Rate Limit (İstek kotası) takibi.
+Proje; hesap doğrulama ve bakiye takibinden, canlı piyasa analizi ve göstergelere, akıllı otomatik seviye hesaplamalı paket emir yönetimine, çoklu kripto para (multi-coin) desteğine ve kapsamlı ayarlar paneline kadar uçtan uca bir al-sat otomasyonu sunar.
+
+---
+
+## 2. Modüler Mimari ve İşlevsel Kapsam
+
+### Modül 1: KuCoin Bağlantısı, Kimlik Doğrulama ve Hesap Yönetimi
+**Amaca Uygunluk**: Borsa API'sine güvenli bağlanmak, yetkileri doğrulamak, hesap bakiyesini ve portföy dağılımını canlı olarak sorgulamak.
+
+#### İşlevsel Gereksinimler:
+1. **API Anahtarı Güvenliği**:
+   - KuCoin API Key, API Secret ve Passphrase bilgileri `.env` dosyasında saklanacaktır.
+   - Kod içine veya versiyon kontrol sistemine (git) asla açık anahtar yazılmayacaktır.
+2. **Bağlantı & İzin Doğrulama**:
+   - API anahtarlarının geçerliliği (Ping/Time Sync) kontrol edilecek.
+   - Hesabın işlem (Trade) ve bakiye okuma (General) izinlerine sahip olduğu teyit edilecek; güvenlik amacıyla Para Çekme (Withdraw) izninin **kapalı** olması gerektiği uyarısı verilecektir.
+3. **Bakiye & Portföy Sorgulama**:
+   - KuCoin Spot hesabındaki tüm kripto varlıklar (BTC, USDT, ETH vb.) listelenecektir.
+   - Her varlık için `Serbest (Free)`, `Kilitli (Locked/In Orders)` ve `Toplam (Total)` miktarlar gösterilecektir.
+   - Her varlığın anlık USDT karşılığı ve toplam portföy içindeki yüzdesel payı (`%`) hesaplanacaktır.
 
 ---
 
 ### Modül 2: Anlık Piyasa Verisi Akışı ve Çok Katmanlı Analiz Motoru
-**Amaca Uygunluk**: KuCoin'den canlı fiyat (ticker), L2 derinlik ve mum (OHLCV) verilerini toplamak; 10 katmanlı indikatör ve Market Structure (SMC) feature'larını hesaplayarak çoklu zaman dilimi (MTF) destekli 0-100 Bileşik Puanlama Motoru (Composite Scoring Engine) ile doğrulanmış sinyaller üretmek.
+**Amaca Uygunluk**: KuCoin'den canlı fiyat (ticker), L2 derinlik ve mum (OHLCV) verilerini toplamak; 10 katmanlı indikatör ve Market Structure (SMC) feature'larını hesaplayarak çoklu zaman dilimi (MTF) destekli 0-100 Bileşik Puanlama Motoru (Composite Scoring Engine) ile doğrulanmış sinyaller ve otomatik işlem kurguları üretmek.
 
 #### İşlevsel Gereksinimler:
 1. **Canlı Fiyat ve Derinlik Akışı (Ticker & L2 Order Book)**:
-   - Seçilen işlem çiftlerinin (BTC-USDT vb.) son fiyat, 24s hacim, değişim oranları ve alış-satış spread dengesizliğinin takibi.
+   - Ayarlar/İzleme listesinde seçilen işlem çiftlerinin (BTC/USDT, ETH/USDT, SOL/USDT vb.) son fiyat, 24s hacim, değişim oranları ve alış-satış spread dengesizliğinin takibi.
 2. **Geçmiş Mum (OHLCV) Yönetimi & Rolling Ring Buffer**:
    - Belirlenen zaman dilimlerinde (1m, 5m, 15m, 1h, 4h, 1d) 300-500 mumluk kayan önbellek.
    - Kapanmış mum (confirmed candle) ile geçici mum (intrabar provisional) ayrımı ve repainting/lookahead koruması.
@@ -62,23 +73,75 @@ Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler
    - Trend (EMA, Supertrend, Ichimoku), Momentum (RSI, StochRSI, MACD), Güç (ADX, Choppiness), Hacim (RVOL, VWAP, CMF), Volatilite (ATR, Bollinger, Squeeze), Seviyeler (Pivots, Fib), Fiyat Hareketi/SMC (BOS, CHoCH, FVG, OB), Türevler (OI, Funding, CVD) ve MTF (4H rejim → 1H setup → 15m tetikleyici).
 4. **Bileşik Puanlama (0-100 Score) & Gerekçelendirme Motoru**:
    - Boğa/Ayı puanlaması, sahte sinyal filtreleri ve insan tarafından okunabilir gerekçe/risk uyarısı çıktıları.
+5. **Otomatik İşlem Kurgusu ve Seviye Hesaplama Motoru (Trade Setup Engine)**:
+   - Analiz motoru sinyal ürettiğinde yalnızca skor değil, doğrudan emir formuna hazır seviye şablonu türetir:
+     * **İşlem Yönü (Direction)**: Sinyale göre AL (Buy/Long) veya SAT (Sell/Short).
+     * **Giriş Fiyatı (Entry Price)**: Anlık piyasa fiyatı (Market) veya en yakın FVG/EMA20/Pivot seviyesine geri çekilme (Limit Pullback).
+     * **Zarar Kes (Stop-Loss - SL)**: Volatilite ve piyasa yapısına göre otomatik: `Entry - (1.5 * ATR_14)` veya son Swing Low / Donchian alt bandı.
+     * **Kâr Al 1 (Take-Profit 1 - TP1)**: %50 pozisyon kapatma hedefi: `Entry + 1.5 * Risk` veya Pivot R1 / Fibonacci 0.618 seviyesi.
+     * **Kâr Al 2 (Take-Profit 2 - TP2)**: Kalan %50 nihai hedef: `Entry + 3.0 * Risk` veya Pivot R2 / Fibonacci 1.0 seviyesi.
+     * **Risk:Reward (R:R) Oranı**: Otomatik hesaplanır (örn. 1:2.4 R:R) ve arayüzde açıkça gösterilir.
 
 ---
 
-### Modül 3: Al-Sat Emirleri Entegrasyonu ve Emir Yönetimi
-**Amaca Uygunluk**: Analiz çıktıklarına veya kullanıcı komutlarına göre KuCoin üzerinde emniyetli biçimde alış ve satış emirleri vermek ve emir durumlarını yönetmek.
+### Modül 3: Akıllı Paket Emir Entegrasyonu, Emir Yönetimi ve Dinamik Öneri Motoru
+**Amaca Uygunluk**: Manuel ve karmaşık emir girişleri yerine; analiz motorunun hazır seviyeleri üzerinden tek tıkla paket emir (Bracket Order: Giriş + TP1 + TP2 + SL) iletimi sağlamak, açık emirleri dinamik olarak düzenleyebilmek ve piyasa değişimlerinde akıllı güncelleme önerileri sunmak.
 
 #### İşlevsel Gereksinimler:
-1. **Emir Türleri**:
-   - **Market Emri**: Anlık piyasa fiyatından hızlı Al/Sat.
-   - **Limit Emri**: Belirlenen hedef fiyattan Al/Sat.
-2. **Emir Durumu Takibi**:
-   - Açık emirlerin listelenmesi ve anlık durumunun (Bekliyor / Doldu / Kısmen Doldu / İptal) takibi.
-   - İstendiğinde açık emirleri tek tıkla veya otomatik iptal edebilme.
-3. **Güvenlik ve Risk Önlemleri**:
-   - Yanlışlıkla yüksek tutarlı işlem yapılmasını önlemek için maks bakiye limiti kontrolü.
-   - **Acil Durum (Panic Button)**: Tüm açık emirleri iptal etme ve pozisyonları kapatma işlevi.
-   - **Simülasyon / Test Modu**: Gerçek emir vermeden önce mantığı test edebilmek için sanal işlem katmanı.
+1. **Otomatik Seviyeli Akıllı Paket Emir (Smart Bracket Order Execution)**:
+   - Kullanıcı emir girişinde karmaşık fiyat veya miktar hesabı yapmak zorunda kalmaz.
+   - Analiz motorunun belirlediği Giriş, TP1, TP2 ve Stop-Loss seviyeleri hazır olarak forma yüklenir.
+   - **Kullanıcı Girdisi**: Kullanıcı yalnızca yatırmak istediği **USDT Tutarını** girer (veya `%25`, `%50`, `%100` bakiye butonlarını kullanır).
+   - **Otomatik Miktar ve Risk/Kazanç Hesabı**:
+     * Kripto Miktarı: `Amount = USDT_Tutarı / Giriş_Fiyatı` (KuCoin hassasiyetine göre formatlanır).
+     * Maksimum Risk Tutarı: SL tetiklendiğinde kaybedilecek net USDT tutarı (`Risk = Amount * (Entry - SL)`).
+     * Potansiyel Kâr Tutarı: TP1 ve TP2 gerçekleştiğinde kazanılacak net USDT tutarı.
+   - **Tek Tıkla Paket İletim ("🚀 Akıllı Emri İlet")**:
+     * Giriş emri (Market veya Limit) iletilir.
+     * Giriş gerçekleştiğinde veya eşzamanlı olarak %50 pozisyon için TP1 Limit emri, %50 pozisyon için TP2 Limit emri ve tüm pozisyon için SL Stop-Market/Stop-Limit emri tek bir paket halinde borsaya ve simülatöre iletilir.
+2. **Açık Emir Güncelleme ve Düzenleme (Order Modification / Amend)**:
+   - Açık emirler listesinde her emrin yanında "İptal" butonunun yanı sıra **"Düzenle" (Edit)** butonu bulunur.
+   - Kullanıcı emri iptal edip yeniden yazmak zorunda kalmadan fiyatı, miktarı veya bağlı TP/SL seviyelerini anında güncelleyebilir.
+   - Borsa üzerinde KuCoin Amend API'si veya atomik iptal+yeniden iletim mekanizmasıyla icra edilir.
+3. **Dinamik Güncelleme Öneri Motoru (Dynamic Order Recommendation Engine)**:
+   - Sistem arka planda açık emirleri ve pozisyonları canlı fiyat ve analiz göstergelerine göre sürekli denetler.
+   - Gerekli görüldüğünde kullanıcı arayüzüne anlık akıllı bildirim ve tek tıkla onaylama butonu sunar:
+     * **Başabaş / Trailing Stop Önerisi**: Fiyat TP1 hedefine ulaştığında veya 1R kâra geçtiğinde: *"💡 Dinamik Öneri: BTC/USDT TP1 hedefine ulaştı. Stop-Loss seviyesini giriş fiyatına çekerek işlemi risksiz (Breakeven) hale getirmeniz önerilir. [Hemen Güncelle]"*.
+     * **Giriş Fiyatı Revizyon Önerisi**: Bekleyen limit alış emrinde fiyat yukarı kırılım (Bullish BOS) yapıp uzaklaşırsa: *"💡 Dinamik Öneri: Piyasa yukarı yönlü kırıldı. Giriş seviyesini $X seviyesine revize etmeniz önerilir. [Hemen Güncelle]"*.
+     * **Erken Çıkış / Stop Daraltma Önerisi**: Piyasa karakterinde tersine dönüş (CHoCH) veya aşırı şişme görülürse: *"⚠️ Risk Uyarısı: 15m zaman diliminde CHoCH (trend dönüşü) tespit edildi. Stop seviyesini daraltmanız önerilir. [Hemen Güncelle]"*.
+     * Kullanıcı tek tıkla öneriyi emre uygulayabilir veya yoksayabilir.
+4. **Emir Durumu Takibi & Geçmiş**:
+   - Açık emirlerin doluluk oranı, gerçekleşen fiyatı ve durumu anlık izlenir.
+   - Kapanan/dolan tüm emirler işlem geçmişinde (Order History) kâr/zarar ve komisyon bilgisiyle arşivlenir.
+5. **Güvenlik, Panic Stop ve Simülasyon**:
+   - **⛔ PANIC STOP**: Tek tıkla borsadaki tüm açık emirleri iptal eder, botun yeni işlem açmasını kilitler.
+   - **Simülasyon Modu (Paper Trading)**: $10,000 sanal USDT ile gerçek tahta fiyatları üzerinde sıfır riskli test imkanı.
+
+---
+
+### Ayarlar ve Çoklu Kripto Varlık Yönetimi (Settings & Multi-Coin Management)
+**Amaca Uygunluk**: Uygulamanın yalnızca tek bir koin (BTC) ile sınırlı kalmasını önlemek; kullanıcının dilediği kripto işlem çiftlerini izleme ve işlem listesine eklemesini sağlamak, simülasyon/canlı modunu kolayca değiştirebilmesini ve risk parametrelerini merkezi olarak yapılandırabilmesini sağlamak.
+
+#### İşlevsel Gereksinimler:
+1. **Ayarlar Ekranı (`⚙️ Ayarlar` Görünümü)**:
+   - Sol menüde ve üst gezinme çubuğunda müstakil bir **"⚙️ Ayarlar"** sekmesi bulunacaktır.
+   - Ayarlar paneli tüm yapılandırma tercihlerini kullanıcı dostu form elemanlarıyla sunacaktır.
+2. **Çoklu Coin & İzleme Listesi Yönetimi (Multi-Coin Watchlist)**:
+   - Sistem dinamik olarak birden çok işlem çiftini (Örn: BTC/USDT, ETH/USDT, SOL/USDT, AVAX/USDT, XRP/USDT vb.) destekleyecektir.
+   - **Yeni Coin Ekleme**: KuCoin `/api/v1/market/symbols` listesinden arama ve seçim yapılarak izleme listesine yeni çiftler eklenebilecektir.
+   - **Coin Silme / Düzenleme**: Kullanıcı istemediği çiftleri listeden çıkarabilecektir.
+   - **Aktif İşlem Çifti Seçimi**: Kullanıcı arayüzün her yerinde (Dashboard, Analiz, Emirler) tek bir tıkla veya açılır menüden (Dropdown/Pills) aktif koini değiştirebilecek; mum grafiği, canlı fiyat ve analiz göstergeleri seçilen koine anında senkronize olacaktır.
+3. **Simülasyon / Canlı Mod Geçişi (Trading Mode Switcher)**:
+   - Ayarlar ekranında ve Header alanında açık, görsel bir mod değiştirici anahtar (Switch / Toggle) yer alacaktır.
+   - `🧪 SIMULATION (Paper Trading)` ile `⚡ LIVE (Gerçek KuCoin Hesabı)` modları arasında kolayca geçiş yapılabilecektir.
+   - Canlı moda geçerken kullanıcının gerçek parayla işlem yapılacağını onayladığı güvenlik uyarısı (Confirmation Dialog) görüntülenecektir.
+4. **Risk ve Para Yönetimi Parametreleri**:
+   - Varsayılan işlem tutarı (USDT veya portföy %'si, örn. %5).
+   - Varsayılan Stop-Loss ATR çarpanı (Örn: 1.5x ATR).
+   - Varsayılan Kâr Al (Take-Profit) hedefleri (TP1 için 1.5R, TP2 için 3.0R).
+   - Dinamik öneri motoru bildirimlerinin açılıp kapatılması.
+5. **Kalıcılık (Persistence)**:
+   - Kullanıcının kaydettiği ayarlar SQLite veritabanında (`settings` tablosu) saklanacak ve uygulama yeniden başlatıldığında aynen korunacaktır.
 
 ---
 
@@ -149,5 +212,7 @@ Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler
 | **2026-09-17 22:06:00** | Rozet ayrımı (Tasarım %100 vs Kodlama %20) yapıldı ve güncellendi. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-17 22:50:00** | Modül 2 analizi `crypto_indicators_coding_agent_reference.md` doğrultusunda 10 katmanlı indikatör mimarisi, SMC, MTF ve 0-100 composite scoring motoru ile senkronize edilerek genişletildi. | Onaylandı & Genişletildi (%100) |
 | **2026-09-20 01:00:00** | **Kullanım Kılavuzu Sayfası ve Bağlamsal Info Düğmeleri Eklendi**: Kullanıcı gereksinimi doğrultusunda ana sayfadan erişilebilir rehber sayfası/görünümü ve kritik arayüz öğelerine (Portföy, Mod, Panic Stop, Scoring, MTF, SMC, Emirler) öğretici `ℹ️` (Info) düğmeleri gereksinimi analiz dokümanına eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
+| **2026-09-20 01:05:00** | **Ayarlar Ekranı, Çoklu Coin, Akıllı Paket Emir & Dinamik Öneri Motoru Eklendi**: Ayarlar sekmesi (`⚙️ Ayarlar`), dinamik çoklu coin izleme/işlem listesi (Watchlist & KuCoin symbols), analiz motorundan otomatik Entry/TP1/TP2/SL seviye hesaplamalı akıllı paket emir iletimi ("🚀 Akıllı Emri İlet"), açık emir düzenleme (Edit/Amend) ve canlı piyasa durumuna göre akıllı güncelleme tavsiyeleri üreten Dinamik Öneri Motoru gereksinimleri analiz dokümanına eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
+
 
 
