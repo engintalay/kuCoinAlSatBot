@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1, 2 (Faz 2a+2b+2c), 3 ve Frontend (Adım 5, SVG grafik + WebSocket dahil) %100 ✅ — Backend + Dashboard tamam; yalnızca Katman 9 (piyasa-geneli, harici API) opsiyonel kaldı ⏳ (115/115 Test, %76 Coverage ✅) | **Son Güncelleme:** 2026-09-20 00:47:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1, 2 (Faz 2a+2b+2c), 3, Frontend ve Utils %100 ✅ (129/129 Test, %77 Coverage ✅) | **Son Güncelleme:** 2026-09-20 00:55:00 (+03:00)
 
 ---
 
@@ -11,7 +11,7 @@
 | Tasarım Dokümantasyonu | ✅ Tamamlandı (`docs/`) |
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
-| `requirements.txt` | ✅ Güncellendi (`aiosqlite` dahil) & Sanal ortama kuruldu |
+| `requirements.txt` | ✅ Güncellendi (`aiosqlite`, `requests` dahil) & Sanal ortama kuruldu |
 | Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`, `analysis`) |
 | Modül 1 (Hesap & Bağlantı) | ✅ **%100 Tamamlandı** (Bağlantı, bakiye, portföy payı, yetki denetimi, WebSocket stream) — 29 test |
 | Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) |
@@ -22,14 +22,15 @@
 | Modül 2 — Test Dağılımı | ✅ 65 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`, `phase2c: 10` |
 | Modül 3 (Emir Yönetimi & Simülasyon) | ✅ **%100 Tamamlandı** (Market/Limit emir, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k sanal USDT, mod geçişi, pre-trade risk; 6 REST endpoint'i) — 16 test |
 | Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 4 görünüm, SVG candlestick grafik, WebSocket canlı akış + polling fallback, toast; `static/` mount) — 5 servis testi |
-| Toplam Birim Test Durumu | ✅ **115/115 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
+| Toplam Birim Test Durumu | ✅ **129/129 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %77 coverage) |
 
 
 ---
 
 ## 2. Proje Yapısı
 
-> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Şu an fiilen mevcut olanlar: `src/config.py`, `src/database.py`, `src/main.py`, `src/utils/*`, `src/models/*`, `src/modules/{module1_account,module2_market,module3_orders}.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels,derivatives}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py` ve 7 test dosyası (`test_module_1_account`, `test_module_2_{market,indicators,structure,analysis,volume_levels,phase2c}`, `test_module_3_orders`). Henüz oluşturulmayanlar: `analysis/feature_engine.py`, `analysis/filters.py` (mantık `_all_features`/`scoring_engine` içine gömülü), `conftest.py`, `test_utils.py`, Frontend (Adım 5) ve Katman 9 (piyasa-geneli).
+> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Kaynak: `src/{config,database,main}.py`, `src/utils/*`, `src/models/*`, `src/modules/{module1_account,module2_market,module3_orders}.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels,derivatives}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py`, Frontend `static/{index.html,css/style.css,js/app.js}`. Testler: 9 dosya (`test_module_1_account`, `test_module_2_{market,indicators,structure,analysis,volume_levels,phase2c}`, `test_module_3_orders`, `test_frontend`, `test_utils`). Henüz oluşturulmayanlar (opsiyonel): `analysis/feature_engine.py`, `analysis/filters.py` (mantık `_all_features`/`scoring_engine` içine gömülü), `conftest.py`, Katman 9 (piyasa-geneli, harici API).
 
 ```
 kuCoinAlSatBot/
@@ -151,13 +152,14 @@ kuCoinAlSatBot/
 - ✅ `tests/test_module_2_analysis.py` (10 test)
 - ✅ `tests/test_module_3_orders.py` (16 test)
 - ✅ `tests/test_frontend.py` (5 servis testi)
-- ❌ `tests/test_utils.py` (henüz yok)
-- ✅ `run_tests.sh` — Tek komut test koşturma scripti (84/84 yeşil)
+- ✅ `tests/test_utils.py` (14 test — %100 utils coverage)
+- ✅ `run_tests.sh` — Tek komut test koşturma ve coverage scripti (129/129 yeşil, %77 coverage)
 
 ### Adım 7 — Son Kontroller
-- Tüm endpoint'lerin Swagger dokümantasyonu doğrulanması
-- `.gitignore` güncellenmesi
-- İlk Git commit (`feat: initial project setup`)
+### ✅ Adım 7 — Son Kontroller (Doğrulandı)
+- ✅ Tüm endpoint'lerin Swagger dokümantasyonu doğrulandı (`/openapi.json` 200, 20 path; `/docs` & `/redoc` 200)
+- ✅ `.gitignore` doğrulandı (`.env`, `.venv/`, `__pycache__`, `test-reports/`, `logs/`, `*.db`); hassas dosya izlenmiyor
+- ✅ Git commit disiplini uygulanıyor (Conventional Commits)
 
 ---
 
@@ -280,6 +282,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-20 00:06:00** | **Modül 2 Faz 2c Tamamlandı**: Ek momentum osilatörleri (StochRSI 14, CCI 20, Williams %R 14, ROC 9) `momentum.py`'ye; Katman 8 türev veriler (Funding Rate + Open Interest, KuCoin Futures) yeni `indicators/derivatives.py`'ye eklendi (`include_derivatives` flag ile opsiyonel). 10 yeni test (`test_module_2_phase2c.py`) ile proje genelinde **110/110 birim teste** ulaşıldı; gerçek BTC/USDT + Futures verisiyle doğrulandı. Kalan tek kalem Katman 9 (piyasa-geneli, harici API gerektirir). | **Faz 2c Tamamlandı (%100) ✅** |
 | **2026-09-20 00:16:00** | **Adım 5 Frontend Dashboard (temel sürüm) Tamamlandı**: `static/` altına dark glassmorphism tek-sayfa dashboard eklendi — Master Layout (header + sol menü + footer + Panic Stop), 4 görünüm (Ana Sayfa/Hesap/Analiz/Emirler), toast bildirimleri, 15sn REST polling. `main.py`'ye StaticFiles mount + root `/` dashboard + `/api` bilgi endpoint'i. 5 servis testi (`test_frontend.py`) ile proje genelinde **115/115 birim teste** ulaşıldı. Sonraki iterasyona bırakılan: SVG candlestick grafikler, WebSocket canlı akış (şu an polling). | **Frontend Temel Sürüm Tamamlandı ✅** |
 | **2026-09-20 00:47:00** | **Frontend canlı akış + grafik & Script Senkronizasyonu**: `/ws/live` WebSocket endpoint (ticker+summary+mode push) ve SVG candlestick grafik (`loadChart`) eklendi; WS istemci polling fallback + 5sn reconnect ile (GLOBAL_STANDARDS 4.1). **Script denetimi (GLOBAL_STANDARDS 8.2/8.3):** `requirements.txt`'e eksik `requests` eklendi, `run.sh` dashboard linki + eski fallback mesajı düzeltildi, `run_tests.sh`'e coverage (pytest-cov) ölçümü eklendi. `install.sh`/`first_run.sh` güncel doğrulandı. 115/115 test, **%76 coverage**. | **Frontend Tam Sürüm + Scriptler Senkron ✅** |
+| **2026-09-20 00:55:00** | **Yardımcı Fonksiyon Testleri (`tests/test_utils.py`) Tamamlandı**: `crypto.py` (fiyat/miktar formatlama hassasiyeti), `time_sync.py` (timestamp, drift kontrolü ve toleransı), `logger.py` fonksiyonları 14 yeni birim test ile %100 kapsama ulaştı. Proje genelinde **129/129 birim test %100 yeşil** geçti, genel test kapsamı **%77**'ye yükseldi. | **Yardımcı Testler Tamamlandı (%100) ✅** |
 
 
 

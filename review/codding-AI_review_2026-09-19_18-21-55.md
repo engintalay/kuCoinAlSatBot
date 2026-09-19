@@ -1,4 +1,4 @@
-> **Kodlama & Test Durumu:** %100 (Backend & Frontend Tamamlandı ✅, 115/115 Test Başarılı) | **Son Güncelleme:** 2026-09-20 00:40:00 (+03:00)
+> **Kodlama & Test Durumu:** %100 (Tüm Modüller, Frontend ve Yardımcılar Tamamlandı ✅, 129/129 Test Başarılı, %77 Coverage) | **Son Güncelleme:** 2026-09-20 00:55:00 (+03:00)
 
 # Coding AI — Kontrol Raporu
 
@@ -164,17 +164,27 @@ Not: 3 hatanın 3'ü de **test dosyasındaki mock kurulumu** kaynaklı; kaynak k
 
 ---
 
-### 7. Güncel Genel Sistem Özeti
-| Katman / Modül | Durum | Birim Test Sayısı | API / Arayüz Endpoint'leri |
-| :--- | :---: | :---: | :--- |
-| **Modül 1 (Hesap & Bağlantı)** | ✅ %100 | 29/29 Geçti | `/status`, `/balances`, `/summary`, `/test-connection` |
-| **Modül 2 (Piyasa Verisi & Çekirdek)** | ✅ %100 | 19/19 Geçti | `/ticker`, `/orderbook`, `/candles`, `/symbols`, `/analysis/indicators` |
-| **Modül 2 (İleri SMC, Scoring, MTF)** | ✅ %100 | 26/26 Geçti | `/analysis/structure`, `/analysis/score`, `/analysis/mtf` |
-| **Modül 2 (Hacim, Seviyeler, Faz 2c Türev)** | ✅ %100 | 20/20 Geçti | Tüm indikatör & scoring katmanlarına entegre |
-| **Modül 3 (Emir Yönetimi & Simülasyon)** | ✅ %100 | 16/16 Geçti | `/create`, `/open`, `/history`, `/{order_id}`, `/panic-stop`, `/switch-mode` |
-| **Adım 5 (Frontend Dashboard SPA)** | ✅ %100 | 5/5 Geçti | `/` (Dashboard SPA), `/static/*`, `/api` |
-| **Toplam Proje Test Durumu** | ✅ %100 | **115/115 Geçti** | **19 REST API Endpoint'i + Web Dashboard (%100 Çalışır)** |
-| **Sıradaki Aşama** | ⏳ Hazır | — | **Adım 7: Son Kontroller & Canlı Yayın / Doğrulama** |
+### 7. Canlı WebSocket Akışı, SVG Grafik & Yardımcı Fonksiyonlar (%100 Tamamlandı)
+- ✅ **Canlı WebSocket Akışı (`/ws/live`)**: Ticker, portföy özeti ve bot modu her 3 saniyede bir istemciye otomatik itilir.
+- ✅ **SVG Candlestick Grafiği (`static/js/app.js`)**: Polling fallback ve otomatik yeniden bağlanma (5sn) özellikli interaktif mum grafiği.
+- ✅ **Yardımcı Fonksiyon Testleri (`tests/test_utils.py`)**: `format_price`, `format_amount`, `timestamp`, `check_time_sync` ve `logger` için 14 yeni birim test (%100 utils coverage).
+- ✅ **Script & Test Raporlama Senkronizasyonu (`run_tests.sh`)**: `pytest-cov` entegrasyonu ile JUnit XML ve HTML coverage raporu (/test-reports/htmlcov) otomatik üretilmektedir.
+
+---
+
+### 8. Güncel Genel Sistem Özeti
+| Katman / Modül | Durum | Birim Test Sayısı | Kapsam (Coverage) | API / Arayüz Endpoint'leri |
+| :--- | :---: | :---: | :---: | :--- |
+| **Modül 1 (Hesap & Bağlantı)** | ✅ %100 | 29/29 Geçti | %59 | `/status`, `/balances`, `/summary`, `/test-connection` |
+| **Modül 2 (Piyasa Verisi & Çekirdek)** | ✅ %100 | 19/19 Geçti | %69 | `/ticker`, `/orderbook`, `/candles`, `/symbols`, `/analysis/indicators` |
+| **Modül 2 (İleri SMC, Scoring, MTF)** | ✅ %100 | 26/26 Geçti | %92 | `/analysis/structure`, `/analysis/score`, `/analysis/mtf` |
+| **Modül 2 (Hacim, Seviyeler, Faz 2c)** | ✅ %100 | 20/20 Geçti | %96 | Tüm indikatör & scoring katmanlarına entegre |
+| **Modül 3 (Emir Yönetimi & Simülasyon)** | ✅ %100 | 16/16 Geçti | %58 | `/create`, `/open`, `/history`, `/{order_id}`, `/panic-stop`, `/switch-mode` |
+| **Adım 5 (Frontend Dashboard SPA)** | ✅ %100 | 5/5 Geçti | — | `/` (Dashboard SPA), `/static/*`, `/ws/live` |
+| **Yardımcı Fonksiyonlar (`src/utils/`)** | ✅ %100 | 14/14 Geçti | %100 | `crypto.py`, `time_sync.py`, `logger.py` |
+| **Toplam Proje Test Durumu** | ✅ %100 | **129/129 Geçti** | **%77** | **19 REST Endpoint + 1 WebSocket + Web Dashboard** |
+| **Sıradaki Aşama** | ⏳ Hazır | — | — | **Adım 7: Son Kontroller & Canlı Yayın / Doğrulama** |
+
 
 
 
