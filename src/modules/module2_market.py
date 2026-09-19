@@ -29,6 +29,8 @@ from src.modules.indicators.momentum import compute_momentum
 from src.modules.indicators.volatility import compute_volatility
 from src.modules.indicators.strength import compute_strength
 from src.modules.indicators.structure import compute_structure
+from src.modules.analysis.scoring_engine import compute_score
+from src.modules.analysis.mtf_engine import evaluate_mtf
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
 
@@ -373,6 +375,89 @@ class KuCoinMarket:
             return AnalysisSignalResponse(
                 success=False, data={"data_quality": "UNAVAILABLE"},
                 error=f"Yapı analizi yapılamadı: {e}", timestamp=timestamp(),
+            )
+
+    async def _all_features(self, symbol: str, timeframe: str, limit: int) -> dict | None:
+        """
+        Tek çekimle tüm katman feature'larını (indikatör + structure) üretir.
+        Yeterli kapanmış mum yoksa None döner.
+        """
+        candles_resp = await self.get_candles(symbol, timeframe, limit)
+        if not candles_resp.success:
+            return None
+        confirmed = [c for c in candles_resp.data.get("candles", []) if c.get("confirmed")]
+        if len(confirmed) < 30:
+            return None
+
+        df = pd.DataFrame(confirmed)
+        return {
+            "confirmed_candles": len(confirmed),
+            "trend": compute_trend(df),
+            "momentum": compute_momentum(df),
+            "volatility": compute_volatility(df),
+            "strength": compute_strength(df),
+            "structure": compute_structure(df),
+        }
+
+    async def get_score(
+        self, symbol: str, timeframe: str = "1h", limit: int = 300
+    ) -> AnalysisSignalResponse:
+        """
+        Bileşik puanlama motoru: 0-100 boğa/ayı skoru, sinyal, gerekçe, uyarılar.
+        MODULE_2_SPEC 4.2 & 4.3.
+        """
+        try:
+            features = await self._all_features(symbol, timeframe, limit)
+            if features is None:
+                return AnalysisSignalResponse(
+                    success=False, data={"data_quality": "UNAVAILABLE"},
+                    error="Puanlama için yetersiz kapanmış mum verisi.",
+                    timestamp=timestamp(),
+                )
+            score = compute_score(features)
+            return AnalysisSignalResponse(
+                success=True,
+                data={
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "data_quality": "OK" if features["confirmed_candles"] >= 250 else "DEGRADED",
+                    "score": score,
+                },
+                error=None, timestamp=timestamp(),
+            )
+        except Exception as e:
+            logger.error(f"Puanlama hatası ({symbol} {timeframe}): {e}")
+            return AnalysisSignalResponse(
+                success=False, data={"data_quality": "UNAVAILABLE"},
+                error=f"Puanlama yapılamadı: {e}", timestamp=timestamp(),
+            )
+
+    async def get_mtf(self, symbol: str, limit: int = 300) -> AnalysisSignalResponse:
+        """
+        Multi-Timeframe analiz: 4H rejim → 1H setup → 15m trigger.
+        MODULE_2_SPEC 3.10.
+        """
+        try:
+            scores = {}
+            for tf in ("4h", "1h", "15m"):
+                feats = await self._all_features(symbol, tf, limit)
+                scores[tf] = compute_score(feats) if feats else {"signal": "NEUTRAL"}
+
+            decision = evaluate_mtf(scores["4h"], scores["1h"], scores["15m"])
+            return AnalysisSignalResponse(
+                success=True,
+                data={
+                    "symbol": symbol,
+                    "timeframes": {"4h": scores["4h"], "1h": scores["1h"], "15m": scores["15m"]},
+                    "decision": decision,
+                },
+                error=None, timestamp=timestamp(),
+            )
+        except Exception as e:
+            logger.error(f"MTF analiz hatası ({symbol}): {e}")
+            return AnalysisSignalResponse(
+                success=False, data={},
+                error=f"MTF analizi yapılamadı: {e}", timestamp=timestamp(),
             )
 
     def get_buffer(self, symbol: str, timeframe: str) -> list:

@@ -151,3 +151,23 @@ async def get_market_structure(
     """
     result = await market.get_structure(symbol, timeframe, limit)
     return result
+
+
+@app.get("/api/v1/market/analysis/score")
+async def get_market_score(
+    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 300
+):
+    """
+    Bileşik puanlama: 0-100 boğa/ayı skoru, sinyal durumu, gerekçe ve risk uyarıları.
+    """
+    result = await market.get_score(symbol, timeframe, limit)
+    return result
+
+
+@app.get("/api/v1/market/analysis/mtf")
+async def get_market_mtf(symbol: str = "BTC/USDT", limit: int = 300):
+    """
+    Multi-Timeframe hiyerarşik analiz: 4H rejim → 1H setup → 15m tetikleyici.
+    """
+    result = await market.get_mtf(symbol, limit)
+    return result
