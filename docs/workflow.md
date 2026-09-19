@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 %100 ✅, Modül 2 Faz 2a Temel Veri Katmanı Tamamlandı (37/37 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 22:52:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 %100 ✅, Modül 2 Faz 2a %100 Tamamlandı (48/48 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:10:00 (+03:00)
 
 ---
 
@@ -12,12 +12,12 @@
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
 | `requirements.txt` | ✅ Güncellendi (`aiosqlite` dahil) & Sanal ortama kuruldu |
-| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`) |
+| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`) |
 | Modül 1 (Hesap & Bağlantı) | ✅ **%100 Tamamlandı** (Bağlantı, bakiye, portföy payı, yetki denetimi, WebSocket stream) — 29 test |
-| Modül 2 — Faz 2a Temel Veri Katmanı | ✅ **Tamamlandı** (Ticker, L2 Order Book spread/imbalance, Ring Buffer, Repaint Guard, 4 endpoint) — 8 test |
-| Modül 2 — İndikatör & Analiz Motoru | ⏳ Tasarım %100 hazır; Faz 2a çekirdek indikatörleri (EMA, SMA, RSI, MACD, ATR) kodlaması bekleniyor |
+| Modül 2 — Faz 2a (Veri & İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) — 19 test |
+| Modül 2 — Faz 2b (İleri SMC & MTF) | ⏳ Tasarım %100 hazır; İleri SMC, MTF ve 0-100 Puanlama Motoru kodlaması bekleniyor |
 | Modül 3 (Emir Yönetimi & Simülasyon) | ⏳ Tasarım %100 hazır; Modül 2 sonrası başlanacak |
-| Toplam Birim Test Durumu | ✅ **37/37 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Toplam Birim Test Durumu | ✅ **48/48 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 ---
@@ -162,20 +162,20 @@ kuCoinAlSatBot/
 
 > **Test Durumu:** `tests/test_module_1_account.py` → **29/29 test başarıyla geçiyor** (`./run_tests.sh` %100 yeşil). Tüm endpoint'ler ve yetki/websocket akışları doğrulandı.
 
-### Modül 2 — Faz 2a: Çekirdek Piyasa Verisi & Temel İndikatörler (Veri Katmanı Tamamlandı ✅ / İndikatörler Bekliyor ⏳)
+### Modül 2 — Faz 2a: Çekirdek Piyasa Verisi & Temel İndikatörler (Kodlama & Testler %100 Tamamlandı ✅)
 - [x] KuCoin Ticker & L2 Order Book veri akışı (`module2_market.py` — 24s stats, best bid/ask, spread, imbalance)
 - [x] Rolling Ring Buffer (500 mum) & Repaint/Lookahead koruması (`confirmed_candle` flag)
-- [ ] Çekirdek Trend Katmanı: EMA (20/50/100/200), SMA (50/200) (`indicators/trend.py`)
-- [ ] Çekirdek Momentum Katmanı: RSI 14, MACD (12, 26, 9) (`indicators/momentum.py`)
-- [ ] Çekirdek Volatilite Katmanı: ATR 14 (`indicators/volatility.py`)
-- [ ] Faz 2a REST API Endpoint'leri:
+- [x] Çekirdek Trend Katmanı: EMA (20/50/100/200), SMA (50/200), Golden/Death Cross (`indicators/trend.py`)
+- [x] Çekirdek Momentum Katmanı: RSI 14 (Wilder), MACD (12, 26, 9) (`indicators/momentum.py`)
+- [x] Çekirdek Volatilite Katmanı: ATR 14 (Wilder), Normalized ATR %, Dinamik Stop-Loss (`indicators/volatility.py`)
+- [x] Faz 2a REST API Endpoint'leri:
   - [x] `/api/v1/market/ticker`
   - [x] `/api/v1/market/orderbook`
   - [x] `/api/v1/market/candles`
   - [x] `/api/v1/market/symbols`
-  - [ ] `/api/v1/market/analysis/indicators`
+  - [x] `/api/v1/market/analysis/indicators`
 
-> **Modül 2 Test Durumu:** `tests/test_module_2_market.py` → **8/8 test geçiyor**. Toplam proje genelinde **37/37 test %100 yeşil**.
+> **Modül 2 Test Durumu:** `tests/test_module_2_market.py` (8 test) + `tests/test_module_2_indicators.py` (11 test) → **19/19 test geçiyor**. Toplam proje genelinde **48/48 test %100 yeşil**.
 
 ### Modül 2 — Faz 2b: İleri Düzey Çok Katmanlı Motor, SMC & Puanlama (Tasarım Hazır ⏳)
 - [ ] İleri Trend Katmanı: Supertrend, Ichimoku Kinko Hyo, Parabolic SAR
@@ -250,5 +250,6 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-19 21:37:00** | Workflow gerçek proje durumuyla senkronlandı: Modül 1 çekirdeği çalışır ve **22/22 test geçer** hale geldi (test-connection/balances/summary endpoint hataları ve async kaynak sızıntısı giderildi). Başlık rozeti, Mevcut Durum tablosu, Adım 1 ve Modül 1 checklist'i kanıtlı biçimde güncellendi. Eksikler dürüstçe işaretlendi: WebSocket canlı bakiye ve API yetki (Read/Trade) denetimi henüz yok. | Güncellendi (Kanıta Dayalı) |
 | **2026-09-19 22:00:00** | **Modül 1 Tamamlandı & Modül 2 Faz 2a/2b Ayrımı**: Coding AI tarafından WebSocket canlı bakiye stream ve API yetki (Read/Trade/Withdraw) denetimi tamamlandı. Toplam test sayısı 29'a yükseldi ve **29/29 birim test başarıyla geçti** (`run_tests.sh` %100 yeşil). Modül 1 checklist'i %100 tamamlandı. Modül 2 geliştirme planı kapsam riskini önlemek için Faz 2a (Çekirdek Veri & İndikatörler) ve Faz 2b (İleri SMC & Scoring) olarak bölümlendi. | **Modül 1 Tamamlandı (%100)** ✅ |
 | **2026-09-19 22:52:00** | **Modül 2 Faz 2a Temel Veri Katmanı Doğrulandı**: Coding AI tarafından `module2_market.py` (ticker, L2 orderbook, ring buffer, repaint guard), `OrderBookResponse` modeli ve 4 API endpoint'i `/api/v1/market/{ticker,orderbook,candles,symbols}` yazıldı. 8 yeni birim test eklendi ve toplam **37/37 birim test başarıyla geçti** (`run_tests.sh` %100 yeşil). | **Faz 2a Veri Katmanı Tamamlandı ✅** |
+| **2026-09-19 23:10:00** | **Modül 2 Faz 2a Çekirdek İndikatörler %100 Tamamlandı**: `indicators/trend.py`, `momentum.py`, `volatility.py` ve `/api/v1/market/analysis/indicators` endpoint'i yazıldı. Repaint guard (yalnızca confirmed kapanmış mumlar) ve warm-up (min 250 mum ile DEGRADED/OK data_quality) doğrulandı. 11 yeni birim test eklendi ve toplam **48/48 birim test başarıyla geçti** (`run_tests.sh` %100 yeşil). | **Faz 2a %100 Tamamlandı ✅** |
 
 

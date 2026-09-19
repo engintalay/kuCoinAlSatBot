@@ -1,6 +1,6 @@
 # Modül 2 Spesifikasyonu: Piyasa Verileri, Çok Katmanlı İndikatörler ve Analiz Motoru
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Faz 2a Temel Veri Katmanı Tamamlandı (8/8 Test, Toplam 37/37 Test Geçiyor ✅, İndikatörler Bekliyor ⏳) | **Son Güncelleme:** 2026-09-19 22:52:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Faz 2a %100 Tamamlandı (19/19 Modül 2 Testi, Toplam 48/48 Test Geçiyor ✅, Faz 2b Bekliyor ⏳) | **Son Güncelleme:** 2026-09-19 23:10:00 (+03:00)
 
 ---
 
@@ -543,10 +543,10 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | :--- | :---: | :--- | :--- | :--- | :---: |
 | **M2-C01** | **Faz 2a** | KuCoin Ticker & OrderBook Fetching | `src/modules/module2_market.py` | `tests/test_module_2_market.py` | ✅ Tamamlandı (4 test geçiyor) |
 | **M2-C02** | **Faz 2a** | OHLCV Ring Buffer & Repaint Koruması | `src/modules/module2_market.py` | `tests/test_module_2_market.py` | ✅ Tamamlandı (2 test geçiyor) |
-| **M2-C03** | **Faz 2a** | Çekirdek Trend Katmanı (EMA, SMA) | `src/modules/indicators/trend.py` | `tests/test_indicators_trend.py` | Bekliyor ⏳ |
-| **M2-C04** | **Faz 2a** | Çekirdek Momentum Katmanı (RSI, MACD) | `src/modules/indicators/momentum.py` | `tests/test_indicators_momentum.py` | Bekliyor ⏳ |
-| **M2-C05** | **Faz 2a** | Çekirdek Volatilite Katmanı (ATR) | `src/modules/indicators/volatility.py` | `tests/test_indicators_volatility.py` | Bekliyor ⏳ |
-| **M2-C06** | **Faz 2a** | Temel REST API & Swagger Entegrasyonu | `src/main.py` | `tests/test_module_2_market.py` | ✅ Tamamlandı (4 endpoint aktif) |
+| **M2-C03** | **Faz 2a** | Çekirdek Trend Katmanı (EMA, SMA) | `src/modules/indicators/trend.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (3 test geçiyor) |
+| **M2-C04** | **Faz 2a** | Çekirdek Momentum Katmanı (RSI, MACD) | `src/modules/indicators/momentum.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (4 test geçiyor) |
+| **M2-C05** | **Faz 2a** | Çekirdek Volatilite Katmanı (ATR) | `src/modules/indicators/volatility.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (2 test geçiyor) |
+| **M2-C06** | **Faz 2a** | Temel REST API & Swagger Entegrasyonu | `src/main.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (5 endpoint aktif, 2 test) |
 | **M2-C07** | **Faz 2b** | İleri Trend (Supertrend, Ichimoku, SAR) | `src/modules/indicators/trend.py` | `tests/test_indicators_trend.py` | Bekliyor ⏳ |
 | **M2-C08** | **Faz 2b** | Trend Gücü Katmanı (ADX, Aroon, Choppiness) | `src/modules/indicators/strength.py` | `tests/test_indicators_strength.py` | Bekliyor ⏳ |
 | **M2-C09** | **Faz 2b** | Hacim & Akış (RVOL, OBV, VWAP, CMF, Profile) | `src/modules/indicators/volume.py` | `tests/test_indicators_volume.py` | Bekliyor ⏳ |
@@ -570,4 +570,5 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **2026-09-17 21:35:00** | v0.3 | Global standartlara uygun tamamlama rozetleri eklendi. | Tamamlandı |
 | **2026-09-17 22:50:00** | v1.0 | Kapsamlı Analiz Revizyonu: 10 Analiz Katmanı, SMC, MTF, Ring Buffer, 0-100 Puanlama eklendi. | Tamamlandı |
 | **2026-09-19 22:00:00** | v1.1 | Aşamalı Uygulama Optimizasyonu: Kapsam riski yönetildi; Modül 2 iki mantıksal aşamaya bölündü (Faz 2a: Çekirdek Piyasa Verisi, Faz 2b: Gelişmiş SMC & Scoring). | Tamamlandı |
-| **2026-09-19 22:52:00** | **v1.2** | **Faz 2a Temel Veri Katmanı Doğrulandı**: Coding AI tarafından KuCoin ticker (24s stats), order book (spread, imbalance), ring buffer (500 mum) ve repaint guard (`is_confirmed`) yazıldı. 4 endpoint `/api/v1/market/*` eklendi. 8 yeni birim test ile toplam 37/37 test geçti. İzlenebilirlik Tablosu güncellendi. | **Faz 2a Veri Katmanı Tamamlandı ✅** |
+| **2026-09-19 22:52:00** | v1.2 | Faz 2a Temel Veri Katmanı Doğrulandı: Ticker, L2 orderbook, ring buffer ve repaint guard eklendi. (8 birim test) | Tamamlandı |
+| **2026-09-19 23:10:00** | **v1.3** | **Faz 2a Çekirdek İndikatörler %100 Tamamlandı**: `indicators/trend.py` (EMA 20/50/100/200, SMA 50/200, Golden/Death Cross), `indicators/momentum.py` (Wilder RSI 14, slope, MACD), `indicators/volatility.py` (Wilder ATR 14, normalized ATR %, stop-loss 1.5x/2.0x) ve `GET /api/v1/market/analysis/indicators` endpoint'i yazıldı. 11 yeni birim test ile Modül 2 toplam 19 teste, proje genelinde **48/48 birim teste** ulaştı. İzlenebilirlik Tablosu güncellendi. | **Faz 2a %100 Tamamlandı ✅** |
