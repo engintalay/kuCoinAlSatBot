@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Motoru Eklendi ✅) | **Kodlama & Test Durumu:** Ayarlar + Watchlist + Kılavuz + Info Tamamlandı ✅ (137/137 Test, %78 Coverage ✅), Kalan Paket Emir & Öneri Motoru Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:15:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Motoru Eklendi ✅) | **Kodlama & Test Durumu:** Ayarlar + Watchlist + Kılavuz + Info + Akıllı Paket Emir Tamamlandı ✅ (145/145 Test, %78 Coverage ✅), Kalan Düzenleme & Öneri Motoru Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:30:00 (+03:00)
 
 ---
 
@@ -171,10 +171,11 @@ kuCoinAlSatBot/
 - ✅ `tests/test_module_2_structure.py` (8 test)
 - ✅ `tests/test_module_2_analysis.py` (10 test)
 - ✅ `tests/test_module_3_orders.py` (16 test)
+- ✅ `tests/test_bracket_orders.py` (7 test)
 - ✅ `tests/test_settings.py` (6 test)
-- ✅ `tests/test_frontend.py` (7 servis testi)
+- ✅ `tests/test_frontend.py` (8 servis testi)
 - ✅ `tests/test_utils.py` (14 test — %100 utils coverage)
-- ✅ `run_tests.sh` — Tek komut test koşturma ve coverage scripti (137/137 yeşil, %78 coverage)
+- ✅ `run_tests.sh` — Tek komut test koşturma ve coverage scripti (145/145 yeşil, %78 coverage)
 
 ### Adım 7 — Son Kontroller
 ### ✅ Adım 7 — Son Kontroller (Doğrulandı)

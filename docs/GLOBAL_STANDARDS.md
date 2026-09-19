@@ -1,6 +1,6 @@
 # Genel Proje Özellikleri ve Standartlar Spesifikasyonu
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Standartları Eklendi ✅) | **Kodlama & Test Durumu:** Backend, Dashboard & Ayarlar %100 Tamamlandı (137/137 Test, %78 Coverage ✅), Akıllı Paket Emir & Öneri Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:15:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Standartları Eklendi ✅) | **Kodlama & Test Durumu:** Backend, Dashboard, Ayarlar & Akıllı Paket Emir %100 Tamamlandı (145/145 Test, %78 Coverage ✅), Emir Düzenleme & Öneri Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:30:00 (+03:00)
 
 ## 1. Dokümanın Amacı
 Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
@@ -357,6 +357,7 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-20 01:00:00** | Kullanıcı Talebi Standartları: Kullanım kılavuzu bağlantısı ve 7 kritik arayüz noktasına bağlamsal Info (`ℹ️`) düğmeleri standardı eklendi. | Onaylandı & Genişletildi (%100) |
 | **2026-09-20 01:05:00** | **Ayarlar, Çoklu Coin, Akıllı Paket Emir & Dinamik Öneri Standartları Eklendi**: Master Layout'a `⚙️ Ayarlar` sekmesi eklendi. Çoklu coin yönetimi, simülasyon mod anahtarı, hazır seviyeli Smart Bracket Order formu, dinamik öneri kartları (`[ Uygula ]` / `[ Yoksay ]`) ve açık emir düzenleme modalı UI/UX standartları tanımlandı. | Onaylandı & Genişletildi (%100) |
 | **2026-09-20 01:15:00** | **Kullanım Kılavuzu, Info Düğmeleri ve Ayarlar Paneli Uygulandı**: `view-guide` görünümü, 7 noktada bağlamsal `ℹ️` info butonu ve glass popover'lar, `view-settings` paneli, çoklu coin watchlist yönetimi ve SQLite kalıcılığı kodlanıp 8 yeni test ile doğrulandı (toplam 137/137 test %100 yeşil, coverage %78). | Onaylandı & Uygulandı (%100) |
+| **2026-09-20 01:30:00** | **Akıllı Paket Emir (Bracket Order) Standardı Uygulandı**: Otomatik ATR tabanlı seviye motoru (`trade_setup`), Entry+TP1(%50)+TP2(%50)+SL(%100) paket icrası ve UI Akıllı Emir formu 8 yeni test ile tamamlandı (toplam 145/145 test %100 yeşil). | Onaylandı & Uygulandı (%100) |
 
 
 
