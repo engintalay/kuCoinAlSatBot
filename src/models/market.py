@@ -40,6 +40,14 @@ class SymbolListResponse(BaseModel):
     timestamp: str
 
 
+class OrderBookResponse(BaseModel):
+    """Emir defteri (Level 2) özeti: best bid/ask, spread, imbalance."""
+    success: bool
+    data: dict = Field(description="Emir defteri bilgileri")
+    error: str | None = None
+    timestamp: str
+
+
 class AnalysisSignalResponse(BaseModel):
     """Analiz sinyali sonuçları."""
     success: bool

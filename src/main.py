@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.modules.module1_account import KuCoinAccount
+from src.modules.module2_market import KuCoinMarket
 from src.config import Config
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
@@ -27,6 +28,7 @@ app.add_middleware(
 
 # KuCoin API bağlantısı instance
 account = KuCoinAccount()
+market = KuCoinMarket()
 
 
 @app.on_event("startup")
@@ -47,6 +49,7 @@ async def startup_event():
 async def shutdown_event():
     """Uygulama kapanırken ccxt exchange kaynaklarını serbest bırak."""
     await account.close()
+    await market.close()
 
 
 @app.get("/")
@@ -89,4 +92,38 @@ async def get_portfolio_summary():
 async def test_connection():
     """API anahtarlarını anlık olarak test eder ve doğrular."""
     result = account.test_connection()
+    return result
+
+
+# ============================================================================
+# Modül 2: Piyasa Verileri (Market Data & Analysis)
+# ============================================================================
+
+@app.get("/api/v1/market/ticker")
+async def get_market_ticker(symbol: str = "BTC/USDT"):
+    """Belirtilen sembolün anlık fiyat ve 24s verilerini getirir."""
+    result = await market.get_ticker(symbol)
+    return result
+
+
+@app.get("/api/v1/market/orderbook")
+async def get_market_orderbook(symbol: str = "BTC/USDT"):
+    """Emir defteri (Level 2): best bid/ask, spread ve derinlik dengesizliği."""
+    result = await market.get_orderbook(symbol)
+    return result
+
+
+@app.get("/api/v1/market/candles")
+async def get_market_candles(
+    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 200
+):
+    """Belirtilen zaman dilimindeki geçmiş OHLCV mum verilerini getirir."""
+    result = await market.get_candles(symbol, timeframe, limit)
+    return result
+
+
+@app.get("/api/v1/market/symbols")
+async def get_market_symbols(quote: str = "USDT"):
+    """KuCoin'de işlem gören aktif kripto işlem çiftlerini listeler."""
+    result = await market.get_symbols(quote)
     return result
