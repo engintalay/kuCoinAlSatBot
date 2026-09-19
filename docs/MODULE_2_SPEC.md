@@ -1,6 +1,6 @@
 # Modül 2 Spesifikasyonu: Piyasa Verileri, Çok Katmanlı İndikatörler ve Analiz Motoru
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %0 (Kodlama Ajanı Bekleniyor ⏳) | **Son Güncelleme:** 2026-09-17 22:50:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %0 (Faz 2a Kodlaması Bekleniyor ⏳) | **Son Güncelleme:** 2026-09-19 22:00:00 (+03:00)
 
 ---
 
@@ -50,6 +50,31 @@ flowchart TD
         FILTERS --> STATE
         FILTERS --> EXP
     end
+```
+
+### 1.2. Aşamalı Geliştirme ve Uygulama Yol Haritası (Faz 2a & Faz 2b)
+
+Coding AI'ın tek seferde aşırı büyük bir implementasyon yükü altında kalmasını önlemek ve birim testlerle adım adım ilerlemek amacıyla Modül 2 iki mantıksal faza ayrılmıştır:
+
+```
++---------------------------------------------------------------------------------------+
+|  FAZ 2a: Çekirdek Piyasa Verisi, Temel İndikatörler & API Omurgası                   |
+|  - KuCoin Ticker, L2 Order Book & Spread Takibi                                       |
+|  - OHLCV Ring Buffer (300-500 Mum) & Repaint/Lookahead Koruması                      |
+|  - Temel İndikatörler: Trend (EMA, SMA), Momentum (RSI, MACD), Volatilite (ATR)      |
+|  - Temel REST API'ler: /ticker, /orderbook, /candles, /symbols, /analysis/indicators   |
++---------------------------------------------------------------------------------------+
+                                           |
+                                           v
++---------------------------------------------------------------------------------------+
+|  FAZ 2b: Gelişmiş Çok Katmanlı Motor, SMC, Türevler & Bileşik Puanlama (0-100)        |
+|  - İleri Düzey İndikatörler: Supertrend, Ichimoku, ADX, Choppiness, RVOL, VWAP, CMF  |
+|  - SMC / Fiyat Hareketi: Lookahead-proof Swings, BOS, CHoCH, FVG, Order Block         |
+|  - Türev Veriler & Uyumsuzluk Motoru (OI, Funding, CVD, Divergence Engine)            |
+|  - MTF Hiyerarşisi (4H Rejim → 1H Setup → 15m Tetikleyici)                            |
+|  - 0-100 Composite Scoring Engine, Sahte Sinyal Filtreleri & Gerekçelendirme Motoru   |
+|  - İleri REST API'ler: /analysis/structure, /analysis/score, /analysis/mtf            |
++---------------------------------------------------------------------------------------+
 ```
 
 ---
@@ -512,24 +537,27 @@ Swagger Tag: `Market Data & Multi-Layer Analysis`
 
 ## 7. Spesifikasyon ↔ Uygulama (Kod) İzlenebilirlik Tablosu
 
-Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilecek ve dosya eşleşmelerini garanti altına alacak izlenebilirlik tablosudur:
+Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilecek ve dosya eşleşmelerini garanti altına alacak izlenebilirlik tablosudur. İki aşamalı yol haritası (`[Faz 2a]` ve `[Faz 2b]`) açıkça belirtilmiştir:
 
-| Bileşen / Özellik No | Spesifikasyon Maddesi | Karşılık Gelen Kod / Modül Dosyası | Karşılık Gelen Test Dosyası | Durum |
-| :--- | :--- | :--- | :--- | :---: |
-| **M2-C01** | KuCoin Ticker & OrderBook Fetching | `src/modules/module2_market.py` | `tests/test_module_2_market.py` | Bekliyor ⏳ |
-| **M2-C02** | OHLCV Ring Buffer & Repaint Koruması | `src/modules/module2_market.py` | `tests/test_module_2_market.py` | Bekliyor ⏳ |
-| **M2-C03** | Trend Katmanı (EMA, SMA, Supertrend, Ichimoku, SAR) | `src/modules/indicators/trend.py` | `tests/test_indicators_trend.py` | Bekliyor ⏳ |
-| **M2-C04** | Momentum Katmanı (RSI, StochRSI, MACD, CCI, %R) | `src/modules/indicators/momentum.py` | `tests/test_indicators_momentum.py` | Bekliyor ⏳ |
-| **M2-C05** | Trend Gücü Katmanı (ADX, Aroon, Choppiness Index) | `src/modules/indicators/strength.py` | `tests/test_indicators_strength.py` | Bekliyor ⏳ |
-| **M2-C06** | Hacim Katmanı (RVOL, OBV, VWAP, MFI, CMF) | `src/modules/indicators/volume.py` | `tests/test_indicators_volume.py` | Bekliyor ⏳ |
-| **M2-C07** | Volatilite Katmanı (ATR, Bollinger Bands, Keltner, Squeeze) | `src/modules/indicators/volatility.py` | `tests/test_indicators_volatility.py` | Bekliyor ⏳ |
-| **M2-C08** | Destek/Direnç (Pivots, Fib, Donchian, Prev H/L) | `src/modules/indicators/levels.py` | `tests/test_indicators_levels.py` | Bekliyor ⏳ |
-| **M2-C09** | Market Structure SMC (Swing, BOS, CHoCH, FVG, OB) | `src/modules/indicators/structure.py` | `tests/test_indicators_structure.py` | Bekliyor ⏳ |
-| **M2-C10** | Feature Engine & Normalizasyon | `src/modules/analysis/feature_engine.py` | `tests/test_feature_engine.py` | Bekliyor ⏳ |
-| **M2-C11** | Composite Scoring Engine (0-100 & Explainability) | `src/modules/analysis/scoring_engine.py` | `tests/test_scoring_engine.py` | Bekliyor ⏳ |
-| **M2-C12** | False Signal & Risk Filtreleri | `src/modules/analysis/filters.py` | `tests/test_analysis_filters.py` | Bekliyor ⏳ |
-| **M2-C13** | Multi-Timeframe (4H / 1H / 15m) Karar Hiyerarşisi | `src/modules/analysis/mtf_engine.py` | `tests/test_mtf_engine.py` | Bekliyor ⏳ |
-| **M2-C14** | REST API & Swagger Entegrasyonu | `src/main.py` & `src/routes/market.py` | `tests/test_api_market.py` | Bekliyor ⏳ |
+| Bileşen / Özellik No | Aşama | Spesifikasyon Maddesi | Karşılık Gelen Kod / Modül Dosyası | Karşılık Gelen Test Dosyası | Durum |
+| :--- | :---: | :--- | :--- | :--- | :---: |
+| **M2-C01** | **Faz 2a** | KuCoin Ticker & OrderBook Fetching | `src/modules/module2_market.py` | `tests/test_module_2_market.py` | Bekliyor ⏳ |
+| **M2-C02** | **Faz 2a** | OHLCV Ring Buffer & Repaint Koruması | `src/modules/module2_market.py` | `tests/test_module_2_market.py` | Bekliyor ⏳ |
+| **M2-C03** | **Faz 2a** | Çekirdek Trend Katmanı (EMA, SMA) | `src/modules/indicators/trend.py` | `tests/test_indicators_trend.py` | Bekliyor ⏳ |
+| **M2-C04** | **Faz 2a** | Çekirdek Momentum Katmanı (RSI, MACD) | `src/modules/indicators/momentum.py` | `tests/test_indicators_momentum.py` | Bekliyor ⏳ |
+| **M2-C05** | **Faz 2a** | Çekirdek Volatilite Katmanı (ATR) | `src/modules/indicators/volatility.py` | `tests/test_indicators_volatility.py` | Bekliyor ⏳ |
+| **M2-C06** | **Faz 2a** | Temel REST API & Swagger Entegrasyonu | `src/main.py` & `src/routes/market.py` | `tests/test_api_market.py` | Bekliyor ⏳ |
+| **M2-C07** | **Faz 2b** | İleri Trend (Supertrend, Ichimoku, SAR) | `src/modules/indicators/trend.py` | `tests/test_indicators_trend.py` | Bekliyor ⏳ |
+| **M2-C08** | **Faz 2b** | Trend Gücü Katmanı (ADX, Aroon, Choppiness) | `src/modules/indicators/strength.py` | `tests/test_indicators_strength.py` | Bekliyor ⏳ |
+| **M2-C09** | **Faz 2b** | Hacim & Akış (RVOL, OBV, VWAP, CMF, Profile) | `src/modules/indicators/volume.py` | `tests/test_indicators_volume.py` | Bekliyor ⏳ |
+| **M2-C10** | **Faz 2b** | İleri Volatilite (Bollinger Bands, Keltner Squeeze) | `src/modules/indicators/volatility.py` | `tests/test_indicators_volatility.py` | Bekliyor ⏳ |
+| **M2-C11** | **Faz 2b** | Destek/Direnç (Pivots, Fib, Donchian, Prev H/L) | `src/modules/indicators/levels.py` | `tests/test_indicators_levels.py` | Bekliyor ⏳ |
+| **M2-C12** | **Faz 2b** | Market Structure SMC (Swings, BOS, CHoCH, FVG, OB) | `src/modules/indicators/structure.py` | `tests/test_indicators_structure.py` | Bekliyor ⏳ |
+| **M2-C13** | **Faz 2b** | Türev Veriler & Uyumsuzluk (OI, Funding, CVD, Div) | `src/modules/indicators/derivatives.py` | `tests/test_indicators_derivatives.py` | Bekliyor ⏳ |
+| **M2-C14** | **Faz 2b** | Feature Engine & Normalizasyon | `src/modules/analysis/feature_engine.py` | `tests/test_feature_engine.py` | Bekliyor ⏳ |
+| **M2-C15** | **Faz 2b** | Composite Scoring Engine (0-100 & Explainability) | `src/modules/analysis/scoring_engine.py` | `tests/test_scoring_engine.py` | Bekliyor ⏳ |
+| **M2-C16** | **Faz 2b** | False Signal & Risk Filtreleri | `src/modules/analysis/filters.py` | `tests/test_analysis_filters.py` | Bekliyor ⏳ |
+| **M2-C17** | **Faz 2b** | Multi-Timeframe (4H / 1H / 15m) Hiyerarşisi | `src/modules/analysis/mtf_engine.py` | `tests/test_mtf_engine.py` | Bekliyor ⏳ |
 
 ---
 
@@ -540,4 +568,5 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **2026-09-17 20:53:20** | v0.1 | Modül 2 ilk taslağı (Basit Ticker, OHLCV ve modüler analiz arayüzü) oluşturuldu. | Tamamlandı |
 | **2026-09-17 21:04:23** | v0.2 | REST API ilk taslak endpoint'leri ve modelleri eklendi. | Tamamlandı |
 | **2026-09-17 21:35:00** | v0.3 | Global standartlara uygun tamamlama rozetleri eklendi. | Tamamlandı |
-| **2026-09-17 22:50:00** | **v1.0** | **Kapsamlı Analiz Revizyonu**: `crypto_indicators_coding_agent_reference.md` referansı entegre edildi. 10 Analiz Katmanı (Trend, Momentum, Güç, Hacim, Volatilite, Seviyeler, SMC Fiyat Hareketi, Türevler, Piyasa Geneli ve MTF) eklendi. Repainting koruması, Rolling Ring Buffer mimarisi, Bileşik Puanlama Motoru (0-100), Sahte Sinyal Filtreleri, Gerekçelendirme Motoru, Pydantic Sözleşmeleri, Genişletilmiş REST API ve M2 Kod İzlenebilirlik Tablosu eksiksiz tanımlandı. | **Onaylandı & Genişletildi (%100)** ✅ |
+| **2026-09-17 22:50:00** | v1.0 | Kapsamlı Analiz Revizyonu: 10 Analiz Katmanı, SMC, MTF, Ring Buffer, 0-100 Puanlama eklendi. | Tamamlandı |
+| **2026-09-19 22:00:00** | **v1.1** | **Aşamalı Uygulama Optimizasyonu**: Kapsam riski yönetildi; Modül 2 iki mantıksal aşamaya bölündü (Faz 2a: Çekirdek Piyasa Verisi & Temel İndikatörler, Faz 2b: Gelişmiş Çok Katmanlı SMC & Scoring Engine). İzlenebilirlik Tablosu 17 ayrıntılı alt bileşene genişletildi. | **Onaylandı & Genişletildi (%100)** ✅ |

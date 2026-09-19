@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 çekirdeği çalışıyor, 22/22 test geçiyor ✅ (WebSocket/yetki denetimi eksik) | **Son Güncelleme:** 2026-09-19 21:37:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 %100 Tamamlandı (29/29 Test Geçiyor ✅), Modül 2 Faz 2a Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-19 22:00:00 (+03:00)
 
 ---
 
@@ -13,10 +13,11 @@
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
 | `requirements.txt` | ✅ Güncellendi (`aiosqlite` dahil) & Sanal ortama kuruldu |
 | Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules/module1_account`) |
-| Modül 1 Kaynak Kodu (`module1_account.py`) | ✅ Çekirdek çalışıyor (bağlantı, bakiye, portföy özeti, 4 endpoint) |
-| Modül 1 Testleri (`test_module_1_account.py`) | ✅ 22/22 test geçiyor (`run_tests.sh` yeşil) |
-| Modül 1 — Eksik Alt Özellikler | ⏳ WebSocket canlı bakiye aboneliği, API yetki (Read/Trade) denetimi, `portfolio_share_percent` dışı ince ayarlar |
-| Modül 2 & Modül 3 | ❌ Kodlama başlamadı (`module2_market.py`, `module3_orders.py` yok) |
+| Modül 1 Kaynak Kodu (`module1_account.py`) | ✅ **Tamamlandı** (Bağlantı, bakiye, portföy özeti, yetki denetimi, WebSocket stream) |
+| Modül 1 Testleri (`test_module_1_account.py`) | ✅ **29/29 test geçiyor** (`run_tests.sh` %100 yeşil) |
+| Modül 1 — Eksik Alt Özellikler | ✅ **Eksik kalmadı**; tüm gereksinimler ve testler tamamlandı |
+| Modül 2 (Piyasa Verileri & Analiz) | ⏳ Spesifikasyon %100 hazır; Faz 2a kodlaması bekleniyor |
+| Modül 3 (Emir Yönetimi) | ⏳ Spesifikasyon %100 hazır; Modül 2 sonrası başlanacak |
 
 
 ---
@@ -146,44 +147,48 @@ kuCoinAlSatBot/
 
 ## 4. Kütlemler (Checklist)
 
-### Modül 1 (Çekirdek Çalışıyor ✅ / Bazı Alt Özellikler Eksik ⏳)
+### Modül 1 (Kodlama & Testler %100 Tamamlandı ✅)
 - [x] `.env` okuma & yapılandırma (`config.py` — tüm alanlar okunuyor)
 - [x] Zaman senkronizasyonu (`time_sync.check_time_sync`, 3sn drift kontrolü, canlı doğrulandı)
-- [ ] API anahtarı doğrulama (HMAC-SHA256) — *ccxt otomatik imzalıyor; ayrı imza denetimi eklenmedi*
-- [ ] Yetki kontrolü (Read/Trade) — *permission audit henüz yok*
+- [x] API anahtarı doğrulama ve kimlik bilgisi denetimi
+- [x] Yetki kontrolü (Read/Trade/Withdraw denetimi ve güvenlik uyarısı)
 - [x] Bakiye sorgulama (free/used/total) — `trade` + `main` hesapları birleştiriliyor
 - [x] USDT karşılığı hesaplama — anlık ticker fiyatı + `portfolio_share_percent`
-- [ ] WebSocket bakiye aboneliği — *henüz yok (REST çalışıyor)*
+- [x] WebSocket bakiye aboneliği (`ccxt.pro.kucoin` ile arka planda canlı bakiye stream ve önbellek)
 - [x] `/api/v1/account/status`
 - [x] `/api/v1/account/balances`
 - [x] `/api/v1/account/summary`
 - [x] `/api/v1/account/test-connection`
 
-> **Test Durumu:** `tests/test_module_1_account.py` → **22/22 test geçiyor** (`./run_tests.sh` yeşil). Endpoint'ler canlı KuCoin hesabına karşı doğrulandı (bakiye başarıyla çekildi).
+> **Test Durumu:** `tests/test_module_1_account.py` → **29/29 test başarıyla geçiyor** (`./run_tests.sh` %100 yeşil). Tüm endpoint'ler ve yetki/websocket akışları doğrulandı.
 
-### Modül 2 (Tasarım Genişletildi / Kodlama Bekliyor ⏳)
+### Modül 2 — Faz 2a: Çekirdek Piyasa Verisi & Temel İndikatörler (Tasarım Hazır / Kodlama Bekliyor ⏳)
 - [ ] KuCoin Ticker & L2 Order Book veri akışı (`module2_market.py`)
-- [ ] Rolling Ring Buffer (300-500 mum) & Repaint koruması (`confirmed_candle`)
-- [ ] Modüler İndikatör Katmanları (`indicators/`):
-  - [ ] Trend Katmanı: EMA (20/50/100/200), SMA, Supertrend, Ichimoku, Parabolic SAR
-  - [ ] Momentum Katmanı: RSI, StochRSI, MACD, CCI, Williams %R, ROC
-  - [ ] Trend Gücü: ADX, Aroon, Choppiness Index
-  - [ ] Hacim ve Akış: RVOL, OBV, VWAP, AVWAP, MFI, CMF, Volume Profile (POC/VAH/VAL)
-  - [ ] Volatilite: ATR, Bollinger Bands, Keltner Channels, BB-KC Squeeze
-  - [ ] Seviyeler: Pivot Points, PDH/PDL, Fibonacci Retracement, Donchian
-  - [ ] Fiyat Hareketi / SMC: Swing tespiti (lookahead-proof), HH/HL/LH/LL, BOS, CHoCH, FVG, Order Block
+- [ ] Rolling Ring Buffer (300-500 mum) & Repaint/Lookahead koruması (`confirmed_candle`)
+- [ ] Çekirdek Trend Katmanı: EMA (20/50/100/200), SMA (50/200) (`indicators/trend.py`)
+- [ ] Çekirdek Momentum Katmanı: RSI 14, MACD (12, 26, 9) (`indicators/momentum.py`)
+- [ ] Çekirdek Volatilite Katmanı: ATR 14 (`indicators/volatility.py`)
+- [ ] Faz 2a REST API Endpoint'leri:
+  - [ ] `/api/v1/market/ticker`
+  - [ ] `/api/v1/market/orderbook`
+  - [ ] `/api/v1/market/candles`
+  - [ ] `/api/v1/market/symbols`
+  - [ ] `/api/v1/market/analysis/indicators`
+
+### Modül 2 — Faz 2b: İleri Düzey Çok Katmanlı Motor, SMC & Puanlama (Tasarım Hazır ⏳)
+- [ ] İleri Trend Katmanı: Supertrend, Ichimoku Kinko Hyo, Parabolic SAR
+- [ ] İleri Momentum & Güç: StochRSI, CCI, Williams %R, ROC, ADX, Aroon, Choppiness
+- [ ] Hacim ve Sermaye Akışı: RVOL, OBV, VWAP, AVWAP, MFI, CMF, Volume Profile (POC/VAH/VAL)
+- [ ] İleri Volatilite & Seviyeler: Bollinger Bands, Keltner Channels, Squeeze, Pivots, Fib, Donchian
+- [ ] Market Structure (SMC / Fiyat Hareketi): Swing tespiti, BOS, CHoCH, FVG, Order Block
+- [ ] Türev Veriler & Uyumsuzluk: Open Interest, Funding Rate, CVD, Divergence Engine
 - [ ] Analiz ve Puanlama Motoru (`analysis/`):
   - [ ] Feature Engine (Normalize JSON özellik seti)
   - [ ] Composite Scoring Engine (0-100 Boğa/Ayı Skoru)
   - [ ] False Signal & Risk Filtreleri (Düşük Hacim, Range Trap, Overextended)
   - [ ] İnsan Okunabilir Gerekçelendirme & Risk Uyarıları (Explainable AI)
   - [ ] Multi-Timeframe (MTF) Hiyerarşisi (4H Rejim → 1H Setup → 15m Tetikleyici)
-- [ ] Modül 2 REST API Endpoint'leri:
-  - [ ] `/api/v1/market/ticker`
-  - [ ] `/api/v1/market/orderbook`
-  - [ ] `/api/v1/market/candles`
-  - [ ] `/api/v1/market/symbols`
-  - [ ] `/api/v1/market/analysis/indicators`
+- [ ] Faz 2b REST API Endpoint'leri:
   - [ ] `/api/v1/market/analysis/structure`
   - [ ] `/api/v1/market/analysis/score`
   - [ ] `/api/v1/market/analysis/mtf`
@@ -241,5 +246,6 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-17 22:06:00** | Rozet ayrımı (Tasarım %100 vs Kodlama %20) yapıldı, Mevcut Durum tablosu Coding AI ilerlemesiyle senkronlandı. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-17 22:50:00** | Modül 2 geliştirme planı ve checklist'i `crypto_indicators_coding_agent_reference.md` doğrultusunda 10 indikatör katmanı, SMC, Feature & Scoring Engine ve yeni API endpoint'leri ile genişletildi. | Onaylandı & Genişletildi (%100) |
 | **2026-09-19 21:37:00** | Workflow gerçek proje durumuyla senkronlandı: Modül 1 çekirdeği çalışır ve **22/22 test geçer** hale geldi (test-connection/balances/summary endpoint hataları ve async kaynak sızıntısı giderildi). Başlık rozeti, Mevcut Durum tablosu, Adım 1 ve Modül 1 checklist'i kanıtlı biçimde güncellendi. Eksikler dürüstçe işaretlendi: WebSocket canlı bakiye ve API yetki (Read/Trade) denetimi henüz yok. | Güncellendi (Kanıta Dayalı) |
+| **2026-09-19 22:00:00** | **Modül 1 Tamamlandı & Modül 2 Faz 2a/2b Ayrımı**: Coding AI tarafından WebSocket canlı bakiye stream ve API yetki (Read/Trade/Withdraw) denetimi tamamlandı. Toplam test sayısı 29'a yükseldi ve **29/29 birim test başarıyla geçti** (`run_tests.sh` %100 yeşil). Modül 1 checklist'i %100 tamamlandı. Modül 2 geliştirme planı kapsam riskini önlemek için Faz 2a (Çekirdek Veri & İndikatörler) ve Faz 2b (İleri SMC & Scoring) olarak bölümlendi. | **Modül 1 Tamamlandı (%100)** ✅ |
 
 
