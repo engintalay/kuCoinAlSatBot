@@ -20,8 +20,8 @@ def format_price(symbol: str, value: float | Decimal) -> str:
         "SHIB": 8,
     }.get(symbol.upper(), 4)
 
-    formatted = float(value).quantize(Decimal(10) ** (-precision), rounding=ROUND_HALF_UP)
-    return f"{formatted:,.{precision}f}"
+    formatted = value.quantize(Decimal(10) ** (-precision), rounding=ROUND_HALF_UP)
+    return f"{float(formatted):,.{precision}f}"
 
 
 def format_amount(value: float | Decimal) -> str:
