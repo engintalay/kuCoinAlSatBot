@@ -49,3 +49,26 @@ def test_dashboard_references_assets(client):
     # Master Layout bileşenleri
     assert "PANIC STOP" in r.text
     assert "toast-container" in r.text
+
+
+def test_guide_view_present(client):
+    """Kullanım Kılavuzu görünümü ve navigasyon linki bulunmalı (GLOBAL_STANDARDS 2.3)."""
+    r = client.get("/")
+    assert 'data-view="guide"' in r.text
+    assert "Kullanım Kılavuzu" in r.text
+    assert 'id="view-guide"' in r.text
+    # Kılavuz içeriği kritik başlıkları içermeli
+    assert "SIMULATION" in r.text
+    assert "Withdraw" in r.text
+
+
+def test_contextual_info_buttons(client):
+    """7 kritik arayüz noktasında bağlamsal info düğmeleri olmalı."""
+    r = client.get("/")
+    for point in ["portfolio", "mode", "panic", "score", "mtf", "smc", "orders"]:
+        assert f'data-info="{point}"' in r.text, f"info button eksik: {point}"
+    assert 'id="info-popover"' in r.text
+    # info butonu ve popover stilleri
+    css = client.get("/static/css/style.css").text
+    assert ".info-btn" in css
+    assert ".info-popover" in css

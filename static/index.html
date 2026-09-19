@@ -17,14 +17,17 @@
       <span class="brand-name">KuCoin Al-Sat Botu</span>
     </div>
     <div class="header-portfolio">
-      <span class="label">Portföy</span>
+      <span class="label">Portföy <button class="info-btn" data-info="portfolio">ℹ️</button></span>
       <span id="header-portfolio-usdt" class="value">-- USDT</span>
     </div>
     <div class="header-right">
+      <a class="guide-link" data-view="guide" title="Kullanım Kılavuzu">📖 Nasıl Kullanılır?</a>
       <span id="mode-badge" class="mode-badge sim">🧪 SIMULATION</span>
+      <button class="info-btn" data-info="mode">ℹ️</button>
       <button id="panic-btn" class="panic-btn" title="Tüm emirleri iptal et ve botu durdur">
         ⛔ PANIC STOP
       </button>
+      <button class="info-btn" data-info="panic">ℹ️</button>
     </div>
   </header>
 
@@ -35,6 +38,7 @@
       <a class="nav-item" data-view="account">👛 Hesap</a>
       <a class="nav-item" data-view="analysis">📈 Analiz</a>
       <a class="nav-item" data-view="orders">📋 Emirler</a>
+      <a class="nav-item" data-view="guide">📖 Kullanım Kılavuzu</a>
     </nav>
 
     <!-- ANA İÇERİK -->
@@ -89,16 +93,16 @@
         </div>
         <div class="cards-row">
           <div class="card glass">
-            <div class="card-title">Sinyal</div>
+            <div class="card-title">Sinyal <button class="info-btn" data-info="score">ℹ️</button></div>
             <div id="analysis-signal" class="card-value">--</div>
           </div>
           <div class="card glass">
-            <div class="card-title">Boğa / Ayı Skoru</div>
+            <div class="card-title">Boğa / Ayı Skoru <button class="info-btn" data-info="mtf">ℹ️</button></div>
             <div id="analysis-score" class="card-value">-- / --</div>
           </div>
         </div>
         <div class="card glass">
-          <div class="card-title">Gerekçeler</div>
+          <div class="card-title">Gerekçeler <button class="info-btn" data-info="smc">ℹ️</button></div>
           <ul id="analysis-reasons" class="reason-list"></ul>
         </div>
         <div class="card glass">
@@ -110,7 +114,7 @@
       <!-- Emirler görünümü -->
       <section id="view-orders" class="view">
         <div class="card glass">
-          <div class="card-title">Yeni Emir</div>
+          <div class="card-title">Yeni Emir <button class="info-btn" data-info="orders">ℹ️</button></div>
           <div class="order-form">
             <input id="order-symbol" class="input" value="BTC/USDT" />
             <select id="order-side" class="input"><option value="buy">AL</option><option value="sell">SAT</option></select>
@@ -128,8 +132,46 @@
           </table>
         </div>
       </section>
+      <!-- Kullanım Kılavuzu görünümü -->
+      <section id="view-guide" class="view">
+        <div class="card glass">
+          <div class="card-title">📖 Kullanım Kılavuzu</div>
+          <div class="guide-body">
+            <h3>1. Başlangıç & API Kurulumu</h3>
+            <p>KuCoin API anahtarlarınızı proje kök dizinindeki <code>.env</code> dosyasına girin
+              (<code>KUCOIN_API_KEY</code>, <code>KUCOIN_API_SECRET</code>, <code>KUCOIN_API_PASSPHRASE</code>).
+              <b class="warn-text">Güvenlik: API anahtarında kesinlikle "Para Çekme (Withdraw)" yetkisi vermeyin.</b>
+              Yalnızca "General" (okuma) ve "Spot/Trade" (işlem) yetkileri yeterlidir.</p>
+
+            <h3>2. İşlem Modları</h3>
+            <p><b>🧪 SIMULATION (Paper Trading):</b> Canlı tahta fiyatıyla eşleşen, $10,000 sanal USDT ile
+              çalışan, bakiye düşümünü gerçekçi simüle eden <b>sıfır riskli</b> test ortamı. Varsayılan moddur.</p>
+            <p><b>⚡ LIVE KUCOIN:</b> Gerçek hesabınızdan gerçek emir iletir. Sadece stratejinizi
+              simülasyonda test ettikten sonra kullanın.</p>
+
+            <h3>3. Analiz Göstergeleri</h3>
+            <p><b>Bileşik Skor (0-100):</b> Trend, momentum, güç, hacim ve yapı katmanlarından ağırlıklı
+              boğa/ayı puanı. ≥80 güçlü sinyal, 60-80 normal sinyal, altı nötr.</p>
+            <p><b>MTF (Multi-Timeframe):</b> 4H rejim → 1H kurulum → 15m tetikleyici hiyerarşisi. Üç zaman
+              dilimi uyumlu olmadan işlem önerilmez.</p>
+            <p><b>SMC (Market Structure):</b> BOS (yapı kırılımı), CHoCH (karakter değişimi), FVG (fiyat
+              boşluğu) gibi kurumsal fiyat hareketi kavramları.</p>
+
+            <h3>4. Emir Verme</h3>
+            <p><b>Market:</b> Anlık fiyattan hızlı al/sat. <b>Limit:</b> Belirlediğiniz hedef fiyattan.
+              Bakiyenizden fazla emir engellenir (pre-trade risk kontrolü).</p>
+
+            <h3>5. Panic Stop 🛑</h3>
+            <p>Acil durumda tek tıkla <b>tüm açık emirleri iptal eder ve botu durdurur</b>. Bot durunca
+              yeni emir kabul edilmez; tekrar başlatmak için mod değiştirin.</p>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
+
+  <!-- Bağlamsal Info popover -->
+  <div id="info-popover" class="info-popover glass" hidden></div>
 
   <!-- FOOTER -->
   <footer class="app-footer glass">

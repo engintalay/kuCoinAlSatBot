@@ -126,3 +126,30 @@ body {
 .toast.warning { background: rgba(255,193,7,0.9); color: #3d2c00; }
 .toast.error { background: rgba(255,82,82,0.95); }
 @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* INFO BUTTONS & POPOVER (GLOBAL_STANDARDS 2.3) */
+.info-btn {
+  background: transparent; border: 1px solid var(--accent); color: var(--accent);
+  width: 18px; height: 18px; border-radius: 50%; font-size: 10px; line-height: 1;
+  cursor: pointer; padding: 0; margin-left: 6px; vertical-align: middle;
+  transition: all .15s;
+}
+.info-btn:hover { background: var(--accent); color: #fff; box-shadow: 0 0 8px var(--accent); }
+.info-popover {
+  position: fixed; max-width: 300px; padding: 14px 16px; z-index: 1100;
+  font-size: 0.85rem; line-height: 1.5; color: var(--text);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5); border-color: var(--accent);
+}
+.info-popover[hidden] { display: none; }
+.info-popover .info-title { color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+
+/* GUIDE LINK & PAGE */
+.guide-link {
+  color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 600;
+  padding: 5px 10px; border: 1px solid var(--accent); border-radius: 8px; cursor: pointer;
+}
+.guide-link:hover { background: rgba(41,121,255,0.15); }
+.guide-body h3 { color: var(--accent); margin: 16px 0 6px; font-size: 1rem; }
+.guide-body p { margin-bottom: 8px; color: var(--text); line-height: 1.6; font-size: 0.9rem; }
+.guide-body code { background: var(--bg-0); padding: 2px 6px; border-radius: 4px; color: var(--green); font-size: 0.85rem; }
+.warn-text { color: var(--red); }

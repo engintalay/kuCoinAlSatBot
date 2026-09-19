@@ -39,16 +39,50 @@ function setFooterLog(msg) {
 }
 
 // ---- Görünüm geçişleri ----
+function switchView(view) {
+  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  const nav = document.querySelector(`.nav-item[data-view="${view}"]`);
+  if (nav) nav.classList.add("active");
+  const sec = document.getElementById("view-" + view);
+  if (sec) sec.classList.add("active");
+  if (view === "account") loadBalances();
+  if (view === "orders") loadOpenOrders();
+}
+
 document.querySelectorAll(".nav-item").forEach((item) => {
-  item.addEventListener("click", () => {
-    document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
-    document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-    item.classList.add("active");
-    const view = item.dataset.view;
-    document.getElementById("view-" + view).classList.add("active");
-    if (view === "account") loadBalances();
-    if (view === "orders") loadOpenOrders();
-  });
+  item.addEventListener("click", () => switchView(item.dataset.view));
+});
+// Header'daki "Nasıl Kullanılır?" linki
+document.querySelectorAll(".guide-link").forEach((l) =>
+  l.addEventListener("click", () => switchView("guide")));
+
+// ---- Bağlamsal Info Düğmeleri (GLOBAL_STANDARDS 2.3) ----
+const INFO_TEXT = {
+  portfolio: { t: "Portföy Özeti", d: "Trade + Main hesaplarınızdaki tüm varlıkların anlık USDT karşılığı toplamıdır. Paper modda sanal bakiyeyi gösterir." },
+  mode: { t: "Çalışma Modu", d: "🧪 SIMULATION: $10.000 sanal USDT ile sıfır riskli test. ⚡ LIVE: gerçek KuCoin hesabınızdan gerçek emir. Varsayılan güvenli moddur." },
+  panic: { t: "Panic Stop", d: "Acil durum butonu: tek tıkla tüm açık emirleri iptal eder ve botu durdurur. Bot durunca yeni emir kabul edilmez." },
+  score: { t: "Bileşik Skor & Sinyal", d: "Trend/momentum/güç/hacim/yapı katmanlarından 0-100 boğa & ayı puanı. ≥80 güçlü, 60-80 normal sinyal, altı nötr." },
+  mtf: { t: "Multi-Timeframe (MTF)", d: "4H rejim → 1H kurulum → 15m tetikleyici hiyerarşisi. Üç zaman dilimi uyumlu olmadan işlem önerilmez." },
+  smc: { t: "Smart Money Concepts", d: "BOS (yapı kırılımı), CHoCH (karakter değişimi), FVG (fiyat boşluğu) gibi kurumsal fiyat hareketi sinyalleri." },
+  orders: { t: "Emir Verme", d: "Market: anlık fiyattan. Limit: hedef fiyattan. Bakiyenizden fazla emir pre-trade risk kontrolüyle engellenir." },
+};
+
+const popover = document.getElementById("info-popover");
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".info-btn");
+  if (btn) {
+    const info = INFO_TEXT[btn.dataset.info];
+    if (!info) return;
+    popover.innerHTML = `<div class="info-title">${info.t}</div><div>${info.d}</div>`;
+    popover.hidden = false;
+    const r = btn.getBoundingClientRect();
+    popover.style.top = (r.bottom + 8) + "px";
+    popover.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 320)) + "px";
+    e.stopPropagation();
+  } else if (!e.target.closest("#info-popover")) {
+    popover.hidden = true;
+  }
 });
 
 // ---- Bağlantı & durum ----
