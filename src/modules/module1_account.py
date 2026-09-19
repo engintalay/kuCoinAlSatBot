@@ -5,6 +5,8 @@ KuCoin API entegrasyonu, bakiye sorgulama ve bağlantı doğrulama.
 
 import ccxt
 import ccxt.async_support
+import ccxt.pro
+import asyncio
 import time
 import hmac
 import hashlib
@@ -29,6 +31,13 @@ class KuCoinAccount:
         self.config = Config()
         self.exchange: ccxt.async_support.kucoin | None = None
         self.is_connected = False
+
+        # WebSocket canlı bakiye (ccxt.pro)
+        self.ws_exchange: ccxt.pro.kucoin | None = None
+        self._ws_task: asyncio.Task | None = None
+        self._ws_running = False
+        self.live_balances: dict[str, dict] = {}  # {symbol: {free, used, total}}
+        self.ws_last_update: str | None = None
 
     def connect(self) -> bool:
         """KuCoin API'ye bağlan."""
@@ -243,6 +252,219 @@ class KuCoinAccount:
                 timestamp=timestamp()
             )
 
+    async def get_permissions(self) -> dict:
+        """
+        API anahtarının yetkilerini (Read/Trade/Withdrawal) denetler.
+
+        MODULE_1_SPEC 3.1 Permission Audit:
+        - Okuma (Read) ve İşlem (Trade) yetkileri doğrulanır.
+        - Para Çekme (Withdrawal) yetkisi tespit edilirse güvenlik uyarısı üretilir.
+
+        KuCoin `permission` alanı örn: "General,Futures,Spot,Margin"
+        - General  -> Read (okuma)
+        - Spot/Margin/Futures/Trade -> Trade (işlem)
+        - Withdrawal/Transfer -> Para çekme (güvenlik riski)
+
+        Returns:
+            {
+              "permissions": [...],       # normalize edilmiş liste: read, trade, ...
+              "has_read": bool,
+              "has_trade": bool,
+              "has_withdraw": bool,
+              "warning": str | None
+            }
+        """
+        if not self.exchange:
+            self.connect()
+        if not self.exchange:
+            return {
+                "permissions": [],
+                "has_read": False,
+                "has_trade": False,
+                "has_withdraw": False,
+                "warning": "KuCoin API'ye bağlanılamadı",
+            }
+
+        try:
+            response = await self.exchange.private_get_user_api_key()
+            raw_perms = response.get("data", {}).get("permission", "") or ""
+            perms_lower = [p.strip().lower() for p in raw_perms.split(",") if p.strip()]
+
+            has_read = "general" in perms_lower
+            has_trade = any(p in perms_lower for p in ("spot", "margin", "futures", "trade"))
+            has_withdraw = any(p in perms_lower for p in ("withdrawal", "withdraw", "transfer"))
+
+            normalized = []
+            if has_read:
+                normalized.append("read")
+            if has_trade:
+                normalized.append("trade")
+            if has_withdraw:
+                normalized.append("withdraw")
+
+            warning = None
+            if has_withdraw:
+                warning = (
+                    "⚠️ Güvenlik uyarısı: API anahtarınızda Para Çekme (Withdrawal) "
+                    "yetkisi açık. Al-Sat botu için bu yetki gerekli değildir; "
+                    "güvenlik için KuCoin panelinden kapatmanız önerilir."
+                )
+            elif not has_trade:
+                warning = (
+                    "⚠️ API anahtarınızda İşlem (Trade/Spot) yetkisi yok. "
+                    "Emir gönderimi çalışmayacaktır."
+                )
+
+            return {
+                "permissions": normalized,
+                "raw_permission": raw_perms,
+                "has_read": has_read,
+                "has_trade": has_trade,
+                "has_withdraw": has_withdraw,
+                "warning": warning,
+            }
+        except Exception as e:
+            logger.error(f"Yetki denetimi hatası: {e}")
+            return {
+                "permissions": [],
+                "has_read": False,
+                "has_trade": False,
+                "has_withdraw": False,
+                "warning": f"Yetki bilgisi alınamadı: {e}",
+            }
+
+    async def get_status(self) -> ConnectionStatusResponse:
+        """
+        Bağlantı durumu, gecikme (ms), sandbox modu ve API yetkilerini döndürür.
+        MODULE_1_SPEC 3.1 & Bölüm 6: /api/v1/account/status
+        """
+        try:
+            # 1. Kimlik bilgisi kontrolü
+            if not self.config.validate_credentials():
+                return ConnectionStatusResponse(
+                    success=False,
+                    data={"status": "HATALI_KEY"},
+                    error="API kimlik bilgileri eksik (.env dosyasını kontrol edin).",
+                    timestamp=timestamp()
+                )
+
+            # 2. Zaman senkronizasyonu & gecikme
+            sync_ok, latency_ms, sync_msg = check_time_sync()
+            if not sync_ok:
+                return ConnectionStatusResponse(
+                    success=False,
+                    data={
+                        "status": "BAGLANTI_KOPTU",
+                        "is_sandbox": self.config.IS_SANDBOX,
+                        "latency_ms": latency_ms,
+                        "permissions": [],
+                    },
+                    error=sync_msg,
+                    timestamp=timestamp()
+                )
+
+            # 3. Yetki denetimi
+            perms = await self.get_permissions()
+
+            return ConnectionStatusResponse(
+                success=True,
+                data={
+                    "status": "CONNECTED",
+                    "is_sandbox": self.config.IS_SANDBOX,
+                    "latency_ms": latency_ms,
+                    "permissions": perms["permissions"],
+                    "has_read": perms["has_read"],
+                    "has_trade": perms["has_trade"],
+                    "has_withdraw": perms["has_withdraw"],
+                    "warning": perms["warning"],
+                },
+                error=None,
+                timestamp=timestamp()
+            )
+        except Exception as e:
+            logger.error(f"Bağlantı durumu hatası: {e}")
+            return ConnectionStatusResponse(
+                success=False,
+                data={"status": "HATA"},
+                error=f"Bağlantı durumu alınamadı: {e}",
+                timestamp=timestamp()
+            )
+
+    async def start_balance_stream(self) -> bool:
+        """
+        KuCoin Private WebSocket kanalına abone olup canlı bakiye
+        güncellemelerini `self.live_balances` içine yazar.
+        MODULE_1_SPEC 3.3: İlk REST çekimi sonrası WebSocket aboneliği.
+
+        Auto-reconnect: GLOBAL_STANDARDS 4.1 gereği bağlantı koparsa
+        5 saniyede bir yeniden denenir.
+        """
+        if self._ws_running:
+            logger.info("WebSocket bakiye akışı zaten çalışıyor")
+            return True
+
+        if not self.config.validate_credentials():
+            logger.error("WebSocket başlatılamadı: API kimlik bilgileri eksik")
+            return False
+
+        self.ws_exchange = ccxt.pro.kucoin(
+            {
+                "apiKey": self.config.API_KEY,
+                "secret": self.config.API_SECRET,
+                "password": self.config.API_PASSPHRASE,
+                "sandbox": self.config.IS_SANDBOX,
+            }
+        )
+        self._ws_running = True
+        self._ws_task = asyncio.create_task(self._balance_stream_loop())
+        logger.info("✅ WebSocket canlı bakiye akışı başlatıldı")
+        return True
+
+    async def _balance_stream_loop(self) -> None:
+        """WebSocket bakiye dinleme döngüsü (auto-reconnect'li)."""
+        while self._ws_running:
+            try:
+                balance = await self.ws_exchange.watch_balance()
+                total = balance.get("total", {})
+                free = balance.get("free", {})
+                used = balance.get("used", {})
+                for symbol, amount in total.items():
+                    if amount is None:
+                        continue
+                    self.live_balances[symbol] = {
+                        "free": float(free.get(symbol, 0.0) or 0.0),
+                        "used": float(used.get(symbol, 0.0) or 0.0),
+                        "total": float(amount or 0.0),
+                    }
+                self.ws_last_update = timestamp()
+                logger.info("🔄 Canlı bakiye güncellendi (WebSocket)")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                if not self._ws_running:
+                    break
+                logger.error(f"WebSocket bakiye hatası: {e}. 5 sn sonra yeniden denenecek.")
+                await asyncio.sleep(5)  # GLOBAL_STANDARDS 4.1: auto-reconnect
+
+    async def stop_balance_stream(self) -> None:
+        """WebSocket bakiye akışını durdur ve kaynakları serbest bırak."""
+        self._ws_running = False
+        if self._ws_task is not None:
+            self._ws_task.cancel()
+            try:
+                await self._ws_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._ws_task = None
+        if self.ws_exchange is not None:
+            try:
+                await self.ws_exchange.close()
+            except Exception as e:
+                logger.error(f"WebSocket exchange kapatma hatası: {e}")
+            finally:
+                self.ws_exchange = None
+        logger.info("⏹️ WebSocket canlı bakiye akışı durduruldu")
+
     async def close(self) -> None:
         """
         ccxt async exchange kaynaklarını serbest bırak.
@@ -250,6 +472,9 @@ class KuCoinAccount:
         gerektirir; aksi halde "Unclosed client session" uyarısı ve kaynak
         sızıntısı oluşur.
         """
+        # Önce WebSocket akışını durdur
+        await self.stop_balance_stream()
+
         if self.exchange is not None:
             try:
                 await self.exchange.close()

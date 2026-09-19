@@ -29,6 +29,20 @@ app.add_middleware(
 account = KuCoinAccount()
 
 
+@app.on_event("startup")
+async def startup_event():
+    """
+    Uygulama açılırken canlı bakiye WebSocket akışını başlat.
+    MODULE_1_SPEC 3.3: REST bakiye çekimi sonrası WebSocket aboneliği.
+    """
+    if account.config.validate_credentials():
+        # İlk REST bakiye çekimi (state'i hazırlar)
+        await account.get_balances()
+        await account.start_balance_stream()
+    else:
+        logger.warning("API kimlik bilgileri eksik; WebSocket bakiye akışı başlatılmadı.")
+
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Uygulama kapanırken ccxt exchange kaynaklarını serbest bırak."""
@@ -53,46 +67,8 @@ async def root():
 @app.get("/api/v1/account/status")
 async def get_account_status():
     """KuCoin API bağlantı durumu, gecikme süresi (ms) ve yetkileri döndürür."""
-    try:
-        # API'ye bağlan
-        if not account.exchange:
-            account.connect()
-
-        if account.is_connected:
-            success, latency_ms, message = account._check_time_sync()
-            permissions = []
-            try:
-                balance = await account.exchange.fetch_balance()
-                permissions = list(set(balance.get("permissions", [])))
-            except Exception as e:
-                logger.error(f"Yetki kontrolü hatası: {e}")
-
-            return {
-                "success": True,
-                "data": {
-                    "status": "CONNECTED",
-                    "is_sandbox": account.config.IS_SANDBOX,
-                    "latency_ms": latency_ms,
-                    "permissions": permissions
-                },
-                "error": None,
-                "timestamp": timestamp()
-            }
-        else:
-            return {
-                "success": False,
-                "data": {},
-                "error": "KuCoin API'ye bağlanılamadı",
-                "timestamp": timestamp()
-            }
-    except Exception as e:
-        logger.error(f"Account status hatası: {e}")
-        return {
-            "success": False,
-            "data": {},
-            "error": f"Hata: {e}",
-            "timestamp": timestamp()
-        }
+    result = await account.get_status()
+    return result
 
 
 @app.get("/api/v1/account/balances")

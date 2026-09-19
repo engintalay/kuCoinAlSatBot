@@ -284,3 +284,103 @@ class TestDatabase:
         with patch("aiosqlite.connect", new=AsyncMock(return_value=mock_connection)):
             asyncio.run(db.connect())
         assert db.database is not None
+
+
+class TestPermissions:
+    """API yetki denetimi (get_permissions / get_status) testleri."""
+
+    @pytest.mark.asyncio
+    async def test_permissions_read_and_trade(self):
+        """General+Spot yetkisi read+trade olarak normalize edilmeli, withdraw yok."""
+        from src.modules.module1_account import KuCoinAccount
+        account = KuCoinAccount()
+        mock_exchange = AsyncMock()
+        mock_exchange.private_get_user_api_key.return_value = {
+            "code": "200000",
+            "data": {"permission": "General,Futures,Spot,Margin"}
+        }
+        account.exchange = mock_exchange
+        result = await account.get_permissions()
+        assert result["has_read"] is True
+        assert result["has_trade"] is True
+        assert result["has_withdraw"] is False
+        assert result["warning"] is None
+        assert result["permissions"] == ["read", "trade"]
+
+    @pytest.mark.asyncio
+    async def test_permissions_withdraw_warning(self):
+        """Withdrawal yetkisi tespit edilirse güvenlik uyarısı üretilmeli."""
+        from src.modules.module1_account import KuCoinAccount
+        account = KuCoinAccount()
+        mock_exchange = AsyncMock()
+        mock_exchange.private_get_user_api_key.return_value = {
+            "code": "200000",
+            "data": {"permission": "General,Spot,Withdrawal"}
+        }
+        account.exchange = mock_exchange
+        result = await account.get_permissions()
+        assert result["has_withdraw"] is True
+        assert result["warning"] is not None
+        assert "Withdrawal" in result["warning"]
+
+    @pytest.mark.asyncio
+    async def test_permissions_no_connection(self):
+        """Bağlantı kurulamıyorsa yetki denetimi güvenli boş dönmeli."""
+        from src.modules.module1_account import KuCoinAccount
+        account = KuCoinAccount()
+        account.exchange = None
+        account.connect = MagicMock(return_value=False)
+        result = await account.get_permissions()
+        assert result["has_read"] is False
+        assert result["has_trade"] is False
+
+    @pytest.mark.asyncio
+    async def test_get_status_success(self):
+        """Kimlik + zaman senkron + yetki başarılıysa status CONNECTED dönmeli."""
+        from src.modules.module1_account import KuCoinAccount
+        account = KuCoinAccount()
+        with patch.object(account.config, "validate_credentials", return_value=True), \
+             patch("src.modules.module1_account.check_time_sync",
+                   return_value=(True, 42.0, "✅ Zaman senkronize: 42ms")), \
+             patch.object(account, "get_permissions", new=AsyncMock(return_value={
+                 "permissions": ["read", "trade"],
+                 "has_read": True, "has_trade": True,
+                 "has_withdraw": False, "warning": None,
+             })):
+            result = await account.get_status()
+        assert result.success is True
+        assert result.data["status"] == "CONNECTED"
+        assert result.data["permissions"] == ["read", "trade"]
+
+    @pytest.mark.asyncio
+    async def test_get_status_missing_credentials(self):
+        """Kimlik bilgisi eksikse status hata dönmeli."""
+        from src.modules.module1_account import KuCoinAccount
+        account = KuCoinAccount()
+        with patch.object(account.config, "validate_credentials", return_value=False):
+            result = await account.get_status()
+        assert result.success is False
+        assert result.error is not None
+
+
+class TestBalanceStream:
+    """WebSocket canlı bakiye akışı testleri."""
+
+    @pytest.mark.asyncio
+    async def test_start_stream_missing_credentials(self):
+        """Kimlik bilgisi yoksa WebSocket başlatılmamalı."""
+        from src.modules.module1_account import KuCoinAccount
+        account = KuCoinAccount()
+        with patch.object(account.config, "validate_credentials", return_value=False):
+            ok = await account.start_balance_stream()
+        assert ok is False
+        assert account._ws_running is False
+
+    @pytest.mark.asyncio
+    async def test_stop_stream_idempotent(self):
+        """Akış çalışmıyorken stop çağrısı hatasız çalışmalı."""
+        from src.modules.module1_account import KuCoinAccount
+        account = KuCoinAccount()
+        await account.stop_balance_stream()  # hiç başlatılmadı
+        assert account._ws_running is False
+        assert account.ws_exchange is None
