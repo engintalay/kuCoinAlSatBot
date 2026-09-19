@@ -127,3 +127,15 @@ async def get_market_symbols(quote: str = "USDT"):
     """KuCoin'de işlem gören aktif kripto işlem çiftlerini listeler."""
     result = await market.get_symbols(quote)
     return result
+
+
+@app.get("/api/v1/market/analysis/indicators")
+async def get_market_indicators(
+    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 300
+):
+    """
+    Çekirdek indikatör katmanlarını (Trend/Momentum/Volatilite) hesaplar.
+    Yalnızca kapanmış mumlar kullanılır (repaint koruması).
+    """
+    result = await market.get_indicators(symbol, timeframe, limit)
+    return result

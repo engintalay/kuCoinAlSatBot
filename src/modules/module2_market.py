@@ -13,6 +13,7 @@ temel katmanın üzerine sonraki parçalarda eklenecektir.
 
 import ccxt
 import ccxt.async_support
+import pandas as pd
 from collections import deque
 
 from src.config import Config
@@ -21,7 +22,11 @@ from src.models.market import (
     CandlesResponse,
     SymbolListResponse,
     OrderBookResponse,
+    AnalysisSignalResponse,
 )
+from src.modules.indicators.trend import compute_trend
+from src.modules.indicators.momentum import compute_momentum
+from src.modules.indicators.volatility import compute_volatility
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
 
@@ -254,6 +259,71 @@ class KuCoinMarket:
             return SymbolListResponse(
                 success=False, data={},
                 error=f"Sembol listesi alınamadı: {e}",
+                timestamp=timestamp(),
+            )
+
+    async def get_indicators(
+        self, symbol: str, timeframe: str = "1h", limit: int = 300
+    ) -> AnalysisSignalResponse:
+        """
+        Çekirdek indikatör katmanlarını (Trend, Momentum, Volatilite) hesaplar.
+        MODULE_2_SPEC Faz 2a. Repaint koruması: yalnızca kapanmış mumlar kullanılır.
+
+        data_quality:
+          - UNAVAILABLE: veri yok / çekilemedi / yetersiz
+          - DEGRADED: EMA200 warm-up karşılanmıyor (<250 kapanmış mum)
+          - OK: yeterli geçmiş var
+        """
+        try:
+            candles_resp = await self.get_candles(symbol, timeframe, limit)
+            if not candles_resp.success:
+                return AnalysisSignalResponse(
+                    success=False, data={"data_quality": "UNAVAILABLE"},
+                    error=candles_resp.error,
+                    timestamp=timestamp(),
+                )
+
+            all_candles = candles_resp.data.get("candles", [])
+            # Repaint koruması: yalnızca kapanmış (confirmed) mumlar.
+            confirmed = [c for c in all_candles if c.get("confirmed")]
+
+            if len(confirmed) < 30:
+                return AnalysisSignalResponse(
+                    success=False,
+                    data={"data_quality": "UNAVAILABLE",
+                          "confirmed_candles": len(confirmed)},
+                    error="Analiz için yetersiz kapanmış mum verisi (min 30).",
+                    timestamp=timestamp(),
+                )
+
+            df = pd.DataFrame(confirmed)
+
+            # EMA200 warm-up: max(lookback)+50 ~ 250 mum (spec 2.3).
+            data_quality = "OK" if len(confirmed) >= 250 else "DEGRADED"
+
+            indicators = {
+                "trend": compute_trend(df),
+                "momentum": compute_momentum(df),
+                "volatility": compute_volatility(df),
+            }
+
+            return AnalysisSignalResponse(
+                success=True,
+                data={
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "data_quality": data_quality,
+                    "confirmed_candles": len(confirmed),
+                    "indicators": indicators,
+                },
+                error=None,
+                timestamp=timestamp(),
+            )
+        except Exception as e:
+            logger.error(f"İndikatör hesaplama hatası ({symbol} {timeframe}): {e}")
+            return AnalysisSignalResponse(
+                success=False, data={"data_quality": "UNAVAILABLE"},
+                error=f"İndikatör hesaplanamadı: {e}",
                 timestamp=timestamp(),
             )
 
