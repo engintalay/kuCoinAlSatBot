@@ -1,6 +1,8 @@
 """
-Katman 2: Momentum İndikatörleri (Faz 2a çekirdek)
-MODULE_2_SPEC 3.2: RSI 14 (Wilder), MACD (12, 26, 9).
+Katman 2: Momentum İndikatörleri
+MODULE_2_SPEC 3.2:
+- Faz 2a: RSI 14 (Wilder), MACD (12, 26, 9)
+- Faz 2c: StochRSI (14, K/D), CCI (20), Williams %R (14), ROC (9)
 """
 
 import pandas as pd
@@ -21,18 +23,83 @@ def _rsi_wilder(close: pd.Series, period: int = 14) -> pd.Series:
     return rsi
 
 
+def _stoch_rsi(close: pd.Series, period: int = 14, k: int = 3, d: int = 3) -> dict | None:
+    """Stochastic RSI: RSI'nin kendi min-max aralığına göre stokastiği."""
+    if len(close) < period * 2:
+        return None
+    rsi = _rsi_wilder(close, period)
+    rsi_min = rsi.rolling(period).min()
+    rsi_max = rsi.rolling(period).max()
+    rng = (rsi_max - rsi_min).replace(0.0, pd.NA)
+    stoch = ((rsi - rsi_min) / rng * 100).fillna(0.0)
+    k_line = stoch.rolling(k).mean()
+    d_line = k_line.rolling(d).mean()
+    kv, dv = k_line.iloc[-1], d_line.iloc[-1]
+    if pd.isna(kv) or pd.isna(dv):
+        return None
+    cross = None
+    if len(k_line) >= 2 and pd.notna(k_line.iloc[-2]) and pd.notna(d_line.iloc[-2]):
+        if k_line.iloc[-2] <= d_line.iloc[-2] and kv > dv:
+            cross = "BULLISH"
+        elif k_line.iloc[-2] >= d_line.iloc[-2] and kv < dv:
+            cross = "BEARISH"
+    regime = "OVERBOUGHT" if kv > 80 else "OVERSOLD" if kv < 20 else "NEUTRAL"
+    return {"k": round(float(kv), 2), "d": round(float(dv), 2),
+            "regime": regime, "cross": cross}
+
+
+def _cci(df: pd.DataFrame, period: int = 20) -> dict | None:
+    """Commodity Channel Index (20). Eşikler ±100."""
+    if len(df) < period:
+        return None
+    tp = (df["high"].astype(float) + df["low"].astype(float) + df["close"].astype(float)) / 3
+    sma = tp.rolling(period).mean()
+    mad = tp.rolling(period).apply(lambda x: (x - x.mean()).abs().mean(), raw=False)
+    cci = (tp - sma) / (0.015 * mad.replace(0.0, pd.NA))
+    val = cci.iloc[-1]
+    if pd.isna(val):
+        return None
+    v = float(val)
+    regime = "OVERBOUGHT" if v > 100 else "OVERSOLD" if v < -100 else "NEUTRAL"
+    return {"value": round(v, 2), "regime": regime}
+
+
+def _williams_r(df: pd.DataFrame, period: int = 14) -> dict | None:
+    """Williams %R (14). Eşikler -20 / -80."""
+    if len(df) < period:
+        return None
+    high = df["high"].astype(float).rolling(period).max()
+    low = df["low"].astype(float).rolling(period).min()
+    close = df["close"].astype(float)
+    rng = (high - low).replace(0.0, pd.NA)
+    wr = (high - close) / rng * -100
+    val = wr.iloc[-1]
+    if pd.isna(val):
+        return None
+    v = float(val)
+    regime = "OVERBOUGHT" if v > -20 else "OVERSOLD" if v < -80 else "NEUTRAL"
+    return {"value": round(v, 2), "regime": regime}
+
+
+def _roc(close: pd.Series, period: int = 9) -> dict | None:
+    """Rate of Change (9) yüzdesi."""
+    if len(close) < period + 1:
+        return None
+    prev = close.iloc[-1 - period]
+    if prev == 0:
+        return None
+    roc = (close.iloc[-1] - prev) / prev * 100
+    return {"value": round(float(roc), 4),
+            "regime": "POSITIVE" if roc > 0 else "NEGATIVE" if roc < 0 else "FLAT"}
+
+
 def compute_momentum(df: pd.DataFrame) -> dict:
     """
-    Momentum katmanı feature'ları: RSI ve MACD.
-
-    Returns:
-        {
-          "rsi": {"value":.., "regime":.., "slope_3_bars":..},
-          "macd": {"line":.., "signal":.., "histogram":.., "zero_cross":..}
-        }
+    Momentum katmanı feature'ları: RSI, MACD, StochRSI, CCI, Williams %R, ROC.
     """
     close = df["close"].astype(float)
-    result: dict = {"rsi": None, "macd": None}
+    result: dict = {"rsi": None, "macd": None, "stoch_rsi": None,
+                    "cci": None, "williams_r": None, "roc": None}
 
     # --- RSI 14 ---
     if len(close) >= 15:
@@ -80,5 +147,11 @@ def compute_momentum(df: pd.DataFrame) -> dict:
             "histogram": round(float(histogram.iloc[-1]), 8),
             "zero_cross": zero_cross,
         }
+
+    # --- Faz 2c: ek osilatörler ---
+    result["stoch_rsi"] = _stoch_rsi(close)
+    result["cci"] = _cci(df)
+    result["williams_r"] = _williams_r(df)
+    result["roc"] = _roc(close)
 
     return result

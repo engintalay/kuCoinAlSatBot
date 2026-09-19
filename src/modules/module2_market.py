@@ -31,6 +31,7 @@ from src.modules.indicators.strength import compute_strength
 from src.modules.indicators.volume import compute_volume
 from src.modules.indicators.levels import compute_levels
 from src.modules.indicators.structure import compute_structure
+from src.modules.indicators.derivatives import DerivativesData
 from src.modules.analysis.scoring_engine import compute_score
 from src.modules.analysis.mtf_engine import evaluate_mtf
 from src.utils.logger import logger
@@ -54,6 +55,8 @@ class KuCoinMarket:
         self.exchange: ccxt.async_support.kucoin | None = None
         # Ring buffer: {(symbol, timeframe): deque([[ts,o,h,l,c,v], ...])}
         self._candle_buffers: dict[tuple[str, str], deque] = {}
+        # Katman 8: türev veri sağlayıcı (kucoinfutures)
+        self.derivatives = DerivativesData()
 
     def connect(self) -> bool:
         """KuCoin public API'ye bağlan (piyasa verisi auth gerektirmez)."""
@@ -269,7 +272,8 @@ class KuCoinMarket:
             )
 
     async def get_indicators(
-        self, symbol: str, timeframe: str = "1h", limit: int = 300
+        self, symbol: str, timeframe: str = "1h", limit: int = 300,
+        include_derivatives: bool = False
     ) -> AnalysisSignalResponse:
         """
         Çekirdek indikatör katmanlarını (Trend, Momentum, Volatilite) hesaplar.
@@ -315,6 +319,10 @@ class KuCoinMarket:
                 "volume": compute_volume(df),
                 "levels": compute_levels(df),
             }
+
+            # Katman 8: türev veri (opsiyonel, ek ağ çağrısı gerektirir)
+            if include_derivatives:
+                indicators["derivatives"] = await self.derivatives.get_derivatives(symbol)
 
             return AnalysisSignalResponse(
                 success=True,
@@ -472,6 +480,7 @@ class KuCoinMarket:
 
     async def close(self) -> None:
         """ccxt async exchange kaynaklarını serbest bırak."""
+        await self.derivatives.close()
         if self.exchange is not None:
             try:
                 await self.exchange.close()

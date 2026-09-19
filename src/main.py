@@ -134,13 +134,15 @@ async def get_market_symbols(quote: str = "USDT"):
 
 @app.get("/api/v1/market/analysis/indicators")
 async def get_market_indicators(
-    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 300
+    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 300,
+    include_derivatives: bool = False
 ):
     """
-    Çekirdek indikatör katmanlarını (Trend/Momentum/Volatilite) hesaplar.
+    Çekirdek indikatör katmanlarını (Trend/Momentum/Volatilite/Güç/Hacim/Seviye) hesaplar.
     Yalnızca kapanmış mumlar kullanılır (repaint koruması).
+    include_derivatives=true ile KuCoin Futures funding/open interest eklenir.
     """
-    result = await market.get_indicators(symbol, timeframe, limit)
+    result = await market.get_indicators(symbol, timeframe, limit, include_derivatives)
     return result
 
 
