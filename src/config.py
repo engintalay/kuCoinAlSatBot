@@ -24,14 +24,19 @@ class Config:
     # Uygulama Ayarları
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     PORT = int(os.getenv("PORT", "8000"))
-    HOST = os.getenv("HOST", "0.0.0.0")
+    HOST = os.getenv("HOST", "127.0.0.1")
 
     # KuCoin API URL'leri
     BASE_URL = "https://api.kucoin.com" if not IS_SANDBOX else "https://test-api.kucoin.com"
     WEBSOCKET_URL = "wss://ws-api.kucoin.com" if not IS_SANDBOX else "wss://ws-test-api.kucoin.com"
 
     # Simülasyon Modu
-    SIMULATION_MODE = False  # Varsayılan: Gerçek mod
+    DEFAULT_TRADING_MODE = os.getenv("DEFAULT_TRADING_MODE", "real")  # "real" veya "paper"
+    SIMULATION_INITIAL_BALANCE_USDT = float(os.getenv("SIMULATION_INITIAL_BALANCE_USDT", "0.0"))
+    LOG_TO_FILE = os.getenv("LOG_TO_FILE", "true").lower() == "true"
+    DEFAULT_SYMBOL = os.getenv("DEFAULT_SYMBOL", "BTC/USDT")
+    DEFAULT_TIMEFRAME = os.getenv("DEFAULT_TIMEFRAME", "1h")
+    SIMULATION_MODE = DEFAULT_TRADING_MODE == "paper"  # .env'den okunur
 
     def validate_credentials(self) -> bool:
         """API anahtarlarının mevcut olup olmadığını doğrula."""

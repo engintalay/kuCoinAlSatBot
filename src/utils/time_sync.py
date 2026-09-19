@@ -7,6 +7,17 @@ import time
 import requests
 from datetime import datetime, timezone
 
+from src.utils.logger import logger
+
+
+def timestamp() -> str:
+    """
+    Merkezi zaman damgası üretici.
+    Her çağrıda tutarlı ISO 8601 formatı döndürür.
+    """
+    now = datetime.now(timezone.utc)
+    return now.isoformat()
+
 
 def check_time_sync(timeout: int = 5) -> tuple[bool, float, str]:
     """
@@ -17,15 +28,15 @@ def check_time_sync(timeout: int = 5) -> tuple[bool, float, str]:
         (success: bool, latency_ms: float, message: str)
     """
     try:
-        # KuCoin sunucu saatini çek
+        # KuCoin sunucu saatini çek (data: milisaniye cinsinden epoch)
         response = requests.get(
-            "https://api.kucoin.com/api/v1/system/time",
+            "https://api.kucoin.com/api/v1/timestamp",
             timeout=timeout
         )
         response.raise_for_status()
 
-        server_time = response.json()["data"]
-        server_dt = datetime.fromtimestamp(server_time, tz=timezone.utc)
+        server_time_ms = response.json()["data"]
+        server_dt = datetime.fromtimestamp(server_time_ms / 1000, tz=timezone.utc)
         local_dt = datetime.now(timezone.utc)
 
         # Farkı hesapla (saniye cinsinden)

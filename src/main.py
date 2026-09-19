@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.modules.module1_account import KuCoinAccount
 from src.config import Config
 from src.utils.logger import logger
+from src.utils.time_sync import timestamp
 
 app = FastAPI(
     title="KuCoin Al-Sat Botu",
@@ -28,6 +29,12 @@ app.add_middleware(
 account = KuCoinAccount()
 
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Uygulama kapanırken ccxt exchange kaynaklarını serbest bırak."""
+    await account.close()
+
+
 @app.get("/")
 async def root():
     """Uygulama root endpoint."""
@@ -39,7 +46,7 @@ async def root():
             "status": "running"
         },
         "error": None,
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z"
+        "timestamp": timestamp()
     }
 
 
@@ -69,14 +76,14 @@ async def get_account_status():
                     "permissions": permissions
                 },
                 "error": None,
-                "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z"
+                "timestamp": timestamp()
             }
         else:
             return {
                 "success": False,
                 "data": {},
                 "error": "KuCoin API'ye bağlanılamadı",
-                "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z"
+                "timestamp": timestamp()
             }
     except Exception as e:
         logger.error(f"Account status hatası: {e}")
@@ -84,7 +91,7 @@ async def get_account_status():
             "success": False,
             "data": {},
             "error": f"Hata: {e}",
-            "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z"
+            "timestamp": timestamp()
         }
 
 

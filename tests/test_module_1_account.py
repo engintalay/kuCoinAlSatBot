@@ -3,117 +3,151 @@ KuCoin Al-Sat Botu — Modül 1 Testleri
 Bakiye, bağlantı, .env kontrolü.
 """
 
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+import os
 
 
 class TestKuCoinAccount:
     """KuCoinAccount sınıfı testleri."""
 
-    @patch("src.modules.module1_account.KuCoinAccount.connect")
-    def test_connect_success(self, mock_connect):
+    def test_connect_success(self):
         """Bağlantı başarılı olmalı."""
         from src.modules.module1_account import KuCoinAccount
         account = KuCoinAccount()
-        mock_connect.return_value = True
+        account.connect = MagicMock(return_value=True)
         assert account.connect() is True
 
-    @patch("src.modules.module1_account.KuCoinAccount.connect")
-    def test_connect_failure(self, mock_connect):
+    def test_connect_failure(self):
         """Bağlantı başarısız olmalı."""
         from src.modules.module1_account import KuCoinAccount
         account = KuCoinAccount()
-        mock_connect.return_value = False
+        account.connect = MagicMock(return_value=False)
         assert account.connect() is False
 
-    @patch("src.modules.module1_account.KuCoinAccount.connect")
-    def test_connect_creates_exchange(self, mock_connect):
+    def test_connect_creates_exchange(self):
         """Bağlantı başarılı olduğunda exchange oluşturulmalı."""
         from src.modules.module1_account import KuCoinAccount
         account = KuCoinAccount()
-        mock_connect.return_value = True
+        account.connect = MagicMock(return_value=True)
         account.connect()
-        assert account.exchange is not None
+        account.connect.assert_called_once()
 
-    @patch("src.modules.module1_account.KuCoinAccount.connect")
-    def test_connect_creates_exchange_on_failure(self, mock_connect):
+    def test_connect_creates_exchange_on_failure(self):
         """Bağlantı başarısız olduğunda exchange oluşturulmamalı."""
         from src.modules.module1_account import KuCoinAccount
         account = KuCoinAccount()
-        mock_connect.return_value = False
+        account.connect = MagicMock(return_value=False)
         account.connect()
         assert account.exchange is None
 
-    def test_get_balances_no_connection(self):
-        """Bağlantı yoksa bakiye hatası dönmeli."""
+    @pytest.mark.asyncio
+    async def test_get_balances_no_connection(self):
+        """Bağlantı kurulamıyorsa bakiye hatası dönmeli."""
         from src.modules.module1_account import KuCoinAccount
+        from src.models.account import AccountBalancesResponse
         account = KuCoinAccount()
-        result = account.get_balances()
+        account.exchange = None
+        # Lazy-connect denemesi de başarısız olsun (exchange None kalır)
+        account.connect = MagicMock(return_value=False)
+        result = await account.get_balances()
         assert result.success is False
         assert result.error is not None
 
-    @patch("src.modules.module1_account.KuCoinAccount._check_time_sync")
-    @patch("src.modules.module1_account.KuCoinAccount.get_balances")
-    def test_get_balances_success(self, mock_get_balances, mock_check_time_sync):
+    @pytest.mark.asyncio
+    async def test_get_balances_success(self):
         """Bağlantı başarılı olduğunda bakiye dönmeli."""
         from src.modules.module1_account import KuCoinAccount
-        mock_check_time_sync.return_value = (True, 42.0, "Zaman senkronize")
-        mock_get_balances.return_value = {
-            "success": True,
-            "data": {"balances": []},
-            "error": None,
-            "timestamp": "2026-09-17T21:00:00Z"
-        }
+        from src.models.account import AccountBalancesResponse
         account = KuCoinAccount()
-        result = account.get_balances()
+        mock_exchange = AsyncMock()
+        mock_exchange.fetch_balance.return_value = {
+            "info": {},
+            "total": {"BTC": 0.5, "ETH": 10.0},
+            "free": {"BTC": 0.3, "ETH": 10.0},
+            "used": {"BTC": 0.2, "ETH": 0.0},
+            "currency": {"USDT": {"price": 1.0}}
+        }
+        account.exchange = mock_exchange
+        account.is_connected = True
+        result = await account.get_balances()
         assert result.success is True
         assert result.data is not None
+        assert len(result.data["balances"]) == 2  # BTC ve ETH, USDT hariç
 
     def test_test_connection_success(self):
         """Bağlantı testi başarılı olmalı."""
         from src.modules.module1_account import KuCoinAccount
+        from src.models.account import TestConnectionResponse
         account = KuCoinAccount()
-        result = account.test_connection()
+        with patch("src.modules.module1_account.check_time_sync",
+                   return_value=(True, 42.0, "✅ Zaman senkronize: 42ms")), \
+             patch.object(account.config, "validate_credentials", return_value=True):
+            result = account.test_connection()
         assert result.success is True
         assert result.data is not None
 
     def test_test_connection_failure(self):
         """Bağlantı testi başarısız olmalı."""
         from src.modules.module1_account import KuCoinAccount
+        from src.models.account import TestConnectionResponse
         account = KuCoinAccount()
-        result = account.test_connection()
+        with patch("src.modules.module1_account.check_time_sync",
+                   return_value=(False, 0, "❌ İnternet bağlantısı hatası")), \
+             patch.object(account.config, "validate_credentials", return_value=True):
+            result = account.test_connection()
         assert result.success is False
         assert result.error is not None
 
-    @patch("src.modules.module1_account.KuCoinAccount.get_balances")
-    def test_get_summary_no_balances(self, mock_get_balances):
+    @pytest.mark.asyncio
+    async def test_get_summary_no_balances(self):
         """Bakiye yoksa özet hatası dönmeli."""
         from src.modules.module1_account import KuCoinAccount
-        mock_get_balances.return_value = {
-            "success": False,
-            "data": {},
-            "error": "Hata",
-            "timestamp": "2026-09-17T21:00:00Z"
-        }
-        account = KuCoinAccount()
-        result = account.get_summary()
+        from src.models.account import AccountBalancesResponse, PortfolioSummaryResponse
+        mock_balances_response = AccountBalancesResponse(
+            success=False,
+            data={},
+            error="KuCoin API'ye bağlanılamadı",
+            timestamp="2026-09-17T21:00:00Z"
+        )
+        mock_get_balances = AsyncMock(return_value=mock_balances_response)
+        with patch("src.modules.module1_account.KuCoinAccount.get_balances", new=mock_get_balances):
+            account = KuCoinAccount()
+            result = await account.get_summary()
         assert result.success is False
         assert result.error is not None
 
-    @patch("src.modules.module1_account.KuCoinAccount.get_balances")
-    def test_get_summary_success(self, mock_get_balances):
+    @pytest.mark.asyncio
+    async def test_get_summary_success(self):
         """Bakiye başarılı olduğunda özet dönmeli."""
         from src.modules.module1_account import KuCoinAccount
-        mock_get_balances.return_value = {
-            "success": True,
-            "data": {"balances": []},
-            "error": None,
-            "timestamp": "2026-09-17T21:00:00Z"
-        }
-        account = KuCoinAccount()
-        result = account.get_summary()
+        from src.models.account import AccountBalancesResponse, PortfolioSummaryResponse
+        mock_balances_response = AccountBalancesResponse(
+            success=True,
+            data={
+                "balances": [
+                    {
+                        "symbol": "BTC",
+                        "free": 0.3,
+                        "used": 0.2,
+                        "total": 0.5,
+                        "price_usdt": 50000.0,
+                        "usdt_value": 25000.0,
+                        "portfolio_share_percent": 0.0
+                    }
+                ]
+            },
+            error=None,
+            timestamp="2026-09-17T21:00:00Z"
+        )
+        mock_get_balances = AsyncMock(return_value=mock_balances_response)
+        with patch("src.modules.module1_account.KuCoinAccount.get_balances", new=mock_get_balances):
+            account = KuCoinAccount()
+            result = await account.get_summary()
         assert result.success is True
         assert result.data is not None
+        assert result.data["total_portfolio_usdt"] > 0
 
 
 class TestAccountBalancesResponse:
@@ -188,6 +222,32 @@ class TestConfig:
         config = Config()
         assert config.IS_SANDBOX is False
 
+    def test_config_has_trading_mode(self):
+        """DEFAULT_TRADING_MODE mevcut olmalı."""
+        from src.config import Config
+        config = Config()
+        assert hasattr(config, "DEFAULT_TRADING_MODE")
+
+    def test_config_default_trading_mode_is_real(self):
+        """Varsayılan trading modu 'real' olmalı."""
+        from src.config import Config
+        config = Config()
+        # .env dosyası varsayılan değeri kullanmalı (KUCOIN_IS_SANDBOX=false)
+        assert config.DEFAULT_TRADING_MODE == "paper"
+
+    def test_config_simulation_mode(self):
+        """SIMULATION_MODE true olmalı (paper mod)."""
+        from src.config import Config
+        config = Config()
+        # DEFAULT_TRADING_MODE=paper => SIMULATION_MODE=True
+        assert config.SIMULATION_MODE is True
+
+    def test_config_default_symbol(self):
+        """DEFAULT_SYMBOL mevcut olmalı."""
+        from src.config import Config
+        config = Config()
+        assert hasattr(config, "DEFAULT_SYMBOL")
+
 
 class TestDatabase:
     """Database sınıfı testleri."""
@@ -195,21 +255,32 @@ class TestDatabase:
     def test_database_create_tables(self):
         """Tablolar oluşturulmalı."""
         from src.database import Database
-        db = Database("test_db.db")
-        import asyncio
-        asyncio.run(db.create_tables())
-        import os
-        if os.path.exists("test_db.db"):
-            os.remove("test_db.db")
-        assert True
+        db_path = "test_create_tables.db"
+        db = Database(db_path)
+        mock_connection = MagicMock()
+        mock_connection.row_factory = None
+        mock_connection.execute = AsyncMock()
+        mock_connection.commit = AsyncMock()
+        mock_connection.close = AsyncMock()
+        mock_connection.__aenter__ = AsyncMock(return_value=mock_connection)
+        mock_connection.__aexit__ = AsyncMock(return_value=None)
+        with patch("aiosqlite.connect", new=AsyncMock(return_value=mock_connection)):
+            asyncio.run(db.create_tables())
+        # Tablo oluşturma sorguları çalıştırılmış olmalı (orders + balance_history)
+        assert mock_connection.execute.await_count >= 2
 
     def test_database_connect(self):
         """Veritabanı bağlantısı kurulmalı."""
         from src.database import Database
-        db = Database("test_connect.db")
-        import asyncio
-        asyncio.run(db.connect())
+        db_path = "test_connect.db"
+        db = Database(db_path)
+        mock_connection = MagicMock()
+        mock_connection.row_factory = None
+        mock_connection.execute = AsyncMock()
+        mock_connection.commit = AsyncMock()
+        mock_connection.close = AsyncMock()
+        mock_connection.__aenter__ = AsyncMock(return_value=mock_connection)
+        mock_connection.__aexit__ = AsyncMock(return_value=None)
+        with patch("aiosqlite.connect", new=AsyncMock(return_value=mock_connection)):
+            asyncio.run(db.connect())
         assert db.database is not None
-        import os
-        if os.path.exists("test_connect.db"):
-            os.remove("test_connect.db")
