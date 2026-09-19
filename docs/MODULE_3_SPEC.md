@@ -1,6 +1,6 @@
 # Modül 3 Spesifikasyonu: Al-Sat Emir Entegrasyonu ve Emir Yönetimi
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** %0 (Modül 2 Sonrası Başlanacak ⏳) | **Son Güncelleme:** 2026-09-17 22:06:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & İzlenebilirlik Matrisi Eklendi ✅) | **Kodlama & Test Durumu:** %0 (Modül 2 Tamamlandı, Kodlama Başlamaya Hazır ⏳) | **Son Güncelleme:** 2026-09-19 23:30:00 (+03:00)
 
 ## 1. Modülün Amacı
 Bu modül, gelen al-sat sinyallerine veya kullanıcının manuel komutlarına göre KuCoin üzerinde emniyetli alış/satış emirleri oluşturur, emir durumlarını izler ve risk kontrollerini yürütür.
@@ -49,12 +49,32 @@ Swagger Tag: `Orders & Execution`
 
 ---
 
-## 4. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
+## 4. Spesifikasyon ↔ Uygulama (Kod) İzlenebilirlik Tablosu
+
+Bu bölüm, **Coding AI** tarafından Modül 3 kodlama aşamasında eksiksiz takip edilecek ve her alt bileşenin birim test dosyasıyla doğrulanmasını sağlayacaktır:
+
+| Gereksinim Kodu | Aşama | Bileşen / Özellik | Hedef Kaynak Dosya | Doğrulama Test Dosyası | Durum |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **M3-C01** | Ön Koşul | Pre-Trade Risk & Bakiye Doğrulama (Yetersiz bakiye engeli, min notional kontrolü) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+| **M3-C02** | Temel İcra | Market Order (Anlık tahta fiyatından Alış/Satış, slippage koruması) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+| **M3-C03** | Temel İcra | Limit Order (Hedef fiyat, miktar, GTC time-in-force) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+| **M3-C04** | Takip | Açık Emirleri Listeleme & Sorgulama (`fetch_open_orders`, doluluk %) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+| **M3-C05** | İptal | Tekil ve Toplu Emir İptali (`cancel_order`, `cancel_all_orders`) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+| **M3-C06** | Güvenlik | Panic Stop (Tek çağrıda tüm emirleri iptal etme & bot acil durdurma) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+| **M3-C07** | Simülasyon | Paper Trading Motoru ($10,000 USDT sanal bakiye, canli tahta eşleşmesi, SQLite) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+| **M3-C08** | Mod Yönetimi | Dinamik Mod Geçişi (`REAL` $\leftrightarrow$ `SIMULATION` switch) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+| **M3-C09** | Entegrasyon | REST API Endpoint'leri (6 adet FastAPI rotası & Swagger) | `src/main.py` | `tests/test_module_3_orders.py` | Bekliyor ⏳ |
+
+---
+
+## 5. Doküman Değişiklik ve Tamamlanma Günlüğü (Change Log)
 
 | Tarih / Saat | Yapılan Değişiklikler ve İşlem Özeti | Durum |
 | :--- | :--- | :--- |
 | **2026-09-17 20:53:23** | Modül 3 ilk spesifikasyonu (Emir türleri, açık emir takibi, iptal, risk kontrolleri) hazırlandı. | Tamamlandı |
 | **2026-09-17 21:04:30** | REST API endpoint tablosu ve Swagger modelleri tanımlandı. | Tamamlandı |
 | **2026-09-17 21:35:00** | Tamamlanma rozeti ve detaylı işlem günlüğü eklendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-19 23:30:00** | **Spesifikasyon ↔ Uygulama İzlenebilirlik Tablosu Eklendi**: Modül 2'nin %100 tamamlanması üzerine Coding AI için 9 alt maddelik izlenebilirlik tablosu (M3-C01 ... M3-C09) hazırlandı. | **Tasarım Hazır, Kodlama Bekleniyor ⏳** |
+
 
 
