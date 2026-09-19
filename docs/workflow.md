@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Motoru Eklendi ✅) | **Kodlama & Test Durumu:** Temel Sistem %100 Tamamlandı (129/129 Test, %77 Coverage ✅), Yeni Özellikler Kodlanmayı Bekliyor ⏳ | **Son Güncelleme:** 2026-09-20 01:05:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Motoru Eklendi ✅) | **Kodlama & Test Durumu:** Ayarlar + Watchlist + Kılavuz + Info Tamamlandı ✅ (137/137 Test, %78 Coverage ✅), Kalan Paket Emir & Öneri Motoru Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:15:00 (+03:00)
 
 ---
 
@@ -12,7 +12,7 @@
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
 | `requirements.txt` | ✅ Güncellendi (`aiosqlite`, `requests` dahil) & Sanal ortama kuruldu |
-| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`, `analysis`) |
+| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`, `analysis`, `settings`) |
 | Modül 1 (Hesap & Bağlantı) | ✅ **%100 Tamamlandı** (Bağlantı, bakiye, portföy payı, yetki denetimi, WebSocket stream) — 29 test |
 | Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) |
 | Modül 2 — Faz 2b (İleri SMC, Scoring & MTF) | ✅ **%100 Tamamlandı** (Supertrend, Ichimoku, Parabolic SAR, ADX, Aroon, Choppiness, Squeeze, SMC Swings/BOS/CHoCH/FVG/OB, 0-100 Puanlama Motoru, MTF Hiyerarşisi, 3 REST endpoint'i) |
@@ -21,9 +21,10 @@
 | Modül 2 — Kapsam Notu (Kalan) | ⚠️ Yalnızca **Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D)** kaldı; KuCoin'de yok, harici API (ör. CoinGecko) gerektirir — kullanıcı onayı ile eklenebilir. CVD/L-S Ratio da taker-akış verisi gerektirir. |
 | Modül 2 — Test Dağılımı | ✅ 65 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`, `phase2c: 10` |
 | Modül 3 (Emir Yönetimi & Simülasyon) | ✅ **%100 Tamamlandı** (Market/Limit emir, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k sanal USDT, mod geçişi, pre-trade risk; 6 REST endpoint'i) — 16 test |
-| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 4 görünüm, SVG candlestick grafik, WebSocket canlı akış + polling fallback, toast; `static/` mount) — 5 servis testi |
+| Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, sembol arama; 5 REST endpoint'i) — 6 test |
+| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli; `static/` mount) — 7 servis testi |
 | Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **137/137 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Toplam Birim Test Durumu | ✅ **137/137 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %78 coverage) |
 
 
 ---
@@ -164,13 +165,14 @@ kuCoinAlSatBot/
 - ✅ `tests/test_module_2_structure.py` (8 test)
 - ✅ `tests/test_module_2_analysis.py` (10 test)
 - ✅ `tests/test_module_3_orders.py` (16 test)
-- ✅ `tests/test_frontend.py` (5 servis testi)
+- ✅ `tests/test_settings.py` (6 test)
+- ✅ `tests/test_frontend.py` (7 servis testi)
 - ✅ `tests/test_utils.py` (14 test — %100 utils coverage)
-- ✅ `run_tests.sh` — Tek komut test koşturma ve coverage scripti (129/129 yeşil, %77 coverage)
+- ✅ `run_tests.sh` — Tek komut test koşturma ve coverage scripti (137/137 yeşil, %78 coverage)
 
 ### Adım 7 — Son Kontroller
 ### ✅ Adım 7 — Son Kontroller (Doğrulandı)
-- ✅ Tüm endpoint'lerin Swagger dokümantasyonu doğrulandı (`/openapi.json` 200, 20 path; `/docs` & `/redoc` 200)
+- ✅ Tüm endpoint'lerin Swagger dokümantasyonu doğrulandı (`/openapi.json` 200, 24 API path + 1 WS; `/docs` & `/redoc` 200)
 - ✅ `.gitignore` doğrulandı (`.env`, `.venv/`, `__pycache__`, `test-reports/`, `logs/`, `*.db`); hassas dosya izlenmiyor
 - ✅ Git commit disiplini uygulanıyor (Conventional Commits)
 

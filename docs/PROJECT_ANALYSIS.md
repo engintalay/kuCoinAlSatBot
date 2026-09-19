@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu - Proje Analiz ve Tasarım Dokümanı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Yeni Gereksinimler: Kullanım Kılavuzu & Info Düğmeleri Eklendi ✅) | **Kodlama & Test Durumu:** %100 (129/129 Test Geçiyor, Yeni UI Özellikleri Kodlanmayı Bekliyor ⏳) | **Son Güncelleme:** 2026-09-20 01:00:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Motoru Eklendi ✅) | **Kodlama & Test Durumu:** Ayarlar, Watchlist, Kılavuz & Info Tamamlandı ✅ (137/137 Test, %78 Coverage ✅), Akıllı Paket Emir & Öneri Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:15:00 (+03:00)
 
 ## 1. Proje Genel Bakışı
 Bu doküman, KuCoin kripto para borsasında çalışacak modüler **Al-Sat Botu** uygulamasının mimarisini, veri akışını ve modül detaylarını içerir. 
@@ -213,6 +213,7 @@ Proje; hesap doğrulama ve bakiye takibinden, canlı piyasa analizi ve gösterge
 | **2026-09-17 22:50:00** | Modül 2 analizi `crypto_indicators_coding_agent_reference.md` doğrultusunda 10 katmanlı indikatör mimarisi, SMC, MTF ve 0-100 composite scoring motoru ile senkronize edilerek genişletildi. | Onaylandı & Genişletildi (%100) |
 | **2026-09-20 01:00:00** | **Kullanım Kılavuzu Sayfası ve Bağlamsal Info Düğmeleri Eklendi**: Kullanıcı gereksinimi doğrultusunda ana sayfadan erişilebilir rehber sayfası/görünümü ve kritik arayüz öğelerine (Portföy, Mod, Panic Stop, Scoring, MTF, SMC, Emirler) öğretici `ℹ️` (Info) düğmeleri gereksinimi analiz dokümanına eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
 | **2026-09-20 01:05:00** | **Ayarlar Ekranı, Çoklu Coin, Akıllı Paket Emir & Dinamik Öneri Motoru Eklendi**: Ayarlar sekmesi (`⚙️ Ayarlar`), dinamik çoklu coin izleme/işlem listesi (Watchlist & KuCoin symbols), analiz motorundan otomatik Entry/TP1/TP2/SL seviye hesaplamalı akıllı paket emir iletimi ("🚀 Akıllı Emri İlet"), açık emir düzenleme (Edit/Amend) ve canlı piyasa durumuna göre akıllı güncelleme tavsiyeleri üreten Dinamik Öneri Motoru gereksinimleri analiz dokümanına eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
+| **2026-09-20 01:15:00** | **Kullanım Kılavuzu, Info Düğmeleri ve Ayarlar Paneli Kodlandı & Doğrulandı**: `view-guide` görünümü, 7 noktada bağlamsal `ℹ️` info butonu ve glass popover'lar, `view-settings` paneli, çoklu coin watchlist yönetimi ve SQLite kalıcılığı (`src/modules/settings.py`, 5 REST endpoint'i) kodlanıp 8 yeni test ile doğrulandı (toplam 137/137 test %100 yeşil, coverage %78). | **Onaylandı & Uygulandı (%100) ✅** |
 
 
 
