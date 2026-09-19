@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 & Modül 2 (Tüm İndikatör Katmanları Dahil) %100 Tamamlandı (84/84 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:48:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 %100 ✅; Modül 2 spot analiz motoru tam (6/7 katman + scoring + MTF) — Katman 8-9 (türev/piyasa-geneli) Faz 2c'ye ertelendi ⏳ (84/84 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:49:00 (+03:00)
 
 ---
 
@@ -113,7 +113,7 @@ kuCoinAlSatBot/
   - ✅ `scoring_engine.py` (0-100 Bileşik Puanlama: Hacim katkısı dahil max_points 80, Gerekçelendirme + risk filtreleri)
   - ✅ `mtf_engine.py` (4H Rejim → 1H Setup → 15m Tetikleyici)
 - ✅ `main.py` — `/api/v1/market/*` endpoint'leri (8 adet: 4 veri + 4 analiz)
-- ❌ Katman 8-9 (Türev/OI/Funding/CVD & BTC.D/piyasa geneli) — *ayrı veri kaynağı gerektirir, sonraki faza ertelendi*
+- ⏳ **Faz 2c'ye ertelendi:** Katman 8 (Türev — OI/Funding/CVD/Basis, KuCoin Futures API gerektirir), Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D, harici veri gerektirir), ek momentum indikatörleri (StochRSI, CCI, Williams %R, ROC) — *ayrı veri kaynağı / opsiyonel*
 
 ### Adım 4 — Modül 3: Al-Sat Emir Yönetimi
 - `models/orders.py` — Pydantic şemaları (`OrderCreateResponse`, `OpenOrdersResponse`, `OrderHistoryResponse`, `OrderCancelResponse`, `PanicStopResponse`, `SwitchModeResponse`)
@@ -263,6 +263,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-19 23:25:00** | **Modül 2 Faz 2b SMC, Scoring ve MTF %100 Tamamlandı**: İleri trend, ADX/Aroon/Choppiness, BB-KC Squeeze, SMC (Swings, BOS, CHoCH, FVG, OB), 0-100 Bileşik Puanlama Motoru ve MTF (4H $\rightarrow$ 1H $\rightarrow$ 15m) tamamlandı. 3 yeni API (`/analysis/structure`, `/analysis/score`, `/analysis/mtf`) devreye alındı. 26 yeni birim test ile Modül 2 toplam 45 teste, proje genelinde **74/74 birim teste** ulaştı. | **Modül 2 Analiz Motoru Tamamlandı ✅** |
 | **2026-09-19 23:33:00** | **Sıralı Adımlar checklist'i gerçek durumla işaretlendi**: Adım 2 (Modül 1) ve Adım 3 (Modül 2) alt maddeleri ✅/❌ ile işaretlendi; yazılmayan katmanlar (`volume.py`, `levels.py`, Katman 8-9 türev/piyasa-geneli) ve `analysis/filters.py`→scoring içine gömülü olarak dürüstçe belirtildi. Adım 6 test dosyaları mevcut/eksik olarak işaretlendi. Faz 2a/2b test sayıları dosya bazlı gerçek dağılıma göre (market 8, indicators 19, structure 8, analysis 10 = 45) düzeltildi. | Güncellendi (Kanıta Dayalı) ✅ |
 | **2026-09-19 23:48:00** | **Modül 2 Hacim ve Destek/Direnç Seviyeleri Katmanları Tamamlandı**: `indicators/volume.py` (RVOL, OBV, VWAP, MFI, CMF, Volume Profile) ve `indicators/levels.py` (Pivot Points, önceki H/L, Fib retracement, Donchian) yazıldı; `scoring_engine.py` içine hacim katkısı entegre edildi. 10 yeni test (`test_module_2_volume_levels.py`) eklendi ve toplam test sayısı **84/84 birim teste** ulaştı (`run_tests.sh` %100 yeşil). | **Hacim & Seviyeler Tamamlandı ✅** |
+| **2026-09-19 23:49:00** | **Modül 2 kapsam durumu dürüstleştirildi**: "Tüm katmanlar %100" ifadesi yanıltıcıydı; başlık rozeti ve Mevcut Durum tablosu düzeltildi. Spot analiz motoru tam (6/7 katman + scoring + MTF, 8 endpoint) ancak Katman 8 (Türev: OI/Funding/CVD), Katman 9 (Piyasa geneli: BTC.D) ve ek momentum indikatörleri (StochRSI/CCI/%R/ROC) kodda **yok** — kanıtla doğrulandı (`grep`) ve **Faz 2c** olarak ertelendi. | Güncellendi (Kanıta Dayalı) ⚠️ |
 
 
 
