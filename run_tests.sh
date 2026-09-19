@@ -32,13 +32,17 @@ if [ -d "$PROJECT_DIR/tests" ] && [ "$(ls -A "$PROJECT_DIR/tests" 2>/dev/null)" 
     pytest "$PROJECT_DIR/tests" \
         -v \
         --tb=short \
+        --cov=src \
+        --cov-report=term-missing \
+        --cov-report="html:$REPORT_DIR/htmlcov" \
         --junitxml="$REPORT_DIR/junit-report.xml" || {
             echo "❌ Bazı birim testler BAŞARISIZ oldu! Lütfen yukarıdaki hata detaylarını inceleyin."
             exit 1
         }
     echo "=================================================================="
     echo "✅ TÜM BİRİM TESTLER BAŞARIYLA GEÇTİ!"
-    echo "   - Test Raporu: $REPORT_DIR/junit-report.xml"
+    echo "   - JUnit Raporu    : $REPORT_DIR/junit-report.xml"
+    echo "   - Coverage (HTML) : $REPORT_DIR/htmlcov/index.html"
     echo "=================================================================="
 else
     echo "ℹ️  'tests/' dizininde henüz test dosyası bulunmuyor."

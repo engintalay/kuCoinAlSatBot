@@ -194,11 +194,109 @@ document.getElementById("panic-btn").addEventListener("click", async () => {
   }
 });
 
-// ---- Başlangıç + periyodik yenileme ----
+// ---- SVG Candlestick Grafik ----
+async function loadChart(symbol = "BTC/USDT", timeframe = "1h") {
+  const res = await apiGet(`/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=60`);
+  const wrap = document.getElementById("candle-chart");
+  if (!res.success || !res.data.candles.length) {
+    wrap.textContent = "Grafik verisi alınamadı.";
+    return;
+  }
+  const candles = res.data.candles;
+  const W = Math.max(600, candles.length * 10);
+  const H = 260, pad = 30;
+  const highs = candles.map((c) => c.high);
+  const lows = candles.map((c) => c.low);
+  const maxP = Math.max(...highs), minP = Math.min(...lows);
+  const range = maxP - minP || 1;
+  const cw = (W - 2 * pad) / candles.length;
+  const y = (p) => pad + (H - 2 * pad) * (1 - (p - minP) / range);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
+  svg += `<line class="chart-axis" x1="${pad}" y1="${H - pad}" x2="${W - pad}" y2="${H - pad}"/>`;
+  svg += `<text class="chart-label" x="2" y="${y(maxP)}">${maxP.toFixed(2)}</text>`;
+  svg += `<text class="chart-label" x="2" y="${y(minP)}">${minP.toFixed(2)}</text>`;
+
+  candles.forEach((c, i) => {
+    const x = pad + i * cw + cw / 2;
+    const cls = c.close >= c.open ? "candle-up" : "candle-down";
+    svg += `<line class="${cls}" x1="${x}" y1="${y(c.high)}" x2="${x}" y2="${y(c.low)}" stroke-width="1"/>`;
+    const bodyTop = y(Math.max(c.open, c.close));
+    const bodyH = Math.max(1, Math.abs(y(c.open) - y(c.close)));
+    svg += `<rect class="${cls}" x="${x - cw * 0.3}" y="${bodyTop}" width="${cw * 0.6}" height="${bodyH}"/>`;
+  });
+  svg += `</svg>`;
+  wrap.innerHTML = svg;
+  document.getElementById("chart-symbol").textContent = symbol;
+}
+
+// ---- WebSocket canlı akış (polling'e fallback'li) ----
+let ws = null;
+function connectWebSocket() {
+  try {
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(`${proto}://${location.host}/ws/live?symbol=BTC/USDT`);
+
+    ws.onmessage = (evt) => {
+      const msg = JSON.parse(evt.data);
+      stopPolling();  // WS çalışıyorsa polling'e gerek yok
+      if (msg.ticker) {
+        const d = msg.ticker;
+        const chg = d.change_percentage_24h ?? 0;
+        const cls = chg >= 0 ? "up" : "down";
+        document.getElementById("dash-ticker").innerHTML = `
+          <span>Fiyat: <b>${d.last_price}</b></span>
+          <span>24s Yüksek: ${d.high_24h}</span>
+          <span>24s Düşük: ${d.low_24h}</span>
+          <span class="${cls}">Değişim: ${chg}%</span>
+          <span>Hacim: ${Number(d.volume_24h).toFixed(2)}</span>`;
+      }
+      if (msg.summary) {
+        document.getElementById("dash-total").textContent = fmtUsdt(msg.summary.total_portfolio_usdt);
+        document.getElementById("dash-free").textContent = fmtUsdt(msg.summary.free_usdt);
+        document.getElementById("header-portfolio-usdt").textContent = fmtUsdt(msg.summary.total_portfolio_usdt);
+      }
+      if (msg.mode) {
+        const badge = document.getElementById("mode-badge");
+        const live = msg.mode === "live";
+        badge.textContent = live ? "⚡ LIVE KUCOIN" : "🧪 SIMULATION";
+        badge.className = "mode-badge " + (live ? "live" : "sim");
+      }
+      document.getElementById("footer-conn").textContent = "🟢 Bağlantı: CANLI (WS)";
+      setFooterLog("Canlı veri güncellendi (WebSocket).");
+    };
+
+    ws.onclose = () => {
+      document.getElementById("footer-conn").textContent = "🟡 WS kapandı — polling'e geçildi";
+      startPolling();  // fallback
+      setTimeout(connectWebSocket, 5000);  // GLOBAL_STANDARDS 4.1: yeniden bağlan
+    };
+    ws.onerror = () => { try { ws.close(); } catch (e) {} };
+  } catch (e) {
+    startPolling();
+  }
+}
+
+// ---- Başlangıç + periyodik yenileme (WS yoksa fallback) ----
+let pollTimer = null;
 async function refreshDashboard() {
   await loadStatus();
   await loadSummary();
   await loadTicker();
 }
-refreshDashboard();
-setInterval(refreshDashboard, 15000);  // 15 saniyede bir
+function startPolling() {
+  if (pollTimer) return;
+  refreshDashboard();
+  pollTimer = setInterval(refreshDashboard, 15000);
+}
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// İlk yükleme
+loadStatus();
+loadSummary();
+loadTicker();
+loadChart();
+setInterval(() => loadChart(), 60000);  // grafik 60sn'de bir yenilenir
+connectWebSocket();

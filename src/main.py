@@ -2,10 +2,11 @@
 KuCoin Al-Sat Botu — FastAPI Uygulama Giriş Noktası
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import asyncio
 import os
 
 from src.modules.module1_account import KuCoinAccount
@@ -253,6 +254,43 @@ async def switch_mode(req: SwitchModeRequest):
     """Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar."""
     result = await orders.switch_mode(req.mode)
     return result
+
+
+# ============================================================================
+# WebSocket: Canlı veri akışı (dashboard için)
+# ============================================================================
+@app.websocket("/ws/live")
+async def ws_live(websocket: WebSocket, symbol: str = "BTC/USDT"):
+    """
+    Dashboard'a canlı ticker + portföy özeti + bağlantı durumu push eder.
+    İstemci her ~3 saniyede güncel veri alır.
+    """
+    await websocket.accept()
+    try:
+        while True:
+            payload = {"type": "tick", "timestamp": timestamp()}
+            try:
+                ticker = await market.get_ticker(symbol)
+                payload["ticker"] = ticker.data if ticker.success else None
+            except Exception as e:
+                payload["ticker"] = None
+                logger.error(f"WS ticker hatası: {e}")
+
+            try:
+                summary = await account.get_summary()
+                payload["summary"] = summary.data if summary.success else None
+            except Exception:
+                payload["summary"] = None
+
+            payload["mode"] = orders.mode
+            payload["bot_active"] = orders.bot_active
+
+            await websocket.send_json(payload)
+            await asyncio.sleep(3)
+    except WebSocketDisconnect:
+        logger.info("WebSocket istemci bağlantısı kapandı.")
+    except Exception as e:
+        logger.error(f"WebSocket hatası: {e}")
 
 
 # Statik dosyaları (CSS/JS) sun — API rotalarından sonra mount edilir.

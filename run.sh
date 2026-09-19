@@ -32,7 +32,7 @@ PORT=${PORT:-8000}
 echo "=================================================================="
 echo "⚡ KuCoin Al-Sat Botu Başlatılıyor..."
 echo "=================================================================="
-echo "   🌐 REST API & Web Panel : http://$HOST:$PORT"
+echo "   📊 Web Dashboard        : http://$HOST:$PORT/"
 echo "   📖 Canlı Swagger UI     : http://$HOST:$PORT/docs"
 echo "   📑 ReDoc Dokümantasyonu : http://$HOST:$PORT/redoc"
 echo "=================================================================="
@@ -43,6 +43,6 @@ echo ""
 if [ -f "$PROJECT_DIR/src/main.py" ]; then
     uvicorn src.main:app --host "$HOST" --port "$PORT" --reload
 else
-    echo "ℹ️  'src/main.py' henüz oluşturulmadı (Şu an analiz ve tasarım aşamasındayız)."
-    echo "   Modül 1 analizi tamamlanıp kodlamaya onay verildiğinde sunucu burada çalışacaktır."
+    echo "❌ 'src/main.py' bulunamadı. Kurulum eksik olabilir."
+    exit 1
 fi

@@ -75,6 +75,14 @@ body {
 .ticker-grid .up { color: var(--green); }
 .ticker-grid .down { color: var(--red); }
 
+/* CHART */
+.chart-wrap { width: 100%; overflow-x: auto; }
+.chart-wrap svg { display: block; width: 100%; height: 260px; }
+.candle-up { fill: var(--green); stroke: var(--green); }
+.candle-down { fill: var(--red); stroke: var(--red); }
+.chart-axis { stroke: var(--border); stroke-width: 1; }
+.chart-label { fill: var(--text-dim); font-size: 10px; }
+
 /* TABLES */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .data-table th, .data-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); }

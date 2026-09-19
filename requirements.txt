@@ -24,6 +24,7 @@ numpy>=1.26.0
 # HTTP İstemcisi & Ağ Araçları (API Testleri ve REST istekleri için)
 httpx>=0.27.0
 aiohttp>=3.9.0
+requests>=2.31.0
 
 # Asenkron SQLite Veritabanı
 aiosqlite>=0.20.0
