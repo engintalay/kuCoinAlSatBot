@@ -28,6 +28,7 @@ from src.modules.indicators.trend import compute_trend
 from src.modules.indicators.momentum import compute_momentum
 from src.modules.indicators.volatility import compute_volatility
 from src.modules.indicators.strength import compute_strength
+from src.modules.indicators.structure import compute_structure
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
 
@@ -327,6 +328,51 @@ class KuCoinMarket:
                 success=False, data={"data_quality": "UNAVAILABLE"},
                 error=f"İndikatör hesaplanamadı: {e}",
                 timestamp=timestamp(),
+            )
+
+    async def get_structure(
+        self, symbol: str, timeframe: str = "1h", limit: int = 300, swing_n: int = 3
+    ) -> AnalysisSignalResponse:
+        """
+        Market Structure / SMC analizi (swing, BOS, CHoCH, FVG, Order Block).
+        MODULE_2_SPEC 3.7. Yalnızca kapanmış mumlar (repaint koruması).
+        """
+        try:
+            candles_resp = await self.get_candles(symbol, timeframe, limit)
+            if not candles_resp.success:
+                return AnalysisSignalResponse(
+                    success=False, data={"data_quality": "UNAVAILABLE"},
+                    error=candles_resp.error, timestamp=timestamp(),
+                )
+
+            confirmed = [c for c in candles_resp.data.get("candles", []) if c.get("confirmed")]
+            if len(confirmed) < (2 * swing_n + 3):
+                return AnalysisSignalResponse(
+                    success=False,
+                    data={"data_quality": "UNAVAILABLE", "confirmed_candles": len(confirmed)},
+                    error="Yapı analizi için yetersiz kapanmış mum verisi.",
+                    timestamp=timestamp(),
+                )
+
+            df = pd.DataFrame(confirmed)
+            structure = compute_structure(df, n=swing_n)
+
+            return AnalysisSignalResponse(
+                success=True,
+                data={
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "data_quality": "OK" if len(confirmed) >= 250 else "DEGRADED",
+                    "confirmed_candles": len(confirmed),
+                    "market_structure": structure,
+                },
+                error=None, timestamp=timestamp(),
+            )
+        except Exception as e:
+            logger.error(f"Yapı analizi hatası ({symbol} {timeframe}): {e}")
+            return AnalysisSignalResponse(
+                success=False, data={"data_quality": "UNAVAILABLE"},
+                error=f"Yapı analizi yapılamadı: {e}", timestamp=timestamp(),
             )
 
     def get_buffer(self, symbol: str, timeframe: str) -> list:

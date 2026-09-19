@@ -139,3 +139,15 @@ async def get_market_indicators(
     """
     result = await market.get_indicators(symbol, timeframe, limit)
     return result
+
+
+@app.get("/api/v1/market/analysis/structure")
+async def get_market_structure(
+    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 300
+):
+    """
+    Market Structure / SMC analizi: swing yapısı, BOS, CHoCH, FVG, Order Block.
+    Yalnızca kapanmış mumlar kullanılır (lookahead-korumalı).
+    """
+    result = await market.get_structure(symbol, timeframe, limit)
+    return result
