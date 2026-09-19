@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:50:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 çekirdeği çalışıyor, 22/22 test geçiyor ✅ (WebSocket/yetki denetimi eksik) | **Son Güncelleme:** 2026-09-19 21:37:00 (+03:00)
 
 ---
 
@@ -12,14 +12,18 @@
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
 | `requirements.txt` | ✅ Güncellendi (`aiosqlite` dahil) & Sanal ortama kuruldu |
-| Proje İskeleti (`src/`) | 🛠️ Coding AI tarafından oluşturuldu |
-| Kaynak Kod (`src/modules/`) | ⚠️ Coding AI tarafından yazıldı ancak testler başarısız |
-| Test Dosyaları (`tests/`) | ⚠️ Yazıldı ancak mantık ve mock hataları düzeltilmeli |
+| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules/module1_account`) |
+| Modül 1 Kaynak Kodu (`module1_account.py`) | ✅ Çekirdek çalışıyor (bağlantı, bakiye, portföy özeti, 4 endpoint) |
+| Modül 1 Testleri (`test_module_1_account.py`) | ✅ 22/22 test geçiyor (`run_tests.sh` yeşil) |
+| Modül 1 — Eksik Alt Özellikler | ⏳ WebSocket canlı bakiye aboneliği, API yetki (Read/Trade) denetimi, `portfolio_share_percent` dışı ince ayarlar |
+| Modül 2 & Modül 3 | ❌ Kodlama başlamadı (`module2_market.py`, `module3_orders.py` yok) |
 
 
 ---
 
 ## 2. Proje Yapısı
+
+> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Şu an fiilen mevcut olanlar: `src/config.py`, `src/database.py`, `src/main.py`, `src/utils/*`, `src/models/*`, `src/modules/module1_account.py` ve `tests/test_module_1_account.py`. Modül 2/3 dosyaları, `conftest.py`, `test_module_2/3`, `test_utils.py` ve `indicators/`, `analysis/` dizinleri henüz oluşturulmadı.
 
 ```
 kuCoinAlSatBot/
@@ -70,11 +74,11 @@ kuCoinAlSatBot/
 
 ## 3. Sıralı Geliştirme Adımları
 
-### ⏳ Adım 1 — Proje İskeleti & Ortam Hazırlığı
+### ✅ Adım 1 — Proje İskeleti & Ortam Hazırlığı
 - ✅ `requirements.txt` yazıldı ve sanal ortama kuruldu
 - ✅ `.env.example` şablonu ve kök dizinde `.env` dosyası oluşturuldu
 - ✅ Yönetim betikleri (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) hazırlandı
-- ⏳ `src/` alt dizinleri ve `__init__.py` dosyalarının oluşturulması (Kodlama fazında)
+- ✅ `src/` alt dizinleri ve `__init__.py` dosyaları oluşturuldu
 
 ### Adım 2 — Modül 1: KuCoin Bağlantısı & Hesap Durumu
 - `config.py` — `.env` okuma, yapılandırma
@@ -142,18 +146,20 @@ kuCoinAlSatBot/
 
 ## 4. Kütlemler (Checklist)
 
-### Modül 1 (Tasarım Hazır / Kodlama Bekliyor ⏳)
-- [ ] `.env` okuma & yapılandırma
-- [ ] Zaman senkronizasyonu
-- [ ] API anahtarı doğrulama (HMAC-SHA256)
-- [ ] Yetki kontrolü (Read/Trade)
-- [ ] Bakiye sorgulama (free/used/total)
-- [ ] USDT karşılığı hesaplama
-- [ ] WebSocket bakiye aboneliği
-- [ ] `/api/v1/account/status`
-- [ ] `/api/v1/account/balances`
-- [ ] `/api/v1/account/summary`
-- [ ] `/api/v1/account/test-connection`
+### Modül 1 (Çekirdek Çalışıyor ✅ / Bazı Alt Özellikler Eksik ⏳)
+- [x] `.env` okuma & yapılandırma (`config.py` — tüm alanlar okunuyor)
+- [x] Zaman senkronizasyonu (`time_sync.check_time_sync`, 3sn drift kontrolü, canlı doğrulandı)
+- [ ] API anahtarı doğrulama (HMAC-SHA256) — *ccxt otomatik imzalıyor; ayrı imza denetimi eklenmedi*
+- [ ] Yetki kontrolü (Read/Trade) — *permission audit henüz yok*
+- [x] Bakiye sorgulama (free/used/total) — `trade` + `main` hesapları birleştiriliyor
+- [x] USDT karşılığı hesaplama — anlık ticker fiyatı + `portfolio_share_percent`
+- [ ] WebSocket bakiye aboneliği — *henüz yok (REST çalışıyor)*
+- [x] `/api/v1/account/status`
+- [x] `/api/v1/account/balances`
+- [x] `/api/v1/account/summary`
+- [x] `/api/v1/account/test-connection`
+
+> **Test Durumu:** `tests/test_module_1_account.py` → **22/22 test geçiyor** (`./run_tests.sh` yeşil). Endpoint'ler canlı KuCoin hesabına karşı doğrulandı (bakiye başarıyla çekildi).
 
 ### Modül 2 (Tasarım Genişletildi / Kodlama Bekliyor ⏳)
 - [ ] KuCoin Ticker & L2 Order Book veri akışı (`module2_market.py`)
@@ -234,5 +240,6 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-17 21:35:00** | Review bulguları düzeltildi: `.env` durumu gerçeğe göre güncellendi, yanıltıcı checklist başlıkları düzeltildi, tamamlama göstergesi ve footer log eklendi. | Tamamlandı |
 | **2026-09-17 22:06:00** | Rozet ayrımı (Tasarım %100 vs Kodlama %20) yapıldı, Mevcut Durum tablosu Coding AI ilerlemesiyle senkronlandı. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-17 22:50:00** | Modül 2 geliştirme planı ve checklist'i `crypto_indicators_coding_agent_reference.md` doğrultusunda 10 indikatör katmanı, SMC, Feature & Scoring Engine ve yeni API endpoint'leri ile genişletildi. | Onaylandı & Genişletildi (%100) |
+| **2026-09-19 21:37:00** | Workflow gerçek proje durumuyla senkronlandı: Modül 1 çekirdeği çalışır ve **22/22 test geçer** hale geldi (test-connection/balances/summary endpoint hataları ve async kaynak sızıntısı giderildi). Başlık rozeti, Mevcut Durum tablosu, Adım 1 ve Modül 1 checklist'i kanıtlı biçimde güncellendi. Eksikler dürüstçe işaretlendi: WebSocket canlı bakiye ve API yetki (Read/Trade) denetimi henüz yok. | Güncellendi (Kanıta Dayalı) |
 
 
