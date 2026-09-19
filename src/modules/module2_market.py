@@ -474,6 +474,74 @@ class KuCoinMarket:
                 error=f"MTF analizi yapılamadı: {e}", timestamp=timestamp(),
             )
 
+    async def get_trade_setup(
+        self, symbol: str, timeframe: str = "1h", side: str = "buy", limit: int = 300
+    ) -> AnalysisSignalResponse:
+        """
+        Analiz motorundan otomatik işlem seviyeleri üretir (Bracket Order için).
+        MODULE_3_SPEC 2.5: Entry, TP1, TP2, Stop-Loss, R:R.
+
+        Long (buy): stop = entry - 1.5*ATR, tp1 = entry + 1.5*risk, tp2 = entry + 3.0*risk.
+        Short (sell): yönler terslenir.
+        """
+        try:
+            features = await self._all_features(symbol, timeframe, limit)
+            if features is None:
+                return AnalysisSignalResponse(
+                    success=False, data={"data_quality": "UNAVAILABLE"},
+                    error="İşlem seviyeleri için yetersiz kapanmış mum verisi.",
+                    timestamp=timestamp(),
+                )
+
+            side = (side or "buy").lower()
+            vol = features.get("volatility") or {}
+            atr = vol.get("atr")
+            trend = features.get("trend") or {}
+            entry = trend.get("price")
+
+            if entry is None or atr is None or atr <= 0:
+                return AnalysisSignalResponse(
+                    success=False, data={"data_quality": "DEGRADED"},
+                    error="Giriş fiyatı veya ATR hesaplanamadı.", timestamp=timestamp(),
+                )
+
+            atr_mult = 1.5
+            if side == "buy":
+                stop_loss = entry - atr_mult * atr
+                risk = entry - stop_loss
+                tp1 = entry + 1.5 * risk
+                tp2 = entry + 3.0 * risk
+            else:
+                stop_loss = entry + atr_mult * atr
+                risk = stop_loss - entry
+                tp1 = entry - 1.5 * risk
+                tp2 = entry - 3.0 * risk
+
+            return AnalysisSignalResponse(
+                success=True,
+                data={
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "side": side,
+                    "trade_setup": {
+                        "entry_price": round(float(entry), 8),
+                        "stop_loss_price": round(float(stop_loss), 8),
+                        "tp1_price": round(float(tp1), 8),
+                        "tp2_price": round(float(tp2), 8),
+                        "atr": round(float(atr), 8),
+                        "risk_per_unit": round(float(risk), 8),
+                        "risk_reward_ratio": 3.0,
+                    },
+                },
+                error=None, timestamp=timestamp(),
+            )
+        except Exception as e:
+            logger.error(f"Trade setup hatası ({symbol} {timeframe}): {e}")
+            return AnalysisSignalResponse(
+                success=False, data={},
+                error=f"İşlem seviyeleri hesaplanamadı: {e}", timestamp=timestamp(),
+            )
+
     def get_buffer(self, symbol: str, timeframe: str) -> list:
         """Bellekteki ring buffer'ın kopyasını döndürür (analiz motoru için)."""
         return list(self._candle_buffers.get((symbol, timeframe), []))

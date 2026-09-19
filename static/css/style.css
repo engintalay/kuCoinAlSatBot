@@ -158,3 +158,10 @@ body {
 .settings-form { display: flex; flex-direction: column; gap: 12px; max-width: 400px; }
 .settings-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--text-dim); }
 .watchlist-add { display: flex; gap: 10px; margin-bottom: 12px; }
+
+/* BRACKET ORDER */
+.bracket-form { display: flex; flex-direction: column; gap: 12px; }
+.bracket-levels { display: flex; flex-direction: column; gap: 4px; }
+.level-row { display: flex; justify-content: space-between; padding: 6px 12px; background: var(--bg-0); border-radius: 6px; font-size: 0.9rem; }
+.level-row.up b { color: var(--green); }
+.level-row.down b { color: var(--red); }

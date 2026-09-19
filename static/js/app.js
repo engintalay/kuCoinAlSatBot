@@ -67,6 +67,7 @@ const INFO_TEXT = {
   mtf: { t: "Multi-Timeframe (MTF)", d: "4H rejim → 1H kurulum → 15m tetikleyici hiyerarşisi. Üç zaman dilimi uyumlu olmadan işlem önerilmez." },
   smc: { t: "Smart Money Concepts", d: "BOS (yapı kırılımı), CHoCH (karakter değişimi), FVG (fiyat boşluğu) gibi kurumsal fiyat hareketi sinyalleri." },
   orders: { t: "Emir Verme", d: "Market: anlık fiyattan. Limit: hedef fiyattan. Bakiyenizden fazla emir pre-trade risk kontrolüyle engellenir." },
+  bracket: { t: "Akıllı Paket Emir", d: "Analiz motorunun ATR/seviye hesabından otomatik Giriş + TP1 (%50) + TP2 (%50) + Stop-Loss üretir. Sadece USDT tutarı girin, tek tıkla tüm paket iletilir." },
 };
 
 const popover = document.getElementById("info-popover");
@@ -262,6 +263,50 @@ async function removeWatch(sym) {
   const res = await apiSend("/settings/watchlist/" + encodeURIComponent(sym), "DELETE");
   if (res.success) { renderWatchlist(res.data.watchlist); toast(`${sym} çıkarıldı`, "warning"); }
 }
+
+// ---- Akıllı Paket Emir (Bracket) ----
+let bracketSetup = null;
+document.getElementById("bracket-load").addEventListener("click", async () => {
+  const symbol = document.getElementById("bracket-symbol").value;
+  const side = document.getElementById("bracket-side").value;
+  const res = await apiGet(`/market/trade-setup?symbol=${encodeURIComponent(symbol)}&side=${side}`);
+  const box = document.getElementById("bracket-levels");
+  if (res.success) {
+    bracketSetup = res.data.trade_setup;
+    const s = bracketSetup;
+    box.innerHTML = `
+      <div class="level-row"><span>Giriş</span><b>${s.entry_price}</b></div>
+      <div class="level-row up"><span>TP1 (%50)</span><b>${s.tp1_price}</b></div>
+      <div class="level-row up"><span>TP2 (%50)</span><b>${s.tp2_price}</b></div>
+      <div class="level-row down"><span>Stop-Loss</span><b>${s.stop_loss_price}</b></div>
+      <div class="level-row"><span>Risk/Ödül</span><b>1 : ${s.risk_reward_ratio}</b></div>`;
+    document.getElementById("bracket-submit").disabled = false;
+    toast("Seviyeler hesaplandı", "success");
+  } else {
+    box.textContent = "Seviyeler hesaplanamadı: " + (res.error || "");
+    document.getElementById("bracket-submit").disabled = true;
+  }
+});
+
+document.getElementById("bracket-submit").addEventListener("click", async () => {
+  if (!bracketSetup) return;
+  const body = {
+    symbol: document.getElementById("bracket-symbol").value,
+    side: document.getElementById("bracket-side").value,
+    usdt_amount: parseFloat(document.getElementById("bracket-usdt").value) || 0,
+    entry_price: bracketSetup.entry_price,
+    stop_loss_price: bracketSetup.stop_loss_price,
+    tp1_price: bracketSetup.tp1_price,
+    tp2_price: bracketSetup.tp2_price,
+  };
+  const res = await apiSend("/orders/bracket", "POST", body);
+  if (res.success) {
+    toast(`Paket emir iletildi (${res.data.bracket_id}) — risk ${res.data.risk_usdt} USDT`, "success");
+    loadOpenOrders();
+  } else {
+    toast("Paket emir reddedildi: " + (res.error || ""), "error");
+  }
+});
 
 // ---- Panic Stop ----
 document.getElementById("panic-btn").addEventListener("click", async () => {

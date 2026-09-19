@@ -126,6 +126,22 @@
           </div>
         </div>
         <div class="card glass">
+          <div class="card-title">🚀 Akıllı Paket Emir (Bracket) <button class="info-btn" data-info="bracket">ℹ️</button></div>
+          <div class="bracket-form">
+            <div class="toolbar">
+              <input id="bracket-symbol" class="input" value="BTC/USDT" />
+              <select id="bracket-side" class="input"><option value="buy">LONG (AL)</option><option value="sell">SHORT (SAT)</option></select>
+              <button id="bracket-load" class="btn btn-accent">Seviyeleri Hesapla</button>
+            </div>
+            <div id="bracket-levels" class="bracket-levels"></div>
+            <div class="toolbar">
+              <input id="bracket-usdt" class="input" type="number" placeholder="USDT Tutarı" value="100" />
+              <button id="bracket-submit" class="btn btn-buy" disabled>🚀 Akıllı Emri İlet</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card glass">
           <div class="card-title">Açık Emirler</div>
           <table class="data-table" id="open-orders-table">
             <thead><tr><th>ID</th><th>Sembol</th><th>Yön</th><th>Tür</th><th>Miktar</th><th>Fiyat</th><th>Durum</th><th></th></tr></thead>

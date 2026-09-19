@@ -72,3 +72,13 @@ def test_contextual_info_buttons(client):
     css = client.get("/static/css/style.css").text
     assert ".info-btn" in css
     assert ".info-popover" in css
+
+
+def test_bracket_and_settings_views(client):
+    """Akıllı Paket Emir bileşeni ve Ayarlar görünümü bulunmalı."""
+    r = client.get("/")
+    assert "Akıllı Paket Emir" in r.text
+    assert 'id="bracket-load"' in r.text
+    assert 'data-info="bracket"' in r.text
+    assert 'data-view="settings"' in r.text
+    assert 'id="view-settings"' in r.text

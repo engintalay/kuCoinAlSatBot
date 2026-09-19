@@ -322,6 +322,78 @@ class KuCoinOrders:
             data={"previous_mode": previous, "current_mode": mode, "bot_active": True},
             error=None, timestamp=timestamp())
 
+    # ------------------------------------------------------------------ #
+    # Akıllı Paket Emir (Bracket Order) — MODULE_3_SPEC 2.5
+    # ------------------------------------------------------------------ #
+    async def create_bracket_order(
+        self, symbol: str, side: str, usdt_amount: float,
+        entry_price: float, stop_loss_price: float,
+        tp1_price: float, tp2_price: float,
+    ) -> "OrderCreateResponse":
+        """
+        Tek pakette: Giriş emri + TP1 (%50) + TP2 (%50) + SL (%100).
+        Paper modda giriş anında dolar, TP/SL açık limit emir olarak kaydedilir.
+        """
+        side = (side or "buy").lower()
+        err = self._validate_order(symbol, side, "limit", usdt_amount and 1, entry_price)
+        if err and "Miktar" not in err:  # miktar burada usdt bazlı, ayrı kontrol
+            return OrderCreateResponse(success=False, data={}, error=err, timestamp=timestamp())
+        if usdt_amount is None or usdt_amount <= 0:
+            return OrderCreateResponse(success=False, data={},
+                                       error="USDT tutarı pozitif olmalı.", timestamp=timestamp())
+        if entry_price <= 0:
+            return OrderCreateResponse(success=False, data={},
+                                       error="Geçersiz giriş fiyatı.", timestamp=timestamp())
+
+        # Miktar ve risk/kâr hesabı
+        amount = usdt_amount / entry_price
+        risk_usdt = round(amount * abs(entry_price - stop_loss_price), 2)
+        gain_tp1 = round((amount * 0.5) * abs(tp1_price - entry_price), 2)
+        gain_tp2 = round((amount * 0.5) * abs(tp2_price - entry_price), 2)
+
+        # Bakiye kontrolü (paper, alış için)
+        if self.mode == "paper" and side == "buy" and usdt_amount > self.paper_balance_usdt:
+            return OrderCreateResponse(
+                success=False, data={},
+                error=(f"Yetersiz sanal bakiye: gerekli {usdt_amount:.2f} USDT, "
+                       f"mevcut {self.paper_balance_usdt:.2f} USDT."), timestamp=timestamp())
+
+        bracket_id = f"bracket-{uuid.uuid4().hex[:10]}"
+        exit_side = "sell" if side == "buy" else "buy"
+
+        # Giriş emri (market)
+        entry_res = await self.create_order(symbol, side, "market", amount, None)
+        if not entry_res.success:
+            return OrderCreateResponse(success=False, data={},
+                                       error=f"Giriş emri başarısız: {entry_res.error}",
+                                       timestamp=timestamp())
+
+        legs = {"entry": entry_res.data}
+        # TP1 (%50), TP2 (%50), SL (%100) — çıkış limit emirleri
+        for name, price, qty in [
+            ("tp1", tp1_price, amount * 0.5),
+            ("tp2", tp2_price, amount * 0.5),
+            ("sl", stop_loss_price, amount),
+        ]:
+            leg = await self.create_order(symbol, exit_side, "limit", qty, price)
+            if leg.success:
+                leg.data["bracket_leg"] = name
+                leg.data["bracket_id"] = bracket_id
+            legs[name] = leg.data if leg.success else {"error": leg.error}
+
+        return OrderCreateResponse(
+            success=True,
+            data={
+                "bracket_id": bracket_id,
+                "symbol": symbol, "side": side,
+                "usdt_amount": usdt_amount, "amount": amount,
+                "entry_price": entry_price, "stop_loss_price": stop_loss_price,
+                "tp1_price": tp1_price, "tp2_price": tp2_price,
+                "risk_usdt": risk_usdt, "gain_tp1_usdt": gain_tp1, "gain_tp2_usdt": gain_tp2,
+                "legs": legs,
+            },
+            error=None, timestamp=timestamp())
+
     async def close(self) -> None:
         if self.exchange is not None:
             try:

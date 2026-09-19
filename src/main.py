@@ -196,6 +196,17 @@ async def get_market_mtf(symbol: str = "BTC/USDT", limit: int = 300):
     return result
 
 
+@app.get("/api/v1/market/trade-setup")
+async def get_trade_setup(
+    symbol: str = "BTC/USDT", timeframe: str = "1h", side: str = "buy", limit: int = 300
+):
+    """
+    Analiz motorundan otomatik işlem seviyeleri (Entry/TP1/TP2/SL/R:R) — Bracket Order için.
+    """
+    result = await market.get_trade_setup(symbol, timeframe, side, limit)
+    return result
+
+
 # ============================================================================
 # Modül 3: Al-Sat Emir Yönetimi (Orders & Execution)
 # ============================================================================
@@ -219,6 +230,26 @@ async def create_order(req: OrderCreateRequest):
     """Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal)."""
     result = await orders.create_order(
         req.symbol, req.side, req.order_type, req.amount, req.price
+    )
+    return result
+
+
+class BracketOrderRequest(BaseModel):
+    symbol: str = "BTC/USDT"
+    side: str = "buy"
+    usdt_amount: float = 100.0
+    entry_price: float
+    stop_loss_price: float
+    tp1_price: float
+    tp2_price: float
+
+
+@app.post("/api/v1/orders/bracket")
+async def create_bracket(req: BracketOrderRequest):
+    """Akıllı Paket Emir: Giriş + TP1 (%50) + TP2 (%50) + SL (%100) tek pakette."""
+    result = await orders.create_bracket_order(
+        req.symbol, req.side, req.usdt_amount,
+        req.entry_price, req.stop_loss_price, req.tp1_price, req.tp2_price,
     )
     return result
 
