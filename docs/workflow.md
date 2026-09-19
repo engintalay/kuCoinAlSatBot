@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 %100 ✅, Modül 2 Faz 2a %100 Tamamlandı (48/48 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:10:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1 & Modül 2 Analiz Motoru %100 Tamamlandı (74/74 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:25:00 (+03:00)
 
 ---
 
@@ -12,19 +12,19 @@
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
 | `requirements.txt` | ✅ Güncellendi (`aiosqlite` dahil) & Sanal ortama kuruldu |
-| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`) |
+| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`, `analysis`) |
 | Modül 1 (Hesap & Bağlantı) | ✅ **%100 Tamamlandı** (Bağlantı, bakiye, portföy payı, yetki denetimi, WebSocket stream) — 29 test |
-| Modül 2 — Faz 2a (Veri & İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) — 19 test |
-| Modül 2 — Faz 2b (İleri SMC & MTF) | ⏳ Tasarım %100 hazır; İleri SMC, MTF ve 0-100 Puanlama Motoru kodlaması bekleniyor |
-| Modül 3 (Emir Yönetimi & Simülasyon) | ⏳ Tasarım %100 hazır; Modül 2 sonrası başlanacak |
-| Toplam Birim Test Durumu | ✅ **48/48 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) — 19 test |
+| Modül 2 — Faz 2b (İleri SMC, Scoring & MTF) | ✅ **%100 Tamamlandı** (Supertrend, Ichimoku, Parabolic SAR, ADX, Aroon, Choppiness, Squeeze, SMC Swings/BOS/CHoCH/FVG/OB, 0-100 Puanlama Motoru, MTF Hiyerarşisi, 3 REST endpoint'i) — 26 test |
+| Modül 3 (Emir Yönetimi & Simülasyon) | ⏳ Tasarım %100 hazır; Modül 2 analiz motoru üzerine başlanacak |
+| Toplam Birim Test Durumu | ✅ **74/74 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 ---
 
 ## 2. Proje Yapısı
 
-> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Şu an fiilen mevcut olanlar: `src/config.py`, `src/database.py`, `src/main.py`, `src/utils/*`, `src/models/*`, `src/modules/module1_account.py` ve `tests/test_module_1_account.py`. Modül 2/3 dosyaları, `conftest.py`, `test_module_2/3`, `test_utils.py` ve `indicators/`, `analysis/` dizinleri henüz oluşturulmadı.
+> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Şu an fiilen mevcut olanlar: `src/config.py`, `src/database.py`, `src/main.py`, `src/utils/*`, `src/models/*`, `src/modules/module1_account.py`, `src/modules/module2_market.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py` ve `tests/test_module_1_account.py`, `tests/test_module_2_market.py`, `tests/test_module_2_indicators.py`, `tests/test_module_2_structure.py`, `tests/test_module_2_analysis.py`. Henüz oluşturulmayanlar: `module3_orders.py`, `indicators/volume.py`, `indicators/levels.py`, `analysis/feature_engine.py`, `analysis/filters.py`, `conftest.py`, `test_module_3_orders.py`, `test_utils.py` ve türev/piyasa-geneli (Katman 8-9) katmanları.
 
 ```
 kuCoinAlSatBot/
@@ -177,23 +177,23 @@ kuCoinAlSatBot/
 
 > **Modül 2 Test Durumu:** `tests/test_module_2_market.py` (8 test) + `tests/test_module_2_indicators.py` (11 test) → **19/19 test geçiyor**. Toplam proje genelinde **48/48 test %100 yeşil**.
 
-### Modül 2 — Faz 2b: İleri Düzey Çok Katmanlı Motor, SMC & Puanlama (Tasarım Hazır ⏳)
-- [ ] İleri Trend Katmanı: Supertrend, Ichimoku Kinko Hyo, Parabolic SAR
-- [ ] İleri Momentum & Güç: StochRSI, CCI, Williams %R, ROC, ADX, Aroon, Choppiness
-- [ ] Hacim ve Sermaye Akışı: RVOL, OBV, VWAP, AVWAP, MFI, CMF, Volume Profile (POC/VAH/VAL)
-- [ ] İleri Volatilite & Seviyeler: Bollinger Bands, Keltner Channels, Squeeze, Pivots, Fib, Donchian
-- [ ] Market Structure (SMC / Fiyat Hareketi): Swing tespiti, BOS, CHoCH, FVG, Order Block
-- [ ] Türev Veriler & Uyumsuzluk: Open Interest, Funding Rate, CVD, Divergence Engine
-- [ ] Analiz ve Puanlama Motoru (`analysis/`):
-  - [ ] Feature Engine (Normalize JSON özellik seti)
-  - [ ] Composite Scoring Engine (0-100 Boğa/Ayı Skoru)
-  - [ ] False Signal & Risk Filtreleri (Düşük Hacim, Range Trap, Overextended)
-  - [ ] İnsan Okunabilir Gerekçelendirme & Risk Uyarıları (Explainable AI)
-  - [ ] Multi-Timeframe (MTF) Hiyerarşisi (4H Rejim → 1H Setup → 15m Tetikleyici)
-- [ ] Faz 2b REST API Endpoint'leri:
-  - [ ] `/api/v1/market/analysis/structure`
-  - [ ] `/api/v1/market/analysis/score`
-  - [ ] `/api/v1/market/analysis/mtf`
+### Modül 2 — Faz 2b: İleri Düzey Çok Katmanlı Motor, SMC & Puanlama (Kodlama & Testler %100 Tamamlandı ✅)
+- [x] İleri Trend Katmanı: Supertrend (10, 3.0), Ichimoku Kinko Hyo (9/26/52 Kumo), Parabolic SAR (0.02/0.20) (`indicators/trend.py`)
+- [x] İleri Momentum & Güç: ADX 14 (Wilder), Aroon 25, Choppiness Index 14 (`indicators/strength.py`)
+- [x] İleri Volatilite & Squeeze: Bollinger Bands (20, 2.0), Keltner Channels (EMA20, 1.5*ATR), BB-KC Squeeze (`indicators/volatility.py`)
+- [x] Market Structure (SMC / Fiyat Hareketi): Lookahead-proof Swings, HH/HL/LH/LL, BOS, CHoCH, FVG, Order Block (`indicators/structure.py`)
+- [x] Analiz ve Puanlama Motoru (`analysis/`):
+  - [x] Feature Engine (`module2_market.py:_all_features` tüm katmanların birleştirilmesi)
+  - [x] Composite Scoring Engine (`analysis/scoring_engine.py` — 0-100 Boğa/Ayı Bileşik Skoru, Net Skor)
+  - [x] False Signal & Risk Filtreleri (ADX zayıf trend, Choppiness range, BB-KC Squeeze uyarıları)
+  - [x] İnsan Okunabilir Gerekçelendirme & Risk Uyarıları (Explainable AI: `reasons` ve `warnings`)
+  - [x] Multi-Timeframe (MTF) Hiyerarşisi (`analysis/mtf_engine.py` — 4H Rejim → 1H Setup → 15m Tetikleyici)
+- [x] Faz 2b REST API Endpoint'leri:
+  - [x] `/api/v1/market/analysis/structure`
+  - [x] `/api/v1/market/analysis/score`
+  - [x] `/api/v1/market/analysis/mtf`
+
+> **Modül 2 Nihai Test Durumu:** 45 Modül 2 testi (`market: 8`, `indicators: 19`, `structure: 8`, `analysis: 10`). Proje genelinde **74/74 test %100 yeşil**.
 
 ### Modül 3 (Tasarım Hazır / Kodlama Bekliyor ⏳)
 - [ ] Market emir oluşturma
@@ -251,5 +251,6 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-19 22:00:00** | **Modül 1 Tamamlandı & Modül 2 Faz 2a/2b Ayrımı**: Coding AI tarafından WebSocket canlı bakiye stream ve API yetki (Read/Trade/Withdraw) denetimi tamamlandı. Toplam test sayısı 29'a yükseldi ve **29/29 birim test başarıyla geçti** (`run_tests.sh` %100 yeşil). Modül 1 checklist'i %100 tamamlandı. Modül 2 geliştirme planı kapsam riskini önlemek için Faz 2a (Çekirdek Veri & İndikatörler) ve Faz 2b (İleri SMC & Scoring) olarak bölümlendi. | **Modül 1 Tamamlandı (%100)** ✅ |
 | **2026-09-19 22:52:00** | **Modül 2 Faz 2a Temel Veri Katmanı Doğrulandı**: Coding AI tarafından `module2_market.py` (ticker, L2 orderbook, ring buffer, repaint guard), `OrderBookResponse` modeli ve 4 API endpoint'i `/api/v1/market/{ticker,orderbook,candles,symbols}` yazıldı. 8 yeni birim test eklendi ve toplam **37/37 birim test başarıyla geçti** (`run_tests.sh` %100 yeşil). | **Faz 2a Veri Katmanı Tamamlandı ✅** |
 | **2026-09-19 23:10:00** | **Modül 2 Faz 2a Çekirdek İndikatörler %100 Tamamlandı**: `indicators/trend.py`, `momentum.py`, `volatility.py` ve `/api/v1/market/analysis/indicators` endpoint'i yazıldı. Repaint guard (yalnızca confirmed kapanmış mumlar) ve warm-up (min 250 mum ile DEGRADED/OK data_quality) doğrulandı. 11 yeni birim test eklendi ve toplam **48/48 birim test başarıyla geçti** (`run_tests.sh` %100 yeşil). | **Faz 2a %100 Tamamlandı ✅** |
+| **2026-09-19 23:25:00** | **Modül 2 Faz 2b SMC, Scoring ve MTF %100 Tamamlandı**: İleri trend, ADX/Aroon/Choppiness, BB-KC Squeeze, SMC (Swings, BOS, CHoCH, FVG, OB), 0-100 Bileşik Puanlama Motoru ve MTF (4H $\rightarrow$ 1H $\rightarrow$ 15m) tamamlandı. 3 yeni API (`/analysis/structure`, `/analysis/score`, `/analysis/mtf`) devreye alındı. 26 yeni birim test ile Modül 2 toplam 45 teste, proje genelinde **74/74 birim teste** ulaştı. | **Modül 2 Analiz Motoru Tamamlandı ✅** |
 
 
