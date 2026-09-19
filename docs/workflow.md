@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1, 2 (Faz 2a+2b+2c) ve 3 %100 ✅ — Backend tamam; yalnızca Katman 9 (piyasa-geneli, harici API) ve Frontend (Adım 5) kaldı ⏳ (110/110 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 00:06:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 1, 2 (Faz 2a+2b+2c), 3 ve Frontend (Adım 5) %100 ✅ — Backend + Dashboard tamam; yalnızca Katman 9 (piyasa-geneli, harici API) opsiyonel kaldı ⏳ (115/115 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 00:16:00 (+03:00)
 
 ---
 
@@ -21,7 +21,8 @@
 | Modül 2 — Kapsam Notu (Kalan) | ⚠️ Yalnızca **Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D)** kaldı; KuCoin'de yok, harici API (ör. CoinGecko) gerektirir — kullanıcı onayı ile eklenebilir. CVD/L-S Ratio da taker-akış verisi gerektirir. |
 | Modül 2 — Test Dağılımı | ✅ 65 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`, `phase2c: 10` |
 | Modül 3 (Emir Yönetimi & Simülasyon) | ✅ **%100 Tamamlandı** (Market/Limit emir, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k sanal USDT, mod geçişi, pre-trade risk; 6 REST endpoint'i) — 16 test |
-| Toplam Birim Test Durumu | ✅ **110/110 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 4 görünüm, toast bildirimleri, 15sn yenileme; `static/` StaticFiles mount) — 5 servis testi |
+| Toplam Birim Test Durumu | ✅ **115/115 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 ---
@@ -129,12 +130,15 @@ kuCoinAlSatBot/
 - ✅ `main.py` — `/api/v1/orders/*` endpoint'leri (6 adet)
 
 ### Adım 5 — Frontend Dashboard (HTML5/CSS3/JS)
-- Dark mode tema (koyu kömür `#0d1117`)
-- Glassmorphism kartlar
-- SVG candlestick grafikler
-- WebSocket canlı veri akışı
-- Toast bildirimleri (başarı/uyarı/hata)
-- Sol menü & üst bar & alt bar (GLOBAL_STANDARDS.md)
+### ✅ Adım 5 — Frontend Dashboard (HTML5/CSS3/JS) (Tamamlandı — temel sürüm)
+- ✅ Dark mode tema (koyu kömür `#0d1117`) (`static/css/style.css`)
+- ✅ Glassmorphism kartlar
+- ⏳ SVG candlestick grafikler — *henüz yok (sonraki iterasyon)*
+- ⏳ WebSocket canlı veri akışı — *şu an 15sn REST polling; WS sonraki iterasyon*
+- ✅ Toast bildirimleri (başarı/uyarı/hata)
+- ✅ Sol menü & üst bar & alt bar + Panic Stop (Master Layout, GLOBAL_STANDARDS 3)
+- ✅ 4 görünüm: Dashboard, Hesap (bakiye tablosu), Analiz (skor/gerekçe/uyarı), Emirler (oluştur/listele/iptal)
+- ✅ `static/` StaticFiles mount; root `/` dashboard, `/api` bilgi endpoint'i
 
 ### Adım 6 — Testler
 - ❌ `tests/conftest.py` — Shared fixtures & KuCoin mock (henüz yok; mock'lar test dosyalarında yerel)
@@ -146,6 +150,7 @@ kuCoinAlSatBot/
 - ✅ `tests/test_module_2_structure.py` (8 test)
 - ✅ `tests/test_module_2_analysis.py` (10 test)
 - ✅ `tests/test_module_3_orders.py` (16 test)
+- ✅ `tests/test_frontend.py` (5 servis testi)
 - ❌ `tests/test_utils.py` (henüz yok)
 - ✅ `run_tests.sh` — Tek komut test koşturma scripti (84/84 yeşil)
 
@@ -273,6 +278,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-19 23:49:00** | **Modül 2 kapsam durumu dürüstleştirildi**: "Tüm katmanlar %100" ifadesi yanıltıcıydı; başlık rozeti ve Mevcut Durum tablosu düzeltildi. Spot analiz motoru tam (6/7 katman + scoring + MTF, 8 endpoint) ancak Katman 8 (Türev: OI/Funding/CVD), Katman 9 (Piyasa geneli: BTC.D) ve ek momentum indikatörleri (StochRSI/CCI/%R/ROC) kodda **yok** — kanıtla doğrulandı (`grep`) ve **Faz 2c** olarak ertelendi. | Güncellendi (Kanıta Dayalı) ⚠️ |
 | **2026-09-20 00:01:00** | **Modül 3 (Al-Sat Emir Yönetimi) %100 Tamamlandı**: `module3_orders.py` yazıldı — Market/Limit emir, açık emir & geçmiş, tekil iptal, Panic Stop, Paper Trading motoru ($10k sanal USDT, canlı fiyat eşleşmesi), pre-trade risk (bakiye/min notional/bot durumu) ve paper↔live mod geçişi (M3-C01..C08). 6 REST endpoint (`/api/v1/orders/*`) eklendi (M3-C09). Varsayılan güvenli `paper` mod. 16 yeni test (`test_module_3_orders.py`) ile proje genelinde **100/100 birim teste** ulaşıldı; paper akışı gerçek BTC/USDT fiyatıyla uçtan uca doğrulandı. Backend (Modül 1-2-3) tamam. | **Modül 3 Tamamlandı (%100) ✅** |
 | **2026-09-20 00:06:00** | **Modül 2 Faz 2c Tamamlandı**: Ek momentum osilatörleri (StochRSI 14, CCI 20, Williams %R 14, ROC 9) `momentum.py`'ye; Katman 8 türev veriler (Funding Rate + Open Interest, KuCoin Futures) yeni `indicators/derivatives.py`'ye eklendi (`include_derivatives` flag ile opsiyonel). 10 yeni test (`test_module_2_phase2c.py`) ile proje genelinde **110/110 birim teste** ulaşıldı; gerçek BTC/USDT + Futures verisiyle doğrulandı. Kalan tek kalem Katman 9 (piyasa-geneli, harici API gerektirir). | **Faz 2c Tamamlandı (%100) ✅** |
+| **2026-09-20 00:16:00** | **Adım 5 Frontend Dashboard (temel sürüm) Tamamlandı**: `static/` altına dark glassmorphism tek-sayfa dashboard eklendi — Master Layout (header + sol menü + footer + Panic Stop), 4 görünüm (Ana Sayfa/Hesap/Analiz/Emirler), toast bildirimleri, 15sn REST polling. `main.py`'ye StaticFiles mount + root `/` dashboard + `/api` bilgi endpoint'i. 5 servis testi (`test_frontend.py`) ile proje genelinde **115/115 birim teste** ulaşıldı. Sonraki iterasyona bırakılan: SVG candlestick grafikler, WebSocket canlı akış (şu an polling). | **Frontend Temel Sürüm Tamamlandı ✅** |
 
 
 
