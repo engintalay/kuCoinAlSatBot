@@ -28,6 +28,8 @@ from src.modules.indicators.trend import compute_trend
 from src.modules.indicators.momentum import compute_momentum
 from src.modules.indicators.volatility import compute_volatility
 from src.modules.indicators.strength import compute_strength
+from src.modules.indicators.volume import compute_volume
+from src.modules.indicators.levels import compute_levels
 from src.modules.indicators.structure import compute_structure
 from src.modules.analysis.scoring_engine import compute_score
 from src.modules.analysis.mtf_engine import evaluate_mtf
@@ -310,6 +312,8 @@ class KuCoinMarket:
                 "momentum": compute_momentum(df),
                 "volatility": compute_volatility(df),
                 "strength": compute_strength(df),
+                "volume": compute_volume(df),
+                "levels": compute_levels(df),
             }
 
             return AnalysisSignalResponse(
@@ -396,6 +400,8 @@ class KuCoinMarket:
             "momentum": compute_momentum(df),
             "volatility": compute_volatility(df),
             "strength": compute_strength(df),
+            "volume": compute_volume(df),
+            "levels": compute_levels(df),
             "structure": compute_structure(df),
         }
 

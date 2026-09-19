@@ -94,6 +94,35 @@ def _score_strength(strength: dict) -> tuple[float, float, list]:
     return bull, bear, reasons
 
 
+def _score_volume(volume: dict) -> tuple[float, float, list]:
+    """Hacim & akış puanlaması (spec 4.2: RVOL+VWAP, CMF, OBV)."""
+    bull = bear = 0.0
+    reasons = []
+    if not volume:
+        return bull, bear, reasons
+
+    rvol = volume.get("rvol") or {}
+    vwap = volume.get("vwap") or {}
+    if rvol.get("regime") == "HIGH" and vwap.get("price_above_vwap") is True:
+        bull += 10; reasons.append("Yüksek RVOL ve fiyat VWAP üstünde")
+    elif rvol.get("regime") == "HIGH" and vwap.get("price_above_vwap") is False:
+        bear += 10; reasons.append("Yüksek RVOL ve fiyat VWAP altında")
+
+    cmf = volume.get("cmf") or {}
+    if cmf.get("regime") == "INFLOW":
+        bull += 5; reasons.append("CMF net sermaye girişi")
+    elif cmf.get("regime") == "OUTFLOW":
+        bear += 5; reasons.append("CMF net sermaye çıkışı")
+
+    obv = volume.get("obv") or {}
+    if obv.get("above_ema20") is True:
+        bull += 5; reasons.append("OBV EMA20 üzerinde")
+    elif obv.get("above_ema20") is False:
+        bear += 5; reasons.append("OBV EMA20 altında")
+
+    return bull, bear, reasons
+
+
 def _risk_filters(indicators: dict) -> list:
     """Sahte sinyal / risk filtreleri (spec 3.3, 3.5). Uyarı listesi döndürür."""
     warnings = []
@@ -129,6 +158,7 @@ def compute_score(indicators: dict) -> dict:
         _score_trend(indicators.get("trend")),
         _score_momentum(indicators.get("momentum")),
         _score_strength(indicators.get("strength")),
+        _score_volume(indicators.get("volume")),
         _score_structure(indicators.get("structure")),
     ]
     bull = sum(l[0] for l in layers)
@@ -136,8 +166,9 @@ def compute_score(indicators: dict) -> dict:
     reasons = [r for l in layers for r in l[2]]
     warnings = _risk_filters(indicators)
 
-    # Mevcut feature'ların maksimum toplam puanı (türev hariç): 60.
-    max_points = 60.0
+    # Mevcut feature'ların maksimum toplam puanı (türev hariç): 80.
+    # trend 25 + momentum 15 + strength 5 + volume 20 + structure 20 (yaklaşık).
+    max_points = 80.0
     bull_score = round(min(bull / max_points * 100, 100), 1)
     bear_score = round(min(bear / max_points * 100, 100), 1)
     net = round(bull_score - bear_score, 1)
