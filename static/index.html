@@ -39,6 +39,7 @@
       <a class="nav-item" data-view="analysis">📈 Analiz</a>
       <a class="nav-item" data-view="orders">📋 Emirler</a>
       <a class="nav-item" data-view="guide">📖 Kullanım Kılavuzu</a>
+      <a class="nav-item" data-view="settings">⚙️ Ayarlar</a>
     </nav>
 
     <!-- ANA İÇERİK -->
@@ -165,6 +166,37 @@
             <p>Acil durumda tek tıkla <b>tüm açık emirleri iptal eder ve botu durdurur</b>. Bot durunca
               yeni emir kabul edilmez; tekrar başlatmak için mod değiştirin.</p>
           </div>
+        </div>
+      </section>
+
+      <!-- Ayarlar görünümü -->
+      <section id="view-settings" class="view">
+        <div class="card glass">
+          <div class="card-title">⚙️ Genel Ayarlar</div>
+          <div class="settings-form">
+            <label>Varsayılan Mod
+              <select id="set-mode" class="input">
+                <option value="paper">🧪 Simülasyon (Paper)</option>
+                <option value="live">⚡ Canlı (Live)</option>
+              </select>
+            </label>
+            <label>Varsayılan Sembol <input id="set-symbol" class="input" value="BTC/USDT" /></label>
+            <label>Varsayılan Zaman Dilimi
+              <select id="set-tf" class="input">
+                <option>15m</option><option selected>1h</option><option>4h</option><option>1d</option>
+              </select>
+            </label>
+            <label>Maks. Emir Tutarı (USDT) <input id="set-maxorder" class="input" type="number" value="1000" /></label>
+            <button id="settings-save" class="btn btn-accent">Kaydet</button>
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="card-title">👁️ İzleme Listesi (Watchlist)</div>
+          <div class="watchlist-add">
+            <input id="watch-symbol" class="input" placeholder="Örn: AVAX/USDT" />
+            <button id="watch-add" class="btn btn-buy">Ekle</button>
+          </div>
+          <ul id="watchlist" class="reason-list"></ul>
         </div>
       </section>
     </main>

@@ -48,6 +48,7 @@ function switchView(view) {
   if (sec) sec.classList.add("active");
   if (view === "account") loadBalances();
   if (view === "orders") loadOpenOrders();
+  if (view === "settings") loadSettings();
 }
 
 document.querySelectorAll(".nav-item").forEach((item) => {
@@ -214,6 +215,52 @@ async function cancelOrder(id) {
   const res = await apiSend(`/orders/${id}`, "DELETE");
   if (res.success) { toast("Emir iptal edildi", "success"); loadOpenOrders(); }
   else toast("İptal başarısız", "error");
+}
+
+// ---- Ayarlar & Watchlist ----
+async function loadSettings() {
+  const res = await apiGet("/settings");
+  if (!res.success) return;
+  const s = res.data;
+  document.getElementById("set-mode").value = s.default_mode;
+  document.getElementById("set-symbol").value = s.default_symbol;
+  document.getElementById("set-tf").value = s.default_timeframe;
+  document.getElementById("set-maxorder").value = (s.risk && s.risk.max_order_usdt) || 1000;
+  renderWatchlist(s.watchlist || []);
+}
+
+function renderWatchlist(list) {
+  const ul = document.getElementById("watchlist");
+  ul.innerHTML = list.map((sym) => `
+    <li style="display:flex;justify-content:space-between;align-items:center">
+      <span>${sym}</span>
+      <button class="btn-mini" data-watch="${sym}">Çıkar</button>
+    </li>`).join("") || "<li>İzleme listesi boş</li>";
+  ul.querySelectorAll("[data-watch]").forEach((b) =>
+    b.addEventListener("click", () => removeWatch(b.dataset.watch)));
+}
+
+document.getElementById("settings-save").addEventListener("click", async () => {
+  const body = {
+    default_mode: document.getElementById("set-mode").value,
+    default_symbol: document.getElementById("set-symbol").value,
+    default_timeframe: document.getElementById("set-tf").value,
+    risk: { max_order_usdt: parseFloat(document.getElementById("set-maxorder").value) || 1000 },
+  };
+  const res = await apiSend("/settings", "POST", body);
+  toast(res.success ? "Ayarlar kaydedildi" : "Ayar kaydı başarısız", res.success ? "success" : "error");
+});
+
+document.getElementById("watch-add").addEventListener("click", async () => {
+  const sym = document.getElementById("watch-symbol").value.trim();
+  if (!sym) return;
+  const res = await apiSend("/settings/watchlist", "POST", { symbol: sym });
+  if (res.success) { renderWatchlist(res.data.watchlist); toast(`${sym} eklendi`, "success"); document.getElementById("watch-symbol").value = ""; }
+});
+
+async function removeWatch(sym) {
+  const res = await apiSend("/settings/watchlist/" + encodeURIComponent(sym), "DELETE");
+  if (res.success) { renderWatchlist(res.data.watchlist); toast(`${sym} çıkarıldı`, "warning"); }
 }
 
 // ---- Panic Stop ----

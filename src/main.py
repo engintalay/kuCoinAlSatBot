@@ -12,6 +12,7 @@ import os
 from src.modules.module1_account import KuCoinAccount
 from src.modules.module2_market import KuCoinMarket
 from src.modules.module3_orders import KuCoinOrders
+from src.modules.settings import SettingsManager
 from src.config import Config
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
@@ -35,6 +36,7 @@ app.add_middleware(
 account = KuCoinAccount()
 market = KuCoinMarket()
 orders = KuCoinOrders(market=market)
+settings_mgr = SettingsManager(market=market)
 
 
 @app.on_event("startup")
@@ -254,6 +256,52 @@ async def switch_mode(req: SwitchModeRequest):
     """Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar."""
     result = await orders.switch_mode(req.mode)
     return result
+
+
+# ============================================================================
+# Ayarlar & Çoklu Coin (Settings & Watchlist) — MODULE_3_SPEC 2.8
+# ============================================================================
+class SettingsUpdateRequest(BaseModel):
+    watchlist: list[str] | None = None
+    default_mode: str | None = None
+    default_symbol: str | None = None
+    default_timeframe: str | None = None
+    risk: dict | None = None
+
+
+class WatchlistItemRequest(BaseModel):
+    symbol: str
+
+
+@app.get("/api/v1/settings")
+async def get_settings():
+    """İzleme listesi, varsayılan mod ve risk parametrelerini döner."""
+    return await settings_mgr.get_settings()
+
+
+@app.post("/api/v1/settings")
+async def update_settings(req: SettingsUpdateRequest):
+    """Ayarları kaydeder ve SQLite'ta kalıcı kılar."""
+    payload = {k: v for k, v in req.model_dump().items() if v is not None}
+    return await settings_mgr.update_settings(payload)
+
+
+@app.get("/api/v1/settings/symbols")
+async def search_settings_symbols(query: str = "", quote: str = "USDT"):
+    """KuCoin geçerli sembollerini arar ve listeler."""
+    return await settings_mgr.search_symbols(query, quote)
+
+
+@app.post("/api/v1/settings/watchlist")
+async def add_watchlist(req: WatchlistItemRequest):
+    """İzleme listesine sembol ekler."""
+    return await settings_mgr.add_to_watchlist(req.symbol)
+
+
+@app.delete("/api/v1/settings/watchlist/{symbol:path}")
+async def remove_watchlist(symbol: str):
+    """İzleme listesinden sembol çıkarır."""
+    return await settings_mgr.remove_from_watchlist(symbol)
 
 
 # ============================================================================

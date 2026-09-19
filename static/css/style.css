@@ -153,3 +153,8 @@ body {
 .guide-body p { margin-bottom: 8px; color: var(--text); line-height: 1.6; font-size: 0.9rem; }
 .guide-body code { background: var(--bg-0); padding: 2px 6px; border-radius: 4px; color: var(--green); font-size: 0.85rem; }
 .warn-text { color: var(--red); }
+
+/* SETTINGS */
+.settings-form { display: flex; flex-direction: column; gap: 12px; max-width: 400px; }
+.settings-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--text-dim); }
+.watchlist-add { display: flex; gap: 10px; margin-bottom: 12px; }
