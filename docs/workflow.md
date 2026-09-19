@@ -140,6 +140,9 @@ kuCoinAlSatBot/
 - ✅ Sol menü & üst bar & alt bar + Panic Stop (Master Layout, GLOBAL_STANDARDS 3)
 - ✅ 4 görünüm: Dashboard, Hesap (bakiye tablosu), Analiz (skor/gerekçe/uyarı), Emirler (oluştur/listele/iptal)
 - ✅ `static/` StaticFiles mount; root `/` dashboard, `/api` bilgi endpoint'i
+- ⏳ **Yeni Eklenen (Kullanıcı Talebi):**
+  - [ ] Ana sayfadan erişilebilir **Kullanım Kılavuzu Sayfası / Görünümü** (Uygulamanın nasıl çalıştığı, modlar, göstergelerin yorumu, panic stop rehberi)
+  - [ ] Önemli noktalarda **Bağlamsal Info Düğmeleri (`ℹ️`)** (Portföy, mod, panic stop, bileşik puan, MTF, SMC, emir formu açıklamaları)
 
 ### Adım 6 — Testler
 - ❌ `tests/conftest.py` — Shared fixtures & KuCoin mock (henüz yok; mock'lar test dosyalarında yerel)

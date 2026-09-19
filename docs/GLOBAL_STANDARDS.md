@@ -29,6 +29,21 @@ Ekranın sağ üst köşesinde tüm modüllerden gelen canlı bildirimler göste
 * 🟡 **Uyarı (Warning)**: *Bakiye sınırına yaklaşıldı, API yanıt süresi yüksek (High Latency).*
 * 🔴 **Hata (Error)**: *API anahtarı geçersiz, İnternet bağlantısı koptu, Emir reddedildi.*
 
+### 2.3. Bağlamsal Bilgilendirme ve Yardım Standartları (Info Düğmeleri & Kullanım Kılavuzu)
+Kullanıcının analiz göstergelerini ve bot kontrollerini şeffaf biçimde öğrenmesini sağlamak için:
+* **Kullanım Kılavuzu Sekmesi**: Sol gezinme menüsünde ve üst barda daima erişilebilir **"📖 Kullanım Kılavuzu"** bağlantısı bulunacaktır.
+* **Bağlamsal Info Düğmeleri (`ℹ️`)**:
+  * **Tasarım**: Neon Mavi (`#2979ff`) renkli, yuvarlak şık `ℹ️` butonu (`class="info-btn"`).
+  * **Etkileşim**: Tıklandığında veya üzerine gelindiğinde (Hover / Click) açılan cam efektli (`glass`), yüksek kontrastlı bilgi balonu (`tooltip` / `modal popover`).
+  * **Zorunlu Konumlar**:
+    1. *Portföy / Bakiye Kartı*: Serbest vs kilitli nakit açıklaması.
+    2. *İşlem Modu Rozeti*: Sanal (Paper) ile Gerçek (Live) mod farkı.
+    3. *⛔ PANIC STOP Butonu*: Acil durum iptal ve kilitleme işlevi.
+    4. *0-100 Bileşik Analiz Skoru*: 10 katmanlı ağırlıklandırma ve range filtresi.
+    5. *MTF Hiyerarşisi*: 4H Rejim $\rightarrow$ 1H Setup $\rightarrow$ 15m Tetikleyici onay kuralı.
+    6. *SMC Yapıları*: BOS, CHoCH ve FVG dengesizlik alanlarının anlamı.
+    7. *Emir Formu*: Market/Limit farkı ve minimum işlem tutarı ($5 USDT).
+
 ---
 
 ## 3. Ekran Düzeni ve Ortak Arayüz İskeleti (Global Layout)
@@ -295,6 +310,7 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-20 00:10:00** | Modül 3 Emir Yönetimi & Paper Trading (16 test) ve Modül 2 Faz 2c ek momentum/türev katmanları (10 test) tamamlandı. Toplam **110/110 birim test %100 yeşil** geçti. Backend tamamen tamamlandı. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-20 00:40:00** | Adım 5 Frontend Dashboard (Dark glassmorphism SPA, `static/{index.html,css/style.css,js/app.js}`) ve 5 frontend testi tamamlandı. Toplam **115/115 birim test %100 yeşil** geçti. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-20 00:50:00** | Canlı WebSocket akışı (`/ws/live`), interaktif SVG mum grafiği, script senkronizasyonu ve `pytest-cov` (%76 coverage) eklendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-20 01:00:00** | Kullanıcı Talebi Standartları: Kullanım kılavuzu bağlantısı ve 7 kritik arayüz noktasına bağlamsal Info (`ℹ️`) düğmeleri standardı eklendi. | Onaylandı & Genişletildi (%100) |
 
 
 

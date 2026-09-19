@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu - Proje Analiz ve Tasarım Dokümanı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %20 (Coding AI Test Düzeltmesi Bekleniyor ⚠️) | **Son Güncelleme:** 2026-09-17 22:50:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Yeni Gereksinimler: Kullanım Kılavuzu & Info Düğmeleri Eklendi ✅) | **Kodlama & Test Durumu:** %100 (129/129 Test Geçiyor, Yeni UI Özellikleri Kodlanmayı Bekliyor ⏳) | **Son Güncelleme:** 2026-09-20 01:00:00 (+03:00)
 
 ## 1. Proje Genel Bakışı
 Bu doküman, KuCoin kripto para borsasında çalışacak modüler **Al-Sat Botu** uygulamasının mimarisini, veri akışını ve modül detaylarını içerir. 
@@ -82,6 +82,36 @@ Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler
 
 ---
 
+### Kullanıcı Deneyimi & Rehberlik: Kullanım Kılavuzu Sayfası ve Bağlamsal Info Düğmeleri
+**Amaca Uygunluk**: Kullanıcının botu, risk parametrelerini ve analiz göstergelerini kolayca kavramasını sağlamak, hatalı emir iletimini önlemek ve arayüzün her noktasında şeffaf, bağlamsal rehberlik sunmak.
+
+#### İşlevsel Gereksinimler:
+1. **Ana Sayfadan Bağlantılı Kullanım Kılavuzu Sayfası (`/guide` veya Kılavuz Görünümü)**:
+   - Dashboard ana sayfasında (Header ve Sol Menü gezinme çubuğunda) dikkat çekici bir **"📖 Kullanım Kılavuzu"** veya **"Nasıl Kullanılır?"** bağlantısı/sekmesi bulunacaktır.
+   - Bu rehber sayfasında aşağıdaki konular sade ve anlaşılır bir dille adım adım açıklanacaktır:
+     - **Başlangıç & API Kurulumu**: `.env` dosyasına KuCoin anahtarlarının girilmesi, borsa üzerinde kesinlikle para çekme (Withdraw) yetkisinin verilmemesi gerektiği güvenlik uyarısı.
+     - **İşlem Modları Arasındaki Fark**:
+       * `🧪 SIMULATION (Paper Trading)`: Canlı tahta fiyatıyla eşleşen, $10,000 sanal USDT ile çalışan, komisyon ve bakiye düşümünü gerçekçi simüle eden sıfır riskli test ortamı.
+       * `🟢 LIVE (Gerçek Mod)`: Doğrudan KuCoin spot hesabındaki gerçek bakiyeyle emir ileten canlı işlem modu.
+     - **Çok Katmanlı Analiz Motorunun Okunması**: 0-100 Boğa/Ayı Bileşik Skoru ne anlama gelir? Hangi puan aralıklarında güçlü alım/satım veya nötr kalınır? MTF hiyerarşisinin (4H rejim $\rightarrow$ 1H setup $\rightarrow$ 15m tetikleyici) kuralı nedir?
+     - **Market Structure (SMC) & İndikatörler**: BOS (Trend devam kırılımı), CHoCH (Karakter/Trend dönüşümü), FVG (Dengesizlik boşlukları), Supertrend ve Squeeze kavramları.
+     - **Emir Verme & Takip**: Market ve Limit emirlerin farkı, KuCoin minimum işlem tutarı ($5 USDT) kuralı.
+     - **Acil Durum (⛔ PANIC STOP)**: Butona tıklandığında sistemin tüm açık emirleri nasıl anında iptal ettiği ve botu nasıl korumaya aldığı.
+
+2. **Kritik Arayüz Bileşenlerinde Bağlamsal "Info" (ℹ️) Düğmeleri**:
+   - Kullanıcının teknik terimleri veya fonksiyonları sayfadan ayrılmadan anlamasını sağlamak için önemli arayüz noktalarının yanına interaktif `ℹ️` (Info) butonları yerleştirilecektir.
+   - Butona tıklandığında veya fare üzerine getirildiğinde (Hover Tooltip veya Tıklamalı Popover) kısa, net ve öğretici açıklamalar gösterilecektir:
+     * **Portföy Kartı (Toplam / Serbest Nakit)**: `ℹ️` *"Serbest nakit hemen harcanabilir bakiyenizdir; emirlerde kilitli tutarlar bu tutara dahil değildir."*
+     * **Mod Butonu (`SIMULATION` / `LIVE`)**: `ℹ️` *"Simülasyon modunda sanal 10,000 USDT ile risksiz deneme yaparsınız. Canlı mod KuCoin hesabınızdaki gerçek bakiyeyi kullanır."*
+     * **⛔ PANIC STOP Butonu**: `ℹ️` *"Acil Durum: Tek tıkla borsadaki tüm açık emirlerinizi derhal iptal eder ve botun yeni işlem açmasını kilitler."*
+     * **0-100 Bileşik Analiz Skoru**: `ℹ️` *"Trend, momentum, volatilite, hacim ve SMC katmanlarının ağırlıklı puanıdır. Choppiness yüksekse piyasa yatay kabul edilip skor nötrlenir."*
+     * **MTF Analizi**: `ℹ️` *"4 saatlik ana trend, 1 saatlik hazırlık ve 15 dakikalık tetikleyici uyumlu olduğunda işlem sinyali verilir."*
+     * **SMC Market Structure**: `ℹ️` *"Kurumsal fiyat hareketleri: BOS trend devamını, CHoCH trend dönüşünü, FVG ise fiyatın geri çekilebileceği dengesizlik alanını gösterir."*
+     * **Emir Formu (Market / Limit)**: `ℹ️` *"Market emri anlık tahta fiyatından hemen gerçekleşir. Limit emri belirlediğiniz fiyata gelene kadar bekler. Min. tutar 5 USDT'dir."*
+
+
+---
+
 ## 3. Kesinleşen Teknoloji Yığını
 
 | Katman | Seçilen Teknoloji | Versiyon / Kütüphaneler | Belirlenme Nedeni |
@@ -118,5 +148,6 @@ Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler
 | **2026-09-17 21:35:00** | Review düzeltmeleri tamamlandı, proje iskeleti standardı `src/` olarak teyit edildi, tamamlama rozeti ve log tablosu eklendi. | Tamamlandı |
 | **2026-09-17 22:06:00** | Rozet ayrımı (Tasarım %100 vs Kodlama %20) yapıldı ve güncellendi. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-17 22:50:00** | Modül 2 analizi `crypto_indicators_coding_agent_reference.md` doğrultusunda 10 katmanlı indikatör mimarisi, SMC, MTF ve 0-100 composite scoring motoru ile senkronize edilerek genişletildi. | Onaylandı & Genişletildi (%100) |
+| **2026-09-20 01:00:00** | **Kullanım Kılavuzu Sayfası ve Bağlamsal Info Düğmeleri Eklendi**: Kullanıcı gereksinimi doğrultusunda ana sayfadan erişilebilir rehber sayfası/görünümü ve kritik arayüz öğelerine (Portföy, Mod, Panic Stop, Scoring, MTF, SMC, Emirler) öğretici `ℹ️` (Info) düğmeleri gereksinimi analiz dokümanına eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
 
 
