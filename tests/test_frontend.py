@@ -90,3 +90,10 @@ def test_amend_modal_and_watchlist_widget(client):
     assert 'id="edit-modal"' in r.text
     assert 'id="mini-watchlist"' in r.text
     assert 'id="reco-cards"' in r.text
+
+
+def test_symbol_datalist_integration(client):
+    """Sembol girişleri watchlist datalist'ine bağlı olmalı."""
+    r = client.get("/")
+    assert 'id="symbol-choices"' in r.text
+    assert r.text.count('list="symbol-choices"') == 3  # analiz + emir + bracket

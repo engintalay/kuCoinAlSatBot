@@ -91,7 +91,7 @@
       <!-- Analiz görünümü -->
       <section id="view-analysis" class="view">
         <div class="toolbar">
-          <input id="analysis-symbol" class="input" value="BTC/USDT" />
+          <input id="analysis-symbol" class="input" value="BTC/USDT" list="symbol-choices" />
           <select id="analysis-tf" class="input">
             <option>15m</option><option selected>1h</option><option>4h</option><option>1d</option>
           </select>
@@ -122,7 +122,7 @@
         <div class="card glass">
           <div class="card-title">Yeni Emir <button class="info-btn" data-info="orders">ℹ️</button></div>
           <div class="order-form">
-            <input id="order-symbol" class="input" value="BTC/USDT" />
+            <input id="order-symbol" class="input" value="BTC/USDT" list="symbol-choices" />
             <select id="order-side" class="input"><option value="buy">AL</option><option value="sell">SAT</option></select>
             <select id="order-type" class="input"><option value="market">Market</option><option value="limit">Limit</option></select>
             <input id="order-amount" class="input" type="number" step="0.0001" placeholder="Miktar" value="0.001" />
@@ -134,7 +134,7 @@
           <div class="card-title">🚀 Akıllı Paket Emir (Bracket) <button class="info-btn" data-info="bracket">ℹ️</button></div>
           <div class="bracket-form">
             <div class="toolbar">
-              <input id="bracket-symbol" class="input" value="BTC/USDT" />
+              <input id="bracket-symbol" class="input" value="BTC/USDT" list="symbol-choices" />
               <select id="bracket-side" class="input"><option value="buy">LONG (AL)</option><option value="sell">SHORT (SAT)</option></select>
               <button id="bracket-load" class="btn btn-accent">Seviyeleri Hesapla</button>
             </div>
@@ -222,6 +222,9 @@
       </section>
     </main>
   </div>
+
+  <!-- Sembol seçenekleri (watchlist'ten beslenir) -->
+  <datalist id="symbol-choices"></datalist>
 
   <!-- Bağlamsal Info popover -->
   <div id="info-popover" class="info-popover glass" hidden></div>

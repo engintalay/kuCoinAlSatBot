@@ -272,6 +272,7 @@ function renderWatchlist(list) {
     </li>`).join("") || "<li>İzleme listesi boş</li>";
   ul.querySelectorAll("[data-watch]").forEach((b) =>
     b.addEventListener("click", () => removeWatch(b.dataset.watch)));
+  populateSymbolChoices();  // sembol dropdown'larını güncel tut
 }
 
 document.getElementById("settings-save").addEventListener("click", async () => {
@@ -340,6 +341,15 @@ document.getElementById("bracket-submit").addEventListener("click", async () => 
     toast("Paket emir reddedildi: " + (res.error || ""), "error");
   }
 });
+
+// ---- Sembol girişlerini watchlist ile besleme (datalist) ----
+async function populateSymbolChoices() {
+  const res = await apiGet("/settings");
+  if (!res.success) return;
+  const list = res.data.watchlist || [];
+  const dl = document.getElementById("symbol-choices");
+  if (dl) dl.innerHTML = list.map((s) => `<option value="${s}"></option>`).join("");
+}
 
 // ---- Mini Watchlist Widget + Öneri Kartları ----
 async function loadMiniWatchlist() {
@@ -497,5 +507,6 @@ loadStatus();
 loadSummary();
 loadTicker();
 loadChart();
+populateSymbolChoices();
 setInterval(() => loadChart(), 60000);  // grafik 60sn'de bir yenilenir
 connectWebSocket();
