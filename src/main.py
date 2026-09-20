@@ -14,6 +14,7 @@ from src.modules.module2_market import KuCoinMarket
 from src.modules.module3_orders import KuCoinOrders
 from src.modules.settings import SettingsManager
 from src.modules.recommendations import RecommendationEngine
+from src.modules.market_regime import MarketRegime
 from src.config import Config
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
@@ -39,6 +40,7 @@ market = KuCoinMarket()
 orders = KuCoinOrders(market=market)
 settings_mgr = SettingsManager(market=market)
 recommender = RecommendationEngine(orders=orders, market=market)
+market_regime = MarketRegime()
 
 
 @app.on_event("startup")
@@ -219,6 +221,15 @@ async def get_trade_setup(
         symbol, timeframe, side, limit, market_type=market_type, leverage=leverage
     )
     return result
+
+
+@app.get("/api/v1/market/regime")
+async def get_market_regime():
+    """
+    Katman 9: Piyasa geneli rejim — BTC.D, Total Market Cap, Stablecoin.D (CoinGecko).
+    Risk-on / risk-off ve altseason ipucu üretir.
+    """
+    return await asyncio.to_thread(market_regime.get_regime)
 
 
 
