@@ -57,24 +57,67 @@ class TestKuCoinAccount:
 
     @pytest.mark.asyncio
     async def test_get_balances_success(self):
-        """Bağlantı başarılı olduğunda bakiye dönmeli."""
+        """Bağlantı başarılı olduğunda bakiye dönmeli (spot/funding/margin birleşik)."""
         from src.modules.module1_account import KuCoinAccount
-        from src.models.account import AccountBalancesResponse
         account = KuCoinAccount()
         mock_exchange = AsyncMock()
+        # trade/main/margin çağrılarının hepsi aynı yapıyı döndürsün
         mock_exchange.fetch_balance.return_value = {
             "info": {},
             "total": {"BTC": 0.5, "ETH": 10.0},
             "free": {"BTC": 0.3, "ETH": 10.0},
             "used": {"BTC": 0.2, "ETH": 0.0},
-            "currency": {"USDT": {"price": 1.0}}
         }
+        mock_exchange.fetch_ticker.return_value = {"last": 50000.0}
         account.exchange = mock_exchange
+        account.futures_exchange = None  # futures kapalı
         account.is_connected = True
         result = await account.get_balances()
         assert result.success is True
-        assert result.data is not None
-        assert len(result.data["balances"]) == 2  # BTC ve ETH, USDT hariç
+        assert len(result.data["balances"]) == 2  # BTC ve ETH
+
+    @pytest.mark.asyncio
+    async def test_get_balances_includes_futures_and_margin(self):
+        """
+        Bakiye tüm hesap tiplerini içermeli: spot/funding/margin (spot uç noktası)
+        + futures (kucoinfutures). Her varlık hangi hesaplarda olduğunu 'accounts'
+        alanında göstermeli.
+        """
+        from unittest.mock import AsyncMock
+        from src.modules.module1_account import KuCoinAccount
+        account = KuCoinAccount()
+
+        # Spot uç noktası: type'a göre farklı bakiye döndür
+        async def fake_fetch_balance(params=None):
+            t = (params or {}).get("type")
+            if t == "trade":
+                return {"total": {"BTC": 0.5}, "free": {"BTC": 0.5}, "used": {"BTC": 0.0}}
+            if t == "main":
+                return {"total": {"USDT": 100.0}, "free": {"USDT": 100.0}, "used": {"USDT": 0.0}}
+            if t == "margin":
+                return {"total": {"ETH": 2.0}, "free": {"ETH": 2.0}, "used": {"ETH": 0.0}}
+            return {"total": {}, "free": {}, "used": {}}
+
+        spot = AsyncMock()
+        spot.fetch_balance.side_effect = fake_fetch_balance
+        spot.fetch_ticker.return_value = {"last": 1000.0}
+        account.exchange = spot
+
+        # Futures teminat cüzdanı
+        fut = AsyncMock()
+        fut.fetch_balance.return_value = {"total": {"USDT": 250.0}, "free": {"USDT": 250.0}, "used": {"USDT": 0.0}}
+        account.futures_exchange = fut
+        account.is_connected = True
+
+        result = await account.get_balances()
+        assert result.success is True
+        by_sym = {a["symbol"]: a for a in result.data["balances"]}
+        # BTC spot'ta, ETH margin'de, USDT hem funding hem futures'ta
+        assert by_sym["BTC"]["accounts"] == ["spot"]
+        assert by_sym["ETH"]["accounts"] == ["margin"]
+        assert set(by_sym["USDT"]["accounts"]) == {"funding", "futures"}
+        # USDT toplamı funding(100) + futures(250) = 350
+        assert by_sym["USDT"]["total"] == 350.0
 
     def test_test_connection_success(self):
         """Bağlantı testi başarılı olmalı."""

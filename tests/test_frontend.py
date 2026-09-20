@@ -106,6 +106,14 @@ def test_market_regime_widget(client):
     assert 'data-info="regime"' in r.text
 
 
+def test_balances_account_column(client):
+    """Bakiye tablosu tüm hesap tiplerini gösteren Hesap kolonu içermeli."""
+    r = client.get("/")
+    assert "<th>Hesap</th>" in r.text
+    js = client.get("/static/js/app.js").text
+    assert "a.accounts" in js
+
+
 def test_order_market_type_ui(client):
     """Emir formu piyasa türü seçici içermeli; açık emirler tablosu Piyasa kolonu göstermeli."""
     r = client.get("/")

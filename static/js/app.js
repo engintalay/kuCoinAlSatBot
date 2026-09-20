@@ -186,13 +186,18 @@ async function loadBalances() {
   const res = await apiGet("/account/balances");
   const tbody = document.querySelector("#balances-table tbody");
   if (res.success && res.data.balances.length) {
-    tbody.innerHTML = res.data.balances.map((a) => `
+    const accLabel = { spot: "Spot", funding: "Funding", margin: "Margin", futures: "Futures" };
+    tbody.innerHTML = res.data.balances.map((a) => {
+      const accs = (a.accounts || []).map((x) =>
+        `<span class="market-badge market-${x}">${accLabel[x] || x}</span>`).join(" ") || "-";
+      return `
       <tr>
-        <td>${a.symbol}</td><td>${a.free}</td><td>${a.used}</td><td>${a.total}</td>
+        <td>${a.symbol}</td><td>${accs}</td><td>${a.free}</td><td>${a.used}</td><td>${a.total}</td>
         <td>${a.price_usdt}</td><td>${a.usdt_value}</td><td>${a.portfolio_share_percent}%</td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
   } else {
-    tbody.innerHTML = `<tr><td colspan="7">Varlık bulunamadı.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8">Varlık bulunamadı.</td></tr>`;
   }
 }
 

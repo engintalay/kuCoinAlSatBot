@@ -30,6 +30,7 @@ class KuCoinAccount:
     def __init__(self):
         self.config = Config()
         self.exchange: ccxt.async_support.kucoin | None = None
+        self.futures_exchange: ccxt.async_support.kucoinfutures | None = None
         self.is_connected = False
 
         # WebSocket canlı bakiye (ccxt.pro)
@@ -42,14 +43,15 @@ class KuCoinAccount:
     def connect(self) -> bool:
         """KuCoin API'ye bağlan."""
         try:
-            self.exchange = ccxt.async_support.kucoin(
-                {
-                    "apiKey": self.config.API_KEY,
-                    "secret": self.config.API_SECRET,
-                    "password": self.config.API_PASSPHRASE,
-                    "sandbox": self.config.IS_SANDBOX,
-                }
-            )
+            creds = {
+                "apiKey": self.config.API_KEY,
+                "secret": self.config.API_SECRET,
+                "password": self.config.API_PASSPHRASE,
+                "sandbox": self.config.IS_SANDBOX,
+            }
+            self.exchange = ccxt.async_support.kucoin(dict(creds))
+            # Futures teminat bakiyesi ayrı uç noktadan (kucoinfutures) gelir
+            self.futures_exchange = ccxt.async_support.kucoinfutures(dict(creds))
             self.is_connected = True
             logger.info("✅ KuCoin API bağlantısı kuruldu")
             return True
@@ -133,25 +135,45 @@ class KuCoinAccount:
                     timestamp=timestamp()
                 )
 
-            # KuCoin fonları farklı hesaplarda tutar: 'trade' (spot) ve 'main'
-            # (funding). Her ikisini de çekip varlık bazında birleştiriyoruz.
+            # KuCoin fonları farklı hesaplarda tutulur:
+            #   spot exchange: 'trade' (spot), 'main' (funding), 'margin' (cross margin)
+            #   kucoinfutures: futures teminat cüzdanı (USDT/USDC)
+            # Hepsini çekip varlık bazında birleştiriyoruz.
             combined_total: dict[str, float] = {}
             combined_free: dict[str, float] = {}
             combined_used: dict[str, float] = {}
+            asset_accounts: dict[str, set] = {}  # {symbol: {"spot","funding","margin","futures"}}
 
-            for account_type in ("trade", "main"):
+            # Etiket eşlemesi: ccxt type -> okunabilir hesap adı
+            spot_accounts = {"trade": "spot", "main": "funding", "margin": "margin"}
+
+            def _accumulate(bal: dict, label: str):
+                for sym, amount in bal.get("total", {}).items():
+                    amt = float(amount or 0.0)
+                    combined_total[sym] = combined_total.get(sym, 0.0) + amt
+                    if amt > 0:
+                        asset_accounts.setdefault(sym, set()).add(label)
+                for sym, amount in bal.get("free", {}).items():
+                    combined_free[sym] = combined_free.get(sym, 0.0) + float(amount or 0.0)
+                for sym, amount in bal.get("used", {}).items():
+                    combined_used[sym] = combined_used.get(sym, 0.0) + float(amount or 0.0)
+
+            # Spot / funding / margin (aynı kucoin spot uç noktası)
+            for account_type, label in spot_accounts.items():
                 try:
                     bal = await self.exchange.fetch_balance({"type": account_type})
+                    _accumulate(bal, label)
                 except Exception as e:
                     logger.error(f"'{account_type}' hesabı bakiye hatası: {e}")
                     continue
 
-                for symbol, amount in bal.get("total", {}).items():
-                    combined_total[symbol] = combined_total.get(symbol, 0.0) + float(amount or 0.0)
-                for symbol, amount in bal.get("free", {}).items():
-                    combined_free[symbol] = combined_free.get(symbol, 0.0) + float(amount or 0.0)
-                for symbol, amount in bal.get("used", {}).items():
-                    combined_used[symbol] = combined_used.get(symbol, 0.0) + float(amount or 0.0)
+            # Futures teminat cüzdanı (ayrı kucoinfutures uç noktası)
+            if self.futures_exchange is not None:
+                try:
+                    fbal = await self.futures_exchange.fetch_balance()
+                    _accumulate(fbal, "futures")
+                except Exception as e:
+                    logger.error(f"Futures hesabı bakiye hatası: {e}")
 
             asset_list = []
             for symbol, total_amount in combined_total.items():
@@ -181,6 +203,7 @@ class KuCoinAccount:
                     "total": total_amount,
                     "price_usdt": price,
                     "usdt_value": asset_value,
+                    "accounts": sorted(asset_accounts.get(symbol, set())),
                     "portfolio_share_percent": 0.0  # Sonraki adımda hesaplanacak
                 })
 
@@ -483,3 +506,10 @@ class KuCoinAccount:
             finally:
                 self.exchange = None
                 self.is_connected = False
+        if self.futures_exchange is not None:
+            try:
+                await self.futures_exchange.close()
+            except Exception as e:
+                logger.error(f"Futures exchange kapatma hatası: {e}")
+            finally:
+                self.futures_exchange = None
