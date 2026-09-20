@@ -23,6 +23,31 @@ class TestSettings:
         assert res["data"]["default_mode"] == "paper"
 
     @pytest.mark.asyncio
+    async def test_partial_update_preserves_other_fields(self, tmp_path):
+        """
+        Regresyon: kısmi güncelleme (yalnızca default_mode) diğer alanları
+        (watchlist, default_symbol) SIFIRLAMAMALI. 'Kaydedildi ama kaydetmiyor'
+        hatasının kök nedeni buydu.
+        """
+        from src.modules.settings import SettingsManager
+        db = str(tmp_path / "partial.db")
+        sm = SettingsManager(db_path=db)
+        # Özel watchlist + sembol kaydet
+        await sm.update_settings({"watchlist": ["DOGE/USDT", "PEPE/USDT"], "default_symbol": "DOGE/USDT"})
+        # Sonra SADECE modu güncelle (frontend save watchlist göndermez)
+        await sm.update_settings({"default_mode": "live", "default_symbol": "DOGE/USDT",
+                                  "default_timeframe": "1h", "risk": {"max_order_usdt": 500}})
+        # Diskten yeni instance ile oku → özel watchlist korunmalı
+        sm2 = SettingsManager(db_path=db)
+        s = await sm2.load()
+        assert s["watchlist"] == ["DOGE/USDT", "PEPE/USDT"], "watchlist sıfırlanmamalı"
+        assert s["default_mode"] == "live"
+        assert s["default_symbol"] == "DOGE/USDT"
+        # risk derin merge: güncellenen alan + korunan varsayılanlar
+        assert s["risk"]["max_order_usdt"] == 500
+        assert s["risk"]["default_stop_loss_pct"] == 2.0
+
+    @pytest.mark.asyncio
     async def test_update_and_persist(self, tmp_path):
         from src.modules.settings import SettingsManager
         db = str(tmp_path / "persist.db")

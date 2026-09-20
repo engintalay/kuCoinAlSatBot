@@ -34,6 +34,33 @@ class TestBracketOrder:
         assert oo.data["count"] == 3
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("mtype", ["spot", "margin", "futures"])
+    async def test_bracket_propagates_market_type(self, mtype):
+        """Bracket seçilen market_type'ı hem pakete hem tüm bacaklara yaymalı."""
+        o = _paper_orders(price=50000.0)
+        r = await o.create_bracket_order(
+            "BTC/USDT", "buy", 1000.0,
+            entry_price=50000.0, stop_loss_price=49000.0,
+            tp1_price=51500.0, tp2_price=53000.0, market_type=mtype)
+        assert r.success is True
+        assert r.data["market_type"] == mtype
+        assert r.data["legs"]["entry"]["market_type"] == mtype
+        # açık çıkış emirleri de aynı market_type ile etiketli olmalı
+        oo = await o.get_open_orders()
+        assert all(x["market_type"] == mtype for x in oo.data["orders"])
+
+    @pytest.mark.asyncio
+    async def test_bracket_invalid_market_type(self):
+        """Geçersiz market_type ile bracket reddedilmeli."""
+        o = _paper_orders(price=50000.0)
+        r = await o.create_bracket_order(
+            "BTC/USDT", "buy", 1000.0,
+            entry_price=50000.0, stop_loss_price=49000.0,
+            tp1_price=51500.0, tp2_price=53000.0, market_type="perp")
+        assert r.success is False
+        assert "piyasa türü" in r.error.lower()
+
+    @pytest.mark.asyncio
     async def test_bracket_risk_reward_calc(self):
         """Risk ve kâr tutarları doğru hesaplanmalı."""
         o = _paper_orders(price=50000.0)

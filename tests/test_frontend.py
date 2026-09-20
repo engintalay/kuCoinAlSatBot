@@ -117,6 +117,9 @@ def test_order_market_type_ui(client):
     # emir gönderiminde ve açık emir render'ında market_type kullanılmalı
     assert 'order-market-type' in js
     assert "market-badge" in js
+    # Akıllı Paket (bracket) da piyasa türü seçici içermeli
+    assert 'id="bracket-market-type"' in r.text
+    assert 'bracket-market-type' in js
 
 
 def test_api_helpers_are_resilient(client):

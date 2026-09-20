@@ -57,10 +57,29 @@ class SettingsManager:
         return self._settings
 
     async def save(self, settings: dict) -> dict:
-        """Ayarları doğrula, birleştir ve kalıcı kaydet."""
+        """Ayarları doğrula, mevcut ayarların ÜZERİNE birleştir ve kalıcı kaydet.
+
+        Kısmi güncelleme (ör. yalnızca default_mode) gönderildiğinde diğer
+        alanların (watchlist, default_symbol vb.) sıfırlanmaması için önce
+        diskteki mevcut ayar tabanı okunur.
+        """
         await self._ensure_table()
+        # Taban: DEFAULT üstüne diskteki mevcut ayarlar (kayıp önleme)
         merged = json.loads(json.dumps(DEFAULT_SETTINGS))
-        merged.update({k: v for k, v in settings.items() if k in DEFAULT_SETTINGS})
+        current = await self._read_raw()
+        if current:
+            merged.update({k: v for k, v in current.items() if k in DEFAULT_SETTINGS})
+        # Gelen kısmi güncellemeyi uygula
+        for k, v in settings.items():
+            if k not in DEFAULT_SETTINGS:
+                continue
+            # risk gibi iç içe dict'leri derin birleştir
+            if isinstance(v, dict) and isinstance(merged.get(k), dict):
+                nested = dict(merged[k])
+                nested.update(v)
+                merged[k] = nested
+            else:
+                merged[k] = v
         # mod doğrulaması
         if merged.get("default_mode") not in ("paper", "live"):
             merged["default_mode"] = "paper"
@@ -73,6 +92,13 @@ class SettingsManager:
             await db.commit()
         self._settings = merged
         return merged
+
+    async def _read_raw(self) -> dict | None:
+        """Diskteki ham ayar sözlüğünü okur (yoksa None)."""
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("SELECT data FROM settings WHERE id = 1") as cur:
+                row = await cur.fetchone()
+        return json.loads(row[0]) if row else None
 
     async def get_settings(self) -> dict:
         s = self._settings if self._settings is not None else await self.load()

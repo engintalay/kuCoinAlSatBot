@@ -735,7 +735,8 @@ let bracketSetup = null;
 document.getElementById("bracket-load").addEventListener("click", async () => {
   const symbol = document.getElementById("bracket-symbol").value;
   const side = document.getElementById("bracket-side").value;
-  const res = await apiGet(`/market/trade-setup?symbol=${encodeURIComponent(symbol)}&side=${side}`);
+  const marketType = document.getElementById("bracket-market-type").value;
+  const res = await apiGet(`/market/trade-setup?symbol=${encodeURIComponent(symbol)}&side=${side}&market_type=${marketType}`);
   const box = document.getElementById("bracket-levels");
   if (res.success) {
     bracketSetup = res.data.trade_setup;
@@ -764,6 +765,7 @@ document.getElementById("bracket-submit").addEventListener("click", async () => 
     stop_loss_price: bracketSetup.stop_loss_price,
     tp1_price: bracketSetup.tp1_price,
     tp2_price: bracketSetup.tp2_price,
+    market_type: document.getElementById("bracket-market-type").value,
   };
   const res = await apiSend("/orders/bracket", "POST", body);
   if (res.success) {

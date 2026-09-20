@@ -377,13 +377,16 @@ class KuCoinOrders:
         self, symbol: str, side: str, usdt_amount: float,
         entry_price: float, stop_loss_price: float,
         tp1_price: float, tp2_price: float,
+        market_type: str = "spot",
     ) -> "OrderCreateResponse":
         """
         Tek pakette: Giriş emri + TP1 (%50) + TP2 (%50) + SL (%100).
         Paper modda giriş anında dolar, TP/SL açık limit emir olarak kaydedilir.
+        Spot, Margin ve Futures piyasa türlerini destekler.
         """
         side = (side or "buy").lower()
-        err = self._validate_order(symbol, side, "limit", usdt_amount and 1, entry_price)
+        market_type = (market_type or "spot").lower()
+        err = self._validate_order(symbol, side, "limit", usdt_amount and 1, entry_price, market_type)
         if err and "Miktar" not in err:  # miktar burada usdt bazlı, ayrı kontrol
             return OrderCreateResponse(success=False, data={}, error=err, timestamp=timestamp())
         if usdt_amount is None or usdt_amount <= 0:
@@ -410,7 +413,7 @@ class KuCoinOrders:
         exit_side = "sell" if side == "buy" else "buy"
 
         # Giriş emri (market)
-        entry_res = await self.create_order(symbol, side, "market", amount, None)
+        entry_res = await self.create_order(symbol, side, "market", amount, None, market_type)
         if not entry_res.success:
             return OrderCreateResponse(success=False, data={},
                                        error=f"Giriş emri başarısız: {entry_res.error}",
@@ -423,7 +426,7 @@ class KuCoinOrders:
             ("tp2", tp2_price, amount * 0.5),
             ("sl", stop_loss_price, amount),
         ]:
-            leg = await self.create_order(symbol, exit_side, "limit", qty, price)
+            leg = await self.create_order(symbol, exit_side, "limit", qty, price, market_type)
             if leg.success:
                 leg.data["bracket_leg"] = name
                 leg.data["bracket_id"] = bracket_id
@@ -433,7 +436,7 @@ class KuCoinOrders:
             success=True,
             data={
                 "bracket_id": bracket_id,
-                "symbol": symbol, "side": side,
+                "symbol": symbol, "side": side, "market_type": market_type,
                 "usdt_amount": usdt_amount, "amount": amount,
                 "entry_price": entry_price, "stop_loss_price": stop_loss_price,
                 "tp1_price": tp1_price, "tp2_price": tp2_price,

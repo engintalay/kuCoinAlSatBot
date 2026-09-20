@@ -283,14 +283,16 @@ class BracketOrderRequest(BaseModel):
     stop_loss_price: float
     tp1_price: float
     tp2_price: float
+    market_type: str = "spot"  # spot | margin | futures
 
 
 @app.post("/api/v1/orders/bracket")
 async def create_bracket(req: BracketOrderRequest):
-    """Akıllı Paket Emir: Giriş + TP1 (%50) + TP2 (%50) + SL (%100) tek pakette."""
+    """Akıllı Paket Emir: Giriş + TP1 (%50) + TP2 (%50) + SL (%100) tek pakette. Spot/Margin/Futures."""
     result = await orders.create_bracket_order(
         req.symbol, req.side, req.usdt_amount,
         req.entry_price, req.stop_loss_price, req.tp1_price, req.tp2_price,
+        req.market_type,
     )
     return result
 
