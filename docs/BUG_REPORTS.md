@@ -1,8 +1,8 @@
 # KuCoin Al-Sat Botu — Hata Raporlama ve Sorun Takip Sistemi (Bug Reports & Diagnostics)
 
 > **Modül Durumu:** %100 Tamamlandı (Canlı Arayüz + SQLite Veritabanı + REST API + Teşhis Konsolu) ✅  
-> **Test Durumu:** 180 / 180 Test %100 Yeşil (%81 Coverage) ✅  
-> **Son Güncelleme:** 2026-09-20 17:35:00 (+03:00)
+> **Test Durumu:** 181 / 181 Test %100 Yeşil (%81 Coverage) ✅  
+> **Son Güncelleme:** 2026-09-20 17:42:00 (+03:00)
 
 ---
 
@@ -83,5 +83,32 @@ CREATE TABLE IF NOT EXISTS bug_reports (
   4. **Metin Seçimi Otomasyonu**: `<input id="analysis-symbol">` odaklandığında `this.select()` ile tüm metin seçilerek tarayıcının datalist filtrelemesi aşılmış, kullanıcı dilediğinde serbest yazım yapabilmiştir.
   5. **Geriye Dönük Uyumluluk**: `assert r.text.count('list="symbol-choices"') == 3` testi dahil olmak üzere mevcut tüm kontratlar korunmuştur.
 - **Doğrulama**:
-  - `tests/test_bug_reports.py` altında 6 yeni test yazıldı ve başarıyla geçti.
-  - Proje genelinde 180 / 180 test %100 yeşil, test kapsamı %81.
+  - `tests/test_bug_reports.py` altında testler yazıldı ve başarıyla geçti.
+  - Proje genelinde 181 / 181 test %100 yeşil, test kapsamı %81.
+
+---
+
+### 📌 Hata #2 (Issue #2)
+- **Başlık**: Ayarlardan canlı (live) moda geçiş olmuyor
+- **Kategori**: `settings` (Ayarlar / Emir Motoru)
+- **Önem Derecesi**: `critical` (Kritik)
+- **Durum**: `resolved` (Çözüldü) ✅
+- **Kök Neden Analizi (Root Cause)**:
+  1. `POST /api/v1/settings` uç noktası `default_mode: "live"` bilgisini yalnızca SQLite `settings` tablosuna yazıyordu. Ancak arka plandaki emir yürütme motorunun çalışma modunu (`orders.switch_mode()`) çağırmıyordu.
+  2. FastAPI sunucusu yeniden başladığında (`startup_event`), SQLite'a kaydedilen `default_mode` okunmuyor; emir motoru varsayılan olarak her zaman `paper` (simülasyon) modunda kalıyordu.
+  3. Arayüzde `static/js/app.js` içerisindeki başlık çubuğu rozeti (`#mode-badge`), ayarlar kaydedildiğinde güncellenmiyordu ve tıklanabilir interaktif bir geçiş işlevi bulunmuyordu.
+- **Uygulanan Düzeltme & Çözüm**:
+  1. **Çift Yönlü Senkronizasyon**:
+     - `POST /api/v1/settings` uç noktası gelen `default_mode` değerini artık doğrudan `await orders.switch_mode(payload["default_mode"])` ile emir motoruna senkronize etmektedir.
+     - `POST /api/v1/orders/switch-mode` uç noktası da değiştirilen modu kalıcı olarak SQLite `settings` tablosuna yazmaktadır.
+  2. **Açılışta Mod Restorasyonu**:
+     - `main.py` içindeki `startup_event()` fonksiyonu veritabanındaki `default_mode` ayarını okuyup `orders.switch_mode()` ile sunucu açılışında otomatik devreye almaktadır.
+  3. **Yeni Uç Nokta**:
+     - `GET /api/v1/orders/mode` uç noktası eklendi; aktif mod, botun çalışma durumu ve KuCoin API anahtar doğrulama durumu anlık olarak sorgulanabilmektedir.
+  4. **Arayüz Geliştirmesi**:
+     - Başlıktaki `#mode-badge` rozeti interaktif hızlı geçiş düğmesine dönüştürüldü. Rozete tıklandığında onay kutusu ile doğrudan canlı/simülasyon modları arasında geçiş yapılabilmektedir.
+     - Ayarlar kaydedildiğinde ya da rozet tıklandığında anlık bakiye (`loadSummary`), bot durumu (`loadStatus`), açık emirler (`loadOpenOrders`) ve sistem teşhis verileri (`loadDiagnostics`) otomatik olarak yenilenmektedir.
+- **Doğrulama**:
+  - `tests/test_bug_reports.py` içerisine `test_settings_live_mode_switch` testi eklendi.
+  - Proje genelinde 181 / 181 test %100 yeşil, test kapsamı %81.
+
