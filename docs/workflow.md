@@ -12,7 +12,7 @@
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
 | `requirements.txt` | ✅ Güncellendi (`aiosqlite`, `requests` dahil) & Sanal ortama kuruldu |
-| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`, `analysis`, `settings`) |
+| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`, `analysis`, `settings`, `recommendations`) |
 | Modül 1 (Hesap & Bağlantı) | ✅ **%100 Tamamlandı** (Bağlantı, bakiye, portföy payı, yetki denetimi, WebSocket stream) — 29 test |
 | Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) |
 | Modül 2 — Faz 2b (İleri SMC, Scoring & MTF) | ✅ **%100 Tamamlandı** (Supertrend, Ichimoku, Parabolic SAR, ADX, Aroon, Choppiness, Squeeze, SMC Swings/BOS/CHoCH/FVG/OB, 0-100 Puanlama Motoru, MTF Hiyerarşisi, 3 REST endpoint'i) |
@@ -31,7 +31,7 @@
 
 ## 2. Proje Yapısı
 
-> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Kaynak: `src/{config,database,main}.py`, `src/utils/*`, `src/models/*`, `src/modules/{module1_account,module2_market,module3_orders}.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels,derivatives}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py`, Frontend `static/{index.html,css/style.css,js/app.js}`. Testler: 9 dosya (`test_module_1_account`, `test_module_2_{market,indicators,structure,analysis,volume_levels,phase2c}`, `test_module_3_orders`, `test_frontend`, `test_utils`). Henüz oluşturulmayanlar (opsiyonel): `analysis/feature_engine.py`, `analysis/filters.py` (mantık `_all_features`/`scoring_engine` içine gömülü), `conftest.py`, Katman 9 (piyasa-geneli, harici API).
+> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Kaynak: `src/{config,database,main}.py`, `src/utils/*`, `src/models/*`, `src/modules/{module1_account,module2_market,module3_orders,settings,recommendations}.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels,derivatives}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py`, Frontend `static/{index.html,css/style.css,js/app.js}`. Testler: 12 dosya (`test_module_1_account`, `test_module_2_{market,indicators,structure,analysis,volume_levels,phase2c}`, `test_module_3_orders`, `test_frontend`, `test_utils`, `test_settings`, `test_bracket_orders`, `test_amend_recommendations`) — toplam **154 test**. Henüz oluşturulmayanlar (opsiyonel): `analysis/feature_engine.py`, `analysis/filters.py` (mantık `_all_features`/`scoring_engine` içine gömülü), `conftest.py`, Katman 9 (piyasa-geneli, harici API).
 
 ```
 kuCoinAlSatBot/
@@ -130,7 +130,7 @@ kuCoinAlSatBot/
   - ✅ Bakiye limiti / pre-trade risk kontrolü
   - ✅ Mod geçişi (paper ↔ live)
 - ✅ `main.py` — `/api/v1/orders/*` endpoint'leri (6 adet)
-- ⏳ **Yeni Eklenen Backend Görevleri (Kullanıcı Talepleri):**
+- ✅ **Yeni Eklenen Backend Görevleri (Kullanıcı Talepleri):**
   - [x] Modül 2: Otomatik Seviye Hesaplayıcı (`trade_setup`: Entry, TP1, TP2, SL, R:R) — `get_trade_setup`, `GET /market/trade-setup`
   - [x] Modül 3: Akıllı Paket Emir Motoru (`POST /api/v1/orders/bracket`) — giriş + TP1(%50) + TP2(%50) + SL(%100), `bracket_id`
   - [x] Modül 3: Açık Emir Düzenleme Motoru (`PUT /api/v1/orders/{order_id}`) — `amend_order`, paper güncelle / live cancel-replace
@@ -146,10 +146,10 @@ kuCoinAlSatBot/
 - ✅ Sol menü & üst bar & alt bar + Panic Stop (Master Layout, GLOBAL_STANDARDS 3)
 - ✅ 4 görünüm: Dashboard, Hesap (bakiye tablosu), Analiz (skor/gerekçe/uyarı), Emirler (oluştur/listele/iptal)
 - ✅ `static/` StaticFiles mount; root `/` dashboard, `/api` bilgi endpoint'i
-- ⏳ **Yeni Eklenen Frontend Görevleri (Kullanıcı Talepleri):**
+- ✅ **Yeni Eklenen Frontend Görevleri (Kullanıcı Talepleri):**
   - [x] Ana sayfadan erişilebilir **Kullanım Kılavuzu Sayfası / Görünümü** (Uygulamanın nasıl çalıştığı, modlar, göstergelerin yorumu, panic stop rehberi) — `view-guide` + sol menü/header linki
   - [x] Önemli noktalarda **Bağlamsal Info Düğmeleri (`ℹ️`)** (Portföy, mod, panic stop, bileşik puan, MTF, SMC, emir formu açıklamaları) — 7 nokta + glass popover
-  - [x] **Ayarlar Ekranı (`⚙️ Ayarlar` Görünümü)**: Çoklu coin izleme listesi (Watchlist ekle/çıkar), mod seçimi, varsayılan sembol/timeframe, maks emir tutarı — *not: sembol arama backend'de hazır (`/settings/symbols`), UI'da otomatik-tamamlama sonraki iterasyon*
+  - [x] **Ayarlar Ekranı (`⚙️ Ayarlar` Görünümü)**: Çoklu coin izleme listesi (Watchlist ekle/çıkar), mod seçimi, varsayılan sembol/timeframe, maks emir tutarı — sembol seçimi watchlist datalist'i ile entegre (`/settings/symbols` arama backend'de hazır)
   - [x] **İzleme Listesi (Watchlist) Global Arayüz Entegrasyonu**:
     - [x] Dashboard'a izleme listesindeki coin'leri gösteren **Aktif Koin Seçici** (tıklanabilir mini widget)
     - [x] Koin seçildiğinde Dashboard Canlı Fiyatı ve SVG mum grafiğinin seçilen koine dinamik geçmesi
