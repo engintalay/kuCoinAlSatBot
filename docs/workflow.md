@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Motoru Eklendi ✅) | **Kodlama & Test Durumu:** Ayarlar + Watchlist + Kılavuz + Info + Akıllı Paket Emir Tamamlandı ✅ (145/145 Test, %78 Coverage ✅), Kalan Düzenleme & Öneri Motoru Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:30:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Ayarlar + Bracket + Emir Düzenleme + Öneri Motoru + Watchlist entegrasyonu %100 ✅ — yalnızca Katman 9 (piyasa-geneli, harici API onayı) opsiyonel kaldı ⏳ (154/154 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 16:17:00 (+03:00)
 
 ---
 
@@ -24,7 +24,7 @@
 | Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, sembol arama; 5 REST endpoint'i) — 6 test |
 | Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli; `static/` mount) — 7 servis testi |
 | Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **153/153 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Toplam Birim Test Durumu | ✅ **154/154 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 ---
@@ -150,10 +150,10 @@ kuCoinAlSatBot/
   - [x] Ana sayfadan erişilebilir **Kullanım Kılavuzu Sayfası / Görünümü** (Uygulamanın nasıl çalıştığı, modlar, göstergelerin yorumu, panic stop rehberi) — `view-guide` + sol menü/header linki
   - [x] Önemli noktalarda **Bağlamsal Info Düğmeleri (`ℹ️`)** (Portföy, mod, panic stop, bileşik puan, MTF, SMC, emir formu açıklamaları) — 7 nokta + glass popover
   - [x] **Ayarlar Ekranı (`⚙️ Ayarlar` Görünümü)**: Çoklu coin izleme listesi (Watchlist ekle/çıkar), mod seçimi, varsayılan sembol/timeframe, maks emir tutarı — *not: sembol arama backend'de hazır (`/settings/symbols`), UI'da otomatik-tamamlama sonraki iterasyon*
-  - [~] **İzleme Listesi (Watchlist) Global Arayüz Entegrasyonu** (kısmen):
+  - [x] **İzleme Listesi (Watchlist) Global Arayüz Entegrasyonu**:
     - [x] Dashboard'a izleme listesindeki coin'leri gösteren **Aktif Koin Seçici** (tıklanabilir mini widget)
     - [x] Koin seçildiğinde Dashboard Canlı Fiyatı ve SVG mum grafiğinin seçilen koine dinamik geçmesi
-    - [ ] Analiz ve Emirler ekranlarındaki sembol girişlerinin izleme listesinden beslenen açılır menü (`<select>`) haline getirilmesi — *sonraki iterasyon*
+    - [x] Analiz ve Emirler ekranlarındaki sembol girişlerinin izleme listesinden beslenen seçim (`datalist`) haline getirilmesi
     - [x] Dashboard'a izlenen tüm koinlerin anlık fiyat ve % değişimini özetleyen **Mini Watchlist Widget**
   - [x] **Akıllı Paket Emir Bileşeni**: Analiz motorundan otomatik seviye yükleme (Entry, TP1, TP2, SL, R:R), USDT tutar girişi, "🚀 Akıllı Emri İlet" tek tıkla paket iletim butonu — Emirler görünümünde
   - [x] **Açık Emir Düzenleme Modalı**: Açık emirler tablosunda "Düzenle" butonu, fiyat/miktar değiştirme modalı
@@ -311,6 +311,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-20 01:08:00** | **Ayarlar & Çoklu Coin (Watchlist) Tamamlandı**: `src/modules/settings.py` (`SettingsManager`) — SQLite kalıcılıklı ayarlar (watchlist, varsayılan mod/sembol/timeframe, risk parametreleri), sembol arama. 5 endpoint (`GET/POST /settings`, `GET /settings/symbols`, `POST/DELETE /settings/watchlist`). Frontend `⚙️ Ayarlar` görünümü (mod/sembol/tf/maks-emir formu + watchlist ekle/çıkar). 6 birim test (SQLite kalıcılık dahil) ile proje genelinde **137/137 test %100 yeşil**. | **Ayarlar & Watchlist Tamamlandı ✅** |
 | **2026-09-20 01:22:00** | **Akıllı Paket Emir (Bracket Order) Tamamlandı**: Modül 2 `get_trade_setup` (ATR tabanlı Entry/SL/TP1/TP2/R:R, long+short) + `GET /market/trade-setup`. Modül 3 `create_bracket_order` (giriş market + TP1 %50 + TP2 %50 + SL %100 limit emirleri, `bracket_id`, risk/kâr hesabı) + `POST /orders/bracket`. Frontend "🚀 Akıllı Paket Emir" bileşeni (seviye hesapla → USDT gir → tek tık ilet). 8 yeni test ile proje genelinde **145/145 test %100 yeşil**; gerçek BTC/USDT verisiyle uçtan uca doğrulandı. | **Bracket Order Tamamlandı ✅** |
 | **2026-09-20 12:38:00** | **Emir Düzenleme + Öneri Motoru + Watchlist Entegrasyonu Tamamlandı**: Modül 3 `amend_order` (`PUT /orders/{id}`, paper güncelle/live cancel-replace). Yeni `recommendations.py` `RecommendationEngine` (SL yakınlık uyarısı, TP realizasyon önerisi) + `GET /orders/recommendations`, `POST /orders/recommendations/apply`. Frontend: emir düzenleme modalı, tıklanabilir Mini Watchlist Widget (aktif coin geçişi + dinamik grafik), dinamik öneri kartları. 9 yeni test ile proje genelinde **153/153 test %100 yeşil**. Kalan: sembol girişlerini watchlist dropdown'a çevirme (sonraki iterasyon), Katman 9 (harici API). | **Emir Yönetimi Tam ✅** |
+| **2026-09-20 16:17:00** | **Watchlist Sembol Entegrasyonu Tamamlandı**: Analiz, Emir ve Bracket sembol girişleri watchlist'ten beslenen `datalist` (`symbol-choices`) ile seçilebilir hale getirildi; watchlist değişiminde otomatik yenilenir. 1 yeni test ile **154/154 test %100 yeşil**. Watchlist global entegrasyonu tümüyle tamamlandı. Geriye yalnızca Katman 9 (piyasa-geneli, harici CoinGecko API onayı bekleyen) opsiyonel kalem kaldı. | **Watchlist Entegrasyonu Tam ✅** |
 
 
 
