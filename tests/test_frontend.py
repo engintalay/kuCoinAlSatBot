@@ -99,6 +99,13 @@ def test_symbol_datalist_integration(client):
     assert r.text.count('list="symbol-choices"') == 3  # analiz + emir + bracket
 
 
+def test_market_regime_widget(client):
+    """Katman 9 piyasa geneli rejim göstergesi ve info düğmesi bulunmalı."""
+    r = client.get("/")
+    assert 'id="market-regime"' in r.text
+    assert 'data-info="regime"' in r.text
+
+
 def test_analysis_view_chart_and_levels(client):
     """Analiz görünümünde piyasa türü seçici, grafik alanı, trade-setup seviyeleri ve sub-15m olmalı."""
     r = client.get("/")

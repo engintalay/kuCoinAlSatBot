@@ -715,6 +715,24 @@ async function loadMiniWatchlist() {
     el.addEventListener("click", () => { activeSymbol = el.dataset.sym; loadTicker(activeSymbol); loadChart(activeSymbol); toast(`Aktif: ${activeSymbol}`, "success"); }));
 }
 
+async function loadMarketRegime() {
+  const res = await apiGet("/market/regime");
+  const box = document.getElementById("market-regime");
+  if (!box) return;
+  if (res.success) {
+    const d = res.data;
+    const regCls = d.regime === "RISK_ON" ? "up" : d.regime === "RISK_OFF" ? "down" : "";
+    box.innerHTML = `
+      <span class="${regCls}"><b>${d.regime}</b></span>
+      <span>BTC.D: ${d.btc_dominance}%</span>
+      <span>Stablecoin.D: ${d.stablecoin_dominance}%</span>
+      <span>24s MCap: ${d.market_cap_change_24h_pct}%</span>
+      ${d.altseason_hint ? '<span class="up">Altseason ipucu</span>' : ''}`;
+  } else {
+    box.textContent = "Piyasa geneli verisi alınamadı.";
+  }
+}
+
 async function loadRecommendations() {
   const res = await apiGet("/orders/recommendations");
   const box = document.getElementById("reco-cards");
@@ -833,6 +851,7 @@ async function refreshDashboard() {
   await loadSummary();
   await loadTicker(activeSymbol);
   await loadMiniWatchlist();
+  await loadMarketRegime();
   await loadRecommendations();
 }
 function startPolling() {
