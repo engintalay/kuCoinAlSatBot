@@ -174,12 +174,28 @@
             🎯 Analiz Gerekçeleri (İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur)
             <button class="info-btn" data-info="smc">ℹ️</button>
           </div>
-          <div id="analysis-reasons-grid" class="reasons-grid"></div>
+          <div class="reasons-table-header">
+            <span class="col-head col-ind">İndikatör & Sinyal</span>
+            <span class="col-head col-why">🔍 Neden Oldu? (Koşul)</span>
+            <span class="col-head col-shows">📊 İndikatör Neyi Gösterir?</span>
+            <span class="col-head col-impact">⚡ Neye Sebep Olur? (Piyasa Etkisi)</span>
+          </div>
+          <div id="analysis-reasons-grid" class="reasons-row-container">
+            <div class="hint">Analiz yapıldığında gerekçeler burada listelenecektir.</div>
+          </div>
           <ul id="analysis-reasons" class="reason-list" style="display:none;"></ul>
         </div>
         <div class="card glass">
           <div class="card-title">⚠️ Risk Uyarıları ve Korunma Tavsiyeleri</div>
-          <div id="analysis-warnings-grid" class="reasons-grid"></div>
+          <div class="reasons-table-header warnings-header">
+            <span class="col-head col-ind">Risk Faktörü</span>
+            <span class="col-head col-why">🔍 Neden Oluştu?</span>
+            <span class="col-head col-shows">📊 Neyi Gösterir?</span>
+            <span class="col-head col-impact">⚡ Neye Sebep Olur & Korunma</span>
+          </div>
+          <div id="analysis-warnings-grid" class="reasons-row-container">
+            <div class="hint">Piyasada şu an aktif bir risk veya sahte sinyal uyarısı bulunmuyor.</div>
+          </div>
           <ul id="analysis-warnings" class="reason-list warn" style="display:none;"></ul>
         </div>
       </section>

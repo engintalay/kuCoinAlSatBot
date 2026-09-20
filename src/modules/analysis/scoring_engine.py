@@ -224,17 +224,17 @@ REASON_EXPLANATIONS = {
         "type": "bearish",
     },
     # Momentum
-    "RSI": {
+    "> 50 ve yükseliyor": {
         "indicator": "RSI (Göreceli Güç Endeksi)",
         "condition": "RSI 50 denge seviyesinin üzerinde ve son mumlarda yukarı yönlü yükseliyor.",
-        "meaning": "Son 14 mumdaki alım hızının satış hızından daha kuvvetli arttığını (alıcı iştahını) ölçer.",
+        "meaning": "Son 14 mumdaki alım hızının satış hızından daha kuvvetli arttığını (alıcı iştahını) gösterir.",
         "impact": "Fiyatın yukarı yönlü ivme kazanmasına ve alım baskısının sürmesine sebep olur.",
         "type": "bullish",
     },
-    "RSI < 50": {
+    "< 50 ve düşüyor": {
         "indicator": "RSI (Göreceli Güç Endeksi)",
         "condition": "RSI 50 denge seviyesinin altında ve momentum aşağı yönlü zayıflıyor.",
-        "meaning": "Piyasadaki alım isteğinin zayıfladığını, satıcıların fiyatı aşağı ittiğini gösterir.",
+        "meaning": "Piyasadaki alım isteğinin zayıfladığını ve satıcıların fiyatı aşağı ittiğini gösterir.",
         "impact": "Fiyatın alt destekleri test etmesine ve düşüş eğiliminin devam etmesine sebep olur.",
         "type": "bearish",
     },
@@ -282,12 +282,19 @@ REASON_EXPLANATIONS = {
         "type": "bearish",
     },
     # Strength
-    "ADX": {
-        "indicator": "ADX (Trend Gücü Endeksi)",
-        "condition": "ADX değeri 25 eşiğinin üzerinde ve +DI çizgisi -DI çizgisinden yüksek.",
-        "meaning": "Piyasanın yatayda sıkışmadığını, net ve güçlü bir trend içerisinde olduğunu gösterir.",
-        "impact": "Sahte sinyalleri azaltır, açılan trend pozisyonlarının hedefe ulaşma olasılığını yükseltir.",
+    "+DI>−DI": {
+        "indicator": "ADX & DMI (Yükseliş Trend Gücü)",
+        "condition": "ADX 25 eşiğini aştı ve pozitif yönsel gösterge (+DI), negatif göstergenin (-DI) üzerine çıktı.",
+        "meaning": "Piyasanın yatayda sıkışmadığını, net ve güçlü bir yükseliş trendi içinde olduğunu gösterir.",
+        "impact": "Yükseliş yönünde açılan pozisyonların sahte kırılımlara takılma riskini azaltır ve hedefe ulaşmasını kolaylaştırır.",
         "type": "bullish",
+    },
+    "−DI>+DI": {
+        "indicator": "ADX & DMI (Düşüş Trend Gücü)",
+        "condition": "ADX 25 eşiğini aştı ve negatif yönsel gösterge (-DI), pozitif göstergenin (+DI) üzerine çıktı.",
+        "meaning": "Piyasada güçlü bir satış baskısı olduğunu ve düşüş trendinin ivme kazandığını gösterir.",
+        "impact": "Fiyatın aşağı yönlü hareketinin sertleşmesine ve yükseliş tepkilerinin satış fırsatı olarak ezilmesine sebep olur.",
+        "type": "bearish",
     },
     # Volume
     "Yüksek RVOL ve fiyat VWAP üstünde": {
@@ -354,6 +361,13 @@ REASON_EXPLANATIONS = {
         "impact": "Piyasanın manipülasyondan uzak, teknik seviyelere daha sadık hareket etmesini sağlar.",
         "type": "neutral",
     },
+    "Açık pozisyon hacmi": {
+        "indicator": "Açık Pozisyon Hacmi (Open Interest)",
+        "condition": "Vadeli piyasada açık olan toplam sözleşme büyüklüğü ölçüldü.",
+        "meaning": "Vadeli piyasaya yeni sermaye girdiğini ve işlem likiditesinin derinleştiğini gösterir.",
+        "impact": "Fiyat hareketlerinin kayma (slippage) olmadan daha sağlıklı ve likit işlemesine sebep olur.",
+        "type": "neutral",
+    },
 }
 
 WARNING_EXPLANATIONS = {
@@ -404,37 +418,56 @@ WARNING_EXPLANATIONS = {
 
 def _build_reason_detail(reason_str: str) -> dict:
     """Teknik gerekçeyi sade, öğretici ve 4-boyutlu yapıya dönüştürür."""
-    for key, val in REASON_EXPLANATIONS.items():
+    sorted_keys = sorted(REASON_EXPLANATIONS.keys(), key=len, reverse=True)
+    for key in sorted_keys:
         if key.lower() in reason_str.lower():
+            val = REASON_EXPLANATIONS[key]
+            cond = val.get("condition") or val.get("why") or reason_str
+            mean = val.get("meaning") or val.get("shows") or ""
+            imp = val.get("impact") or val.get("causes") or ""
             return {
                 "summary": reason_str,
                 "indicator": val["indicator"],
-                "condition": val["condition"],
-                "meaning": val["meaning"],
-                "impact": val["impact"],
+                "condition": cond,
+                "why": cond,
+                "meaning": mean,
+                "shows": mean,
+                "impact": imp,
+                "causes": imp,
                 "type": val["type"],
             }
     is_bull = any(w in reason_str.lower() for w in ("bull", "üst", "pozitif", "girişi", "+di"))
+    fallback_cond = reason_str
+    fallback_shows = "Fiyat ve hacim göstergelerinde belirlenen strateji eşiği tetiklendi."
+    fallback_causes = "Bileşik skor motorunda yöne puan katkısı sağlayarak sinyali destekler."
     return {
         "summary": reason_str,
         "indicator": "Teknik Gösterge Kuralı",
-        "condition": reason_str,
-        "meaning": "Fiyat ve hacim göstergelerinde belirlenen strateji eşiği tetiklendi.",
-        "impact": "Bileşik skor motorunda yöne puan katkısı sağlayarak sinyali destekler.",
+        "condition": fallback_cond,
+        "why": fallback_cond,
+        "meaning": fallback_shows,
+        "shows": fallback_shows,
+        "impact": fallback_causes,
+        "causes": fallback_causes,
         "type": "bullish" if is_bull else "bearish",
     }
 
 
 def _build_warning_detail(warning_str: str) -> dict:
     """Risk uyarısını sade açıklama ve korunma tavsiyesine dönüştürür."""
-    for key, val in WARNING_EXPLANATIONS.items():
+    sorted_warn_keys = sorted(WARNING_EXPLANATIONS.keys(), key=len, reverse=True)
+    for key in sorted_warn_keys:
         if key.lower() in warning_str.lower():
+            val = WARNING_EXPLANATIONS[key]
             return {
                 "summary": warning_str,
                 "warning": val["warning"],
                 "why": val["why"],
+                "condition": val["why"],
                 "meaning": val["meaning"],
+                "shows": val["meaning"],
                 "impact": val["impact"],
+                "causes": val["impact"],
                 "advice": val["advice"],
             }
     return {

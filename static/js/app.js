@@ -60,6 +60,7 @@ function switchView(view) {
   if (view === "account") loadBalances();
   if (view === "orders") loadOpenOrders();
   if (view === "settings") loadSettings();
+  if (view === "analysis") loadAnalysis();
 }
 
 document.querySelectorAll(".nav-item").forEach((item) => {
@@ -231,34 +232,34 @@ async function loadAnalysis() {
     if (rTxtEl) rTxtEl.textContent = `🔎 ${sm.risk_text || ""}`;
   }
 
-  // Detaylı & Eğitici Gerekçe Kartları
+  // Detaylı & Eğitici Gerekçe Tablo Satırları (Yan yana görünüm)
   const reasonsGrid = document.getElementById("analysis-reasons-grid");
   if (reasonsGrid) {
     if (s.reasons_detail && s.reasons_detail.length > 0) {
       reasonsGrid.innerHTML = s.reasons_detail.map((rd) => {
         const isBull = rd.type === "bullish";
+        const isBear = rd.type === "bearish";
         const typeBadge = isBull
-          ? `<span class="reason-edu-type bullish">Boğa (AL)</span>`
-          : `<span class="reason-edu-type bearish">Ayı (SAT)</span>`;
+          ? `<span class="reason-badge bullish">🟢 Boğa (AL)</span>`
+          : (isBear ? `<span class="reason-badge bearish">🔴 Ayı (SAT)</span>` : `<span class="reason-badge">⚪ Nötr</span>`);
         return `
-          <div class="reason-edu-card ${rd.type || 'bullish'}">
-            <div class="reason-edu-header">
-              <span>🏷️ ${escapeHtml(rd.indicator || 'Teknik Gösterge')}</span>
+          <div class="reason-row-item ${rd.type || 'bullish'}">
+            <div class="reason-cell cell-ind">
+              <div class="cell-title">🏷️ ${escapeHtml(rd.indicator || 'Teknik Gösterge')}</div>
               ${typeBadge}
+              <div class="cell-summary">${escapeHtml(rd.summary || '')}</div>
             </div>
-            <div class="reason-field-group">
-              <div class="reason-field-item">
-                <span class="reason-field-label">🔍 Neden Oldu? (Tetiklenen Durum)</span>
-                <span class="reason-field-val">${escapeHtml(rd.condition || rd.summary || '')}</span>
-              </div>
-              <div class="reason-field-item">
-                <span class="reason-field-label">📊 Neyi Gösterir? (Teknik Anlamı)</span>
-                <span class="reason-field-val">${escapeHtml(rd.meaning || '')}</span>
-              </div>
-              <div class="reason-field-item">
-                <span class="reason-field-label">⚡ Neye Sebep Olur? (Piyasa Etkisi)</span>
-                <span class="reason-field-val">${escapeHtml(rd.impact || '')}</span>
-              </div>
+            <div class="reason-cell cell-why">
+              <span class="mobile-label">🔍 Neden Oldu?</span>
+              <div class="cell-text">${escapeHtml(rd.condition || rd.why || '')}</div>
+            </div>
+            <div class="reason-cell cell-shows">
+              <span class="mobile-label">📊 İndikatör Neyi Gösterir?</span>
+              <div class="cell-text">${escapeHtml(rd.meaning || rd.shows || '')}</div>
+            </div>
+            <div class="reason-cell cell-impact">
+              <span class="mobile-label">⚡ Neye Sebep Olur?</span>
+              <div class="cell-text">${escapeHtml(rd.impact || rd.causes || '')}</div>
             </div>
           </div>
         `;
@@ -268,29 +269,28 @@ async function loadAnalysis() {
     }
   }
 
-  // Detaylı Risk Uyarısı Kartları
+  // Detaylı Risk Uyarısı Tablo Satırları
   const warnGrid = document.getElementById("analysis-warnings-grid");
   if (warnGrid) {
     if (s.warnings_detail && s.warnings_detail.length > 0) {
       warnGrid.innerHTML = s.warnings_detail.map((wd) => `
-        <div class="warning-edu-card">
-          <div class="warning-edu-title">⚠️ ${escapeHtml(wd.warning || wd.summary || 'Risk')}</div>
-          <div class="reason-field-group">
-            <div class="reason-field-item">
-              <span class="reason-field-label">🔍 Neden Oluştu?</span>
-              <span class="reason-field-val">${escapeHtml(wd.why || '')}</span>
-            </div>
-            <div class="reason-field-item">
-              <span class="reason-field-label">📊 Neyi Gösterir?</span>
-              <span class="reason-field-val">${escapeHtml(wd.meaning || '')}</span>
-            </div>
-            <div class="reason-field-item">
-              <span class="reason-field-label">⚡ Neye Sebep Olur? (Tehlikesi)</span>
-              <span class="reason-field-val">${escapeHtml(wd.impact || '')}</span>
-            </div>
+        <div class="warning-row-item">
+          <div class="reason-cell cell-ind">
+            <div class="cell-title">⚠️ ${escapeHtml(wd.warning || wd.summary || 'Risk Uyarısı')}</div>
+            <span class="reason-badge bearish">Risk Filtresi</span>
           </div>
-          <div class="warning-advice-box">
-            🛡️ <b>Korunma Tavsiyesi:</b> ${escapeHtml(wd.advice || '')}
+          <div class="reason-cell cell-why">
+            <span class="mobile-label">🔍 Neden Oluştu?</span>
+            <div class="cell-text">${escapeHtml(wd.why || wd.condition || '')}</div>
+          </div>
+          <div class="reason-cell cell-shows">
+            <span class="mobile-label">📊 Neyi Gösterir?</span>
+            <div class="cell-text">${escapeHtml(wd.meaning || wd.shows || '')}</div>
+          </div>
+          <div class="reason-cell warning-advice-cell">
+            <span class="mobile-label">⚡ Tehlikesi & Korunma</span>
+            <div class="cell-text"><b>Tehlike:</b> ${escapeHtml(wd.impact || wd.causes || '')}</div>
+            <div class="cell-text" style="margin-top:4px; color:#ffab00;"><b>🛡️ Korunma:</b> ${escapeHtml(wd.advice || '')}</div>
           </div>
         </div>
       `).join("");

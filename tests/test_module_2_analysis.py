@@ -83,14 +83,17 @@ class TestScoringEngine:
         assert "risk_text" in sm
         assert sm["market_label"] == "KuCoin Spot"
 
-        # Detaylı Gerekçeler (4 Alan: indicator, condition, meaning, impact)
+        # Detaylı Gerekçeler (4 Alan: indicator, why/condition, shows/meaning, causes/impact)
         assert "reasons_detail" in result
         assert len(result["reasons_detail"]) > 0
         for rd in result["reasons_detail"]:
             assert "indicator" in rd and len(rd["indicator"]) > 0
             assert "condition" in rd and len(rd["condition"]) > 0
+            assert "why" in rd and len(rd["why"]) > 0
             assert "meaning" in rd and len(rd["meaning"]) > 0
+            assert "shows" in rd and len(rd["shows"]) > 0
             assert "impact" in rd and len(rd["impact"]) > 0
+            assert "causes" in rd and len(rd["causes"]) > 0
             assert rd["type"] in ("bullish", "bearish")
             assert "summary" in rd
 
@@ -107,8 +110,11 @@ class TestScoringEngine:
         for wd in res_futures["warnings_detail"]:
             assert "warning" in wd
             assert "why" in wd
+            assert "condition" in wd
             assert "meaning" in wd
+            assert "shows" in wd
             assert "impact" in wd
+            assert "causes" in wd
             assert "advice" in wd
             assert "summary" in wd
 
