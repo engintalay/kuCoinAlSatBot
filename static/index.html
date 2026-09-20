@@ -46,6 +46,11 @@
     <main class="content">
       <!-- Dashboard görünümü -->
       <section id="view-dashboard" class="view active">
+        <div class="card glass">
+          <div class="card-title">👁️ İzleme Listesi</div>
+          <div id="mini-watchlist" class="mini-watchlist">Yükleniyor...</div>
+        </div>
+        <div id="reco-cards" class="reco-cards"></div>
         <div class="cards-row">
           <div class="card glass">
             <div class="card-title">Toplam Portföy</div>
@@ -220,6 +225,20 @@
 
   <!-- Bağlamsal Info popover -->
   <div id="info-popover" class="info-popover glass" hidden></div>
+
+  <!-- Emir Düzenleme Modalı -->
+  <div id="edit-modal" class="modal-overlay" hidden>
+    <div class="modal glass">
+      <div class="card-title">✏️ Emir Düzenle</div>
+      <input id="edit-id" type="hidden" />
+      <label>Fiyat <input id="edit-price" class="input" type="number" step="0.01" /></label>
+      <label>Miktar <input id="edit-amount" class="input" type="number" step="0.0001" /></label>
+      <div class="modal-actions">
+        <button id="edit-cancel" class="btn" style="background:var(--border)">Vazgeç</button>
+        <button id="edit-save" class="btn btn-accent">Kaydet</button>
+      </div>
+    </div>
+  </div>
 
   <!-- FOOTER -->
   <footer class="app-footer glass">

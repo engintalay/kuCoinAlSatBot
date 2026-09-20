@@ -13,6 +13,7 @@ from src.modules.module1_account import KuCoinAccount
 from src.modules.module2_market import KuCoinMarket
 from src.modules.module3_orders import KuCoinOrders
 from src.modules.settings import SettingsManager
+from src.modules.recommendations import RecommendationEngine
 from src.config import Config
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
@@ -37,6 +38,7 @@ account = KuCoinAccount()
 market = KuCoinMarket()
 orders = KuCoinOrders(market=market)
 settings_mgr = SettingsManager(market=market)
+recommender = RecommendationEngine(orders=orders, market=market)
 
 
 @app.on_event("startup")
@@ -273,6 +275,36 @@ async def cancel_order(order_id: str, symbol: str | None = None):
     """Belirtilen açık emri iptal eder."""
     result = await orders.cancel_order(order_id, symbol)
     return result
+
+
+class OrderAmendRequest(BaseModel):
+    price: float | None = None
+    amount: float | None = None
+    symbol: str | None = None
+
+
+@app.put("/api/v1/orders/{order_id}")
+async def amend_order(order_id: str, req: OrderAmendRequest):
+    """Açık emrin fiyatını ve/veya miktarını günceller (Amend)."""
+    result = await orders.amend_order(order_id, req.price, req.amount, req.symbol)
+    return result
+
+
+@app.get("/api/v1/orders/recommendations")
+async def get_recommendations():
+    """Açık emirler + canlı piyasadan dinamik güncelleme tavsiyeleri üretir."""
+    return await recommender.get_recommendations()
+
+
+class ApplyRecRequest(BaseModel):
+    order_id: str
+    new_price: float | None = None
+
+
+@app.post("/api/v1/orders/recommendations/apply")
+async def apply_recommendation(req: ApplyRecRequest):
+    """Bir tavsiyeyi uygular (örn. SL fiyatını günceller)."""
+    return await recommender.apply_recommendation(req.order_id, req.new_price)
 
 
 @app.post("/api/v1/orders/panic-stop")

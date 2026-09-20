@@ -82,3 +82,11 @@ def test_bracket_and_settings_views(client):
     assert 'data-info="bracket"' in r.text
     assert 'data-view="settings"' in r.text
     assert 'id="view-settings"' in r.text
+
+
+def test_amend_modal_and_watchlist_widget(client):
+    """Emir düzenleme modalı, mini watchlist ve öneri kartları alanı bulunmalı."""
+    r = client.get("/")
+    assert 'id="edit-modal"' in r.text
+    assert 'id="mini-watchlist"' in r.text
+    assert 'id="reco-cards"' in r.text

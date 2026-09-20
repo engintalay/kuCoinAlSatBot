@@ -394,6 +394,57 @@ class KuCoinOrders:
             },
             error=None, timestamp=timestamp())
 
+    # ------------------------------------------------------------------ #
+    # Açık Emir Düzenleme (Amend) — MODULE_3_SPEC 2.6
+    # ------------------------------------------------------------------ #
+    async def amend_order(
+        self, order_id: str, price: float | None = None,
+        amount: float | None = None, symbol: str | None = None
+    ) -> OrderCreateResponse:
+        """
+        Açık bir emrin fiyatını ve/veya miktarını günceller.
+        Paper modda kayıt doğrudan güncellenir; live modda iptal-edip-yeniden-oluştur
+        (cancel/replace) yaklaşımı uygulanır.
+        """
+        if price is None and amount is None:
+            return OrderCreateResponse(success=False, data={},
+                                       error="Güncellenecek fiyat veya miktar belirtilmeli.",
+                                       timestamp=timestamp())
+
+        if self.mode == "paper":
+            order = self.paper_open_orders.get(order_id)
+            if not order:
+                return OrderCreateResponse(success=False, data={},
+                                           error=f"Açık emir bulunamadı: {order_id}",
+                                           timestamp=timestamp())
+            if price is not None and price > 0:
+                order["price"] = float(price)
+            if amount is not None and amount > 0:
+                order["amount"] = float(amount)
+            order["notional_usdt"] = round(order["amount"] * order["price"], 2)
+            order["amended_at"] = timestamp()
+            return OrderCreateResponse(success=True, data=order, error=None, timestamp=timestamp())
+
+        # Live: cancel + yeniden oluştur
+        try:
+            if not self.exchange:
+                self.connect()
+            old = await self.exchange.fetch_order(order_id, symbol)
+            await self.exchange.cancel_order(order_id, symbol)
+            new_price = price if price is not None else old.get("price")
+            new_amount = amount if amount is not None else old.get("amount")
+            new_order = await self.exchange.create_order(
+                symbol or old.get("symbol"), "limit", old.get("side"), new_amount, new_price)
+            return OrderCreateResponse(
+                success=True,
+                data={"id": new_order.get("id"), "replaced": order_id,
+                      "price": new_price, "amount": new_amount, "status": "open"},
+                error=None, timestamp=timestamp())
+        except Exception as e:
+            logger.error(f"Emir düzenleme hatası: {e}")
+            return OrderCreateResponse(success=False, data={},
+                                       error=f"Emir düzenlenemedi: {e}", timestamp=timestamp())
+
     async def close(self) -> None:
         if self.exchange is not None:
             try:

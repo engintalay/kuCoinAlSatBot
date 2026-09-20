@@ -165,3 +165,23 @@ body {
 .level-row { display: flex; justify-content: space-between; padding: 6px 12px; background: var(--bg-0); border-radius: 6px; font-size: 0.9rem; }
 .level-row.up b { color: var(--green); }
 .level-row.down b { color: var(--red); }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1200; display: flex; align-items: center; justify-content: center; }
+.modal-overlay[hidden] { display: none; }
+.modal { padding: 24px; min-width: 320px; display: flex; flex-direction: column; gap: 12px; }
+.modal label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--text-dim); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+
+/* MINI WATCHLIST */
+.mini-watchlist { display: flex; gap: 10px; flex-wrap: wrap; }
+.mini-coin { display: flex; flex-direction: column; gap: 2px; padding: 8px 14px; background: var(--bg-0); border-radius: 8px; cursor: pointer; font-size: 0.85rem; border: 1px solid transparent; }
+.mini-coin:hover { border-color: var(--accent); }
+.mini-coin .up { color: var(--green); }
+.mini-coin .down { color: var(--red); }
+
+/* RECOMMENDATION CARDS */
+.reco-cards { display: flex; flex-direction: column; gap: 8px; }
+.reco-card { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; font-size: 0.88rem; }
+.reco-card.warning { border-left: 3px solid var(--red); }
+.reco-card.success { border-left: 3px solid var(--green); }

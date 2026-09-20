@@ -2,6 +2,7 @@
 "use strict";
 
 const API = "/api/v1";
+let activeSymbol = "BTC/USDT";
 
 // ---- Yardımcılar ----
 async function apiGet(path) {
@@ -203,14 +204,46 @@ async function loadOpenOrders() {
       <tr>
         <td>${o.id}</td><td>${o.symbol}</td><td>${o.side}</td><td>${o.type}</td>
         <td>${o.amount}</td><td>${o.price}</td><td>${o.status}</td>
-        <td><button class="btn-mini" data-id="${o.id}">İptal</button></td>
+        <td>
+          <button class="btn-mini btn-edit" data-id="${o.id}" data-price="${o.price}" data-amount="${o.amount}">Düzenle</button>
+          <button class="btn-mini" data-id="${o.id}">İptal</button>
+        </td>
       </tr>`).join("");
-    tbody.querySelectorAll(".btn-mini").forEach((b) =>
+    tbody.querySelectorAll(".btn-mini:not(.btn-edit)").forEach((b) =>
       b.addEventListener("click", () => cancelOrder(b.dataset.id)));
+    tbody.querySelectorAll(".btn-edit").forEach((b) =>
+      b.addEventListener("click", () => openEditModal(b.dataset.id, b.dataset.price, b.dataset.amount)));
   } else {
     tbody.innerHTML = `<tr><td colspan="8">Açık emir yok.</td></tr>`;
   }
 }
+
+// ---- Emir Düzenleme Modalı (Amend) ----
+function openEditModal(id, price, amount) {
+  const modal = document.getElementById("edit-modal");
+  document.getElementById("edit-id").value = id;
+  document.getElementById("edit-price").value = price;
+  document.getElementById("edit-amount").value = amount;
+  modal.hidden = false;
+}
+document.getElementById("edit-cancel").addEventListener("click", () => {
+  document.getElementById("edit-modal").hidden = true;
+});
+document.getElementById("edit-save").addEventListener("click", async () => {
+  const id = document.getElementById("edit-id").value;
+  const body = {
+    price: parseFloat(document.getElementById("edit-price").value) || null,
+    amount: parseFloat(document.getElementById("edit-amount").value) || null,
+  };
+  const res = await apiSend("/orders/" + encodeURIComponent(id), "PUT", body);
+  if (res.success) {
+    toast("Emir güncellendi", "success");
+    document.getElementById("edit-modal").hidden = true;
+    loadOpenOrders();
+  } else {
+    toast("Güncelleme başarısız: " + (res.error || ""), "error");
+  }
+});
 
 async function cancelOrder(id) {
   const res = await apiSend(`/orders/${id}`, "DELETE");
@@ -307,6 +340,44 @@ document.getElementById("bracket-submit").addEventListener("click", async () => 
     toast("Paket emir reddedildi: " + (res.error || ""), "error");
   }
 });
+
+// ---- Mini Watchlist Widget + Öneri Kartları ----
+async function loadMiniWatchlist() {
+  const box = document.getElementById("mini-watchlist");
+  const setRes = await apiGet("/settings");
+  if (!setRes.success) return;
+  const list = setRes.data.watchlist || [];
+  const cells = await Promise.all(list.map(async (sym) => {
+    const t = await apiGet("/market/ticker?symbol=" + encodeURIComponent(sym));
+    if (!t.success) return `<div class="mini-coin"><span>${sym}</span><span>--</span></div>`;
+    const chg = t.data.change_percentage_24h ?? 0;
+    const cls = chg >= 0 ? "up" : "down";
+    return `<div class="mini-coin" data-sym="${sym}">
+      <span>${sym}</span>
+      <span>${t.data.last_price}</span>
+      <span class="${cls}">${chg}%</span></div>`;
+  }));
+  box.innerHTML = cells.join("") || "İzleme listesi boş.";
+  // koin seçince dashboard o koine geçsin
+  box.querySelectorAll(".mini-coin[data-sym]").forEach((el) =>
+    el.addEventListener("click", () => { activeSymbol = el.dataset.sym; loadTicker(activeSymbol); loadChart(activeSymbol); toast(`Aktif: ${activeSymbol}`, "success"); }));
+}
+
+async function loadRecommendations() {
+  const res = await apiGet("/orders/recommendations");
+  const box = document.getElementById("reco-cards");
+  if (res.success && res.data.count) {
+    box.innerHTML = res.data.recommendations.map((r) => `
+      <div class="reco-card glass ${r.severity}">
+        <span>${r.message}</span>
+        <button class="btn-mini" data-reco="${r.order_id}">✖ Yoksay</button>
+      </div>`).join("");
+    box.querySelectorAll("[data-reco]").forEach((b) =>
+      b.addEventListener("click", () => b.closest(".reco-card").remove()));
+  } else {
+    box.innerHTML = "";
+  }
+}
 
 // ---- Panic Stop ----
 document.getElementById("panic-btn").addEventListener("click", async () => {
@@ -408,7 +479,9 @@ let pollTimer = null;
 async function refreshDashboard() {
   await loadStatus();
   await loadSummary();
-  await loadTicker();
+  await loadTicker(activeSymbol);
+  await loadMiniWatchlist();
+  await loadRecommendations();
 }
 function startPolling() {
   if (pollTimer) return;
