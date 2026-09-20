@@ -106,6 +106,19 @@ def test_market_regime_widget(client):
     assert 'data-info="regime"' in r.text
 
 
+def test_order_market_type_ui(client):
+    """Emir formu piyasa türü seçici içermeli; açık emirler tablosu Piyasa kolonu göstermeli."""
+    r = client.get("/")
+    assert 'id="order-market-type"' in r.text
+    assert '<option value="margin">Margin</option>' in r.text
+    assert '<option value="futures">Futures</option>' in r.text
+    assert "<th>Piyasa</th>" in r.text
+    js = client.get("/static/js/app.js").text
+    # emir gönderiminde ve açık emir render'ında market_type kullanılmalı
+    assert 'order-market-type' in js
+    assert "market-badge" in js
+
+
 def test_api_helpers_are_resilient(client):
     """
     Hata #9 regresyon testi: apiGet/apiSend fetch veya JSON hatasında

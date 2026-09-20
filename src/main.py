@@ -259,6 +259,7 @@ class OrderCreateRequest(BaseModel):
     order_type: str = "market"  # market | limit
     amount: float = 0.001
     price: float | None = None  # limit için gerekli
+    market_type: str = "spot"   # spot | margin | futures
 
 
 class SwitchModeRequest(BaseModel):
@@ -267,9 +268,9 @@ class SwitchModeRequest(BaseModel):
 
 @app.post("/api/v1/orders/create")
 async def create_order(req: OrderCreateRequest):
-    """Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal)."""
+    """Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal). Spot/Margin/Futures."""
     result = await orders.create_order(
-        req.symbol, req.side, req.order_type, req.amount, req.price
+        req.symbol, req.side, req.order_type, req.amount, req.price, req.market_type
     )
     return result
 

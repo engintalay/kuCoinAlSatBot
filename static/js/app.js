@@ -557,6 +557,7 @@ document.getElementById("order-submit").addEventListener("click", async () => {
     order_type: document.getElementById("order-type").value,
     amount: parseFloat(document.getElementById("order-amount").value),
     price: parseFloat(document.getElementById("order-price").value) || null,
+    market_type: document.getElementById("order-market-type").value,
   };
   const res = await apiSend("/orders/create", "POST", body);
   if (res.success) {
@@ -571,21 +572,27 @@ async function loadOpenOrders() {
   const res = await apiGet("/orders/open");
   const tbody = document.querySelector("#open-orders-table tbody");
   if (res.success && res.data.count) {
-    tbody.innerHTML = res.data.orders.map((o) => `
+    tbody.innerHTML = res.data.orders.map((o) => {
+      const mt = (o.market_type || "spot").toLowerCase();
+      const mtLabel = { spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt;
+      return `
       <tr>
-        <td>${o.id}</td><td>${o.symbol}</td><td>${o.side}</td><td>${o.type}</td>
+        <td>${o.id}</td><td>${o.symbol}</td>
+        <td><span class="market-badge market-${mt}">${mtLabel}</span></td>
+        <td>${o.side}</td><td>${o.type}</td>
         <td>${o.amount}</td><td>${o.price}</td><td>${o.status}</td>
         <td>
           <button class="btn-mini btn-edit" data-id="${o.id}" data-price="${o.price}" data-amount="${o.amount}">Düzenle</button>
           <button class="btn-mini" data-id="${o.id}">İptal</button>
         </td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
     tbody.querySelectorAll(".btn-mini:not(.btn-edit)").forEach((b) =>
       b.addEventListener("click", () => cancelOrder(b.dataset.id)));
     tbody.querySelectorAll(".btn-edit").forEach((b) =>
       b.addEventListener("click", () => openEditModal(b.dataset.id, b.dataset.price, b.dataset.amount)));
   } else {
-    tbody.innerHTML = `<tr><td colspan="8">Açık emir yok.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9">Açık emir yok.</td></tr>`;
   }
 }
 

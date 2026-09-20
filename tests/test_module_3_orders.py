@@ -30,6 +30,34 @@ class TestOrderValidation:
         assert "yön" in r.error.lower()
 
     @pytest.mark.asyncio
+    async def test_invalid_market_type(self):
+        """Geçersiz piyasa türü reddedilmeli (spot/margin/futures dışı)."""
+        o = _paper_orders()
+        r = await o.create_order("BTC/USDT", "buy", "market", 0.001, None, "perp")
+        assert r.success is False
+        assert "piyasa türü" in r.error.lower()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("mtype", ["spot", "margin", "futures"])
+    async def test_paper_order_records_market_type(self, mtype):
+        """Paper emir kaydı seçilen market_type'ı içermeli (spot/margin/futures)."""
+        o = _paper_orders()
+        r = await o.create_order("BTC/USDT", "buy", "limit", 0.01, 50000.0, mtype)
+        assert r.success is True
+        assert r.data["market_type"] == mtype
+
+    @pytest.mark.asyncio
+    async def test_open_orders_expose_market_type(self):
+        """Açık emirler her kayıtta market_type alanını sunmalı."""
+        o = _paper_orders()
+        await o.create_order("BTC/USDT", "buy", "limit", 0.01, 50000.0, "futures")
+        await o.create_order("ETH/USDT", "buy", "limit", 0.1, 3000.0, "margin")
+        res = await o.get_open_orders()
+        assert res.success is True
+        types = sorted({x["market_type"] for x in res.data["orders"]})
+        assert types == ["futures", "margin"]
+
+    @pytest.mark.asyncio
     async def test_limit_requires_price(self):
         o = _paper_orders()
         r = await o.create_order("BTC/USDT", "buy", "limit", 0.001, None)

@@ -34,6 +34,7 @@ from src.utils.time_sync import timestamp
 
 VALID_SIDES = ("buy", "sell")
 VALID_TYPES = ("market", "limit")
+VALID_MARKET_TYPES = ("spot", "margin", "futures")
 MIN_NOTIONAL_USDT = 1.0  # KuCoin minimum emir tutarı (yaklaşık)
 
 
@@ -47,6 +48,7 @@ class KuCoinOrders:
         if self.mode not in ("paper", "live"):
             self.mode = "paper"
         self.exchange: ccxt.async_support.kucoin | None = None
+        self.futures_exchange: ccxt.async_support.kucoinfutures | None = None
         self.bot_active = True  # Panic stop bunu False yapar
 
         # Modül 2 market referansı (paper modda anlık fiyat için).
@@ -62,22 +64,32 @@ class KuCoinOrders:
     # ------------------------------------------------------------------ #
     def connect(self) -> bool:
         try:
-            self.exchange = ccxt.async_support.kucoin({
+            creds = {
                 "apiKey": self.config.API_KEY,
                 "secret": self.config.API_SECRET,
                 "password": self.config.API_PASSPHRASE,
                 "sandbox": self.config.IS_SANDBOX,
-            })
+            }
+            self.exchange = ccxt.async_support.kucoin(dict(creds))
+            # Futures ayrı bir borsa uç noktası kullanır (kucoinfutures)
+            self.futures_exchange = ccxt.async_support.kucoinfutures(dict(creds))
             return True
         except Exception as e:
             logger.error(f"❌ Emir modülü bağlantı hatası: {e}")
             return False
 
+    def _venue(self, market_type: str):
+        """market_type'a göre doğru ccxt borsa örneğini döndürür."""
+        if not self.exchange or not self.futures_exchange:
+            self.connect()
+        return self.futures_exchange if market_type == "futures" else self.exchange
+
     # ------------------------------------------------------------------ #
     # M3-C01: Pre-trade risk & doğrulama
     # ------------------------------------------------------------------ #
     def _validate_order(self, symbol: str, side: str, order_type: str,
-                        amount: float, price: float | None) -> str | None:
+                        amount: float, price: float | None,
+                        market_type: str = "spot") -> str | None:
         """Geçersizse hata mesajı, geçerliyse None döner."""
         if not self.bot_active:
             return "Bot durdurulmuş (Panic Stop aktif). Yeni emir kabul edilmiyor."
@@ -85,6 +97,8 @@ class KuCoinOrders:
             return f"Geçersiz yön: {side}. Geçerli: buy/sell."
         if order_type not in VALID_TYPES:
             return f"Geçersiz emir türü: {order_type}. Geçerli: market/limit."
+        if market_type not in VALID_MARKET_TYPES:
+            return f"Geçersiz piyasa türü: {market_type}. Geçerli: spot/margin/futures."
         if amount is None or amount <= 0:
             return "Miktar (amount) pozitif olmalı."
         if order_type == "limit" and (price is None or price <= 0):
@@ -110,19 +124,21 @@ class KuCoinOrders:
     # M3-C02 / M3-C03: Emir oluşturma
     # ------------------------------------------------------------------ #
     async def create_order(self, symbol: str, side: str, order_type: str,
-                           amount: float, price: float | None = None) -> OrderCreateResponse:
+                           amount: float, price: float | None = None,
+                           market_type: str = "spot") -> OrderCreateResponse:
         side = (side or "").lower()
         order_type = (order_type or "").lower()
+        market_type = (market_type or "spot").lower()
 
-        err = self._validate_order(symbol, side, order_type, amount, price)
+        err = self._validate_order(symbol, side, order_type, amount, price, market_type)
         if err:
             return OrderCreateResponse(success=False, data={}, error=err, timestamp=timestamp())
 
         if self.mode == "paper":
-            return await self._create_paper_order(symbol, side, order_type, amount, price)
-        return await self._create_live_order(symbol, side, order_type, amount, price)
+            return await self._create_paper_order(symbol, side, order_type, amount, price, market_type)
+        return await self._create_live_order(symbol, side, order_type, amount, price, market_type)
 
-    async def _create_paper_order(self, symbol, side, order_type, amount, price):
+    async def _create_paper_order(self, symbol, side, order_type, amount, price, market_type="spot"):
         """Paper trading emir motoru (M3-C07)."""
         last_price = await self._current_price(symbol)
         if last_price is None:
@@ -156,7 +172,7 @@ class KuCoinOrders:
                 "id": order_id, "symbol": symbol, "side": side, "type": order_type,
                 "amount": amount, "price": fill_price, "status": "filled",
                 "filled_price": fill_price, "notional_usdt": round(notional, 2),
-                "mode": "paper", "created_at": timestamp(),
+                "mode": "paper", "market_type": market_type, "created_at": timestamp(),
             }
             self.paper_history.append(record)
             return OrderCreateResponse(success=True, data=record, error=None, timestamp=timestamp())
@@ -166,32 +182,40 @@ class KuCoinOrders:
             "id": order_id, "symbol": symbol, "side": side, "type": order_type,
             "amount": amount, "price": float(price), "status": "open",
             "filled": 0.0, "notional_usdt": round(notional, 2),
-            "mode": "paper", "created_at": timestamp(),
+            "mode": "paper", "market_type": market_type, "created_at": timestamp(),
         }
         self.paper_open_orders[order_id] = record
         return OrderCreateResponse(success=True, data=record, error=None, timestamp=timestamp())
 
-    async def _create_live_order(self, symbol, side, order_type, amount, price):
-        """Gerçek KuCoin emri (M3-C02/C03)."""
+    async def _create_live_order(self, symbol, side, order_type, amount, price, market_type="spot"):
+        """Gerçek KuCoin emri (M3-C02/C03). Spot, Margin (cross) ve Futures destekli."""
         try:
-            if not self.exchange:
-                self.connect()
+            venue = self._venue(market_type)
+            if venue is None:
+                return OrderCreateResponse(
+                    success=False, data={},
+                    error="Borsa bağlantısı kurulamadı.", timestamp=timestamp())
+
+            # market_type'a göre ccxt parametreleri
             params = {}
-            if order_type == "limit":
-                order = await self.exchange.create_order(symbol, "limit", side, amount, price, params)
-            else:
-                order = await self.exchange.create_order(symbol, "market", side, amount, None, params)
+            if market_type == "margin":
+                # KuCoin cross-margin spot emri
+                params["marginMode"] = "cross"
+            # futures için ayrı venue (kucoinfutures) zaten seçildi
+
+            price_arg = price if order_type == "limit" else None
+            order = await venue.create_order(symbol, order_type, side, amount, price_arg, params)
             return OrderCreateResponse(
                 success=True,
                 data={
                     "id": order.get("id"), "symbol": symbol, "side": side,
                     "type": order_type, "amount": amount, "price": price,
                     "status": order.get("status", "open"), "mode": "live",
-                    "created_at": timestamp(),
+                    "market_type": market_type, "created_at": timestamp(),
                 },
                 error=None, timestamp=timestamp())
         except Exception as e:
-            logger.error(f"Canlı emir hatası: {e}")
+            logger.error(f"Canlı emir hatası ({market_type}): {e}")
             return OrderCreateResponse(
                 success=False, data={}, error=f"Emir iletilemedi: {e}", timestamp=timestamp())
 
@@ -204,15 +228,39 @@ class KuCoinOrders:
                 orders = list(self.paper_open_orders.values())
                 if symbol:
                     orders = [o for o in orders if o["symbol"] == symbol]
+                # market_type alanı garanti altına al (eski kayıtlar için)
+                for o in orders:
+                    o.setdefault("market_type", "spot")
                 return OpenOrdersResponse(
                     success=True, data={"count": len(orders), "orders": orders},
                     error=None, timestamp=timestamp())
 
-            if not self.exchange:
+            if not self.exchange or not self.futures_exchange:
                 self.connect()
-            orders = await self.exchange.fetch_open_orders(symbol)
+
+            merged: list[dict] = []
+            # Spot + Margin açık emirler (aynı kucoin spot uç noktası)
+            try:
+                spot_orders = await self.exchange.fetch_open_orders(symbol)
+                for o in spot_orders:
+                    info = o.get("info", {}) or {}
+                    # KuCoin spot 'tradeType': TRADE (spot) | MARGIN_TRADE (margin)
+                    is_margin = str(info.get("tradeType", "")).upper().startswith("MARGIN")
+                    o["market_type"] = "margin" if is_margin else "spot"
+                    merged.append(o)
+            except Exception as e:
+                logger.error(f"Spot açık emir çekme hatası: {e}")
+            # Futures açık emirler (ayrı kucoinfutures uç noktası)
+            try:
+                fut_orders = await self.futures_exchange.fetch_open_orders(symbol)
+                for o in fut_orders:
+                    o["market_type"] = "futures"
+                    merged.append(o)
+            except Exception as e:
+                logger.error(f"Futures açık emir çekme hatası: {e}")
+
             return OpenOrdersResponse(
-                success=True, data={"count": len(orders), "orders": orders},
+                success=True, data={"count": len(merged), "orders": merged},
                 error=None, timestamp=timestamp())
         except Exception as e:
             logger.error(f"Açık emir listeleme hatası: {e}")
@@ -453,3 +501,10 @@ class KuCoinOrders:
                 logger.error(f"Emir modülü kapatma hatası: {e}")
             finally:
                 self.exchange = None
+        if self.futures_exchange is not None:
+            try:
+                await self.futures_exchange.close()
+            except Exception as e:
+                logger.error(f"Futures emir modülü kapatma hatası: {e}")
+            finally:
+                self.futures_exchange = None
