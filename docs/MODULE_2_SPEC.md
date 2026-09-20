@@ -561,6 +561,7 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **M2-C18** | **Faz 2c** | 15 Dakika Altı Zaman Dilimleri (`1m`, `3m`, `5m`) | `src/modules/module2_market.py` | `tests/test_market_types.py` | ✅ Tamamlandı (3 test geçiyor) |
 | **M2-C19** | **Faz 2c** | Çoklu Piyasa Analizi (`spot`, `margin`, `futures`) | `src/modules/module2_market.py` / `main.py` | `tests/test_market_types.py` | ✅ Tamamlandı (7 test geçiyor) |
 | **M2-C20** | **Faz 2c** | Analiz Ekranı Al/Sat Seviyeleri & Seviyeli Mum Grafiği | `static/index.html` / `app.js` | `tests/test_frontend.py` | ✅ Tamamlandı (1 yeni test, UI aktif) |
+| **M2-C21** | **Faz 2c** | Sade Dil Piyasa Özeti & 4-Boyutlu Eğitici Gerekçe/Risk Motoru (İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur) | `src/modules/analysis/scoring_engine.py` / `static/` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (2 yeni test, UI aktif, 169/169 test %100 yeşil) |
 
 ---
 
@@ -577,5 +578,7 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **2026-09-19 23:10:00** | v1.3 | Faz 2a Çekirdek İndikatörler %100 Tamamlandı: Trend (EMA/SMA), Momentum (RSI/MACD), Volatilite (ATR) ve API yazıldı. (11 birim test, toplam 48/48 test) | Tamamlandı |
 | **2026-09-19 23:25:00** | v1.4 | Faz 2b Analiz, SMC, Scoring ve MTF Motoru %100 Tamamlandı: Trend, Güç, SMC, Puanlama ve MTF yazıldı. (26 yeni test, toplam 74/74 test) | Tamamlandı |
 | **2026-09-19 23:48:00** | v1.5 | Hacim ve Destek/Direnç Seviyeleri Katmanları %100 Tamamlandı: `indicators/volume.py` ve `indicators/levels.py` yazıldı. | Tamamlandı |
-| **2026-09-20 16:35:00** | **v1.6** | **Sub-15m Timeframe (`1m`, `3m`, `5m`), Spot/Margin/Futures Analizi & Seviyeli Mum Grafiği Eklendi**: Kullanıcı talebiyle analiz ekranına hazır Al/Sat seviyeleri (Entry/SL/TP1/TP2/R:R), seviye çizgili mum grafiği, 15m altı zaman dilimleri ve Spot/Margin/Futures çoklu piyasa desteği spesifikasyona (M2-C18..M2-C20) eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
+| **2026-09-20 16:35:00** | v1.6 | Sub-15m Timeframe (`1m`, `3m`, `5m`), Spot/Margin/Futures Analizi & Seviyeli Mum Grafiği Eklendi. | Onaylandı & Genişletildi (%100) ✅ |
+| **2026-09-20 16:45:00** | **v1.7** | **Sade Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme & Risk Motoru**: Kullanıcı talebiyle teknik jargon sadeleştirildi; her gerekçeye "İndikatör", "Neden Oldu? (Koşul)", "Neyi Gösterir? (Anlamı)" ve "Neye Sebep Olur? (Piyasa Etkisi)" alanları eklendi. Üst özet kartı (Genel durum, eylem tavsiyesi, risk seviyesi) dashboard'a entegre edildi. (Toplam 169 test %100 yeşil, coverage %81). | **Onaylandı & Genişletildi (%100) ✅** |
+
 

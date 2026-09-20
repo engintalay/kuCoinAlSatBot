@@ -1,6 +1,6 @@
 # Genel Proje Özellikleri ve Standartlar Spesifikasyonu
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket Emir & Çoklu Piyasa Onaylandı ✅) | **Kodlama & Test Durumu:** Backend, Dashboard, Ayarlar, Çoklu Piyasa & Seviyeli Grafik %100 Tamamlandı (165/165 Test, %80 Coverage ✅), Yalnızca Harici Katman 9 Opsiyonel ⏳ | **Son Güncelleme:** 2026-09-20 16:40:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket, Çoklu Piyasa & Eğitici Analiz Onaylandı ✅) | **Kodlama & Test Durumu:** Backend, Dashboard, Ayarlar, Çoklu Piyasa & Eğitici Analiz Motoru %100 Tamamlandı (169/169 Test, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 16:45:00 (+03:00)
 
 ## 1. Dokümanın Amacı
 Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
@@ -43,6 +43,22 @@ Kullanıcının analiz göstergelerini ve bot kontrollerini şeffaf biçimde ö�
     5. *MTF Hiyerarşisi*: 4H Rejim $\rightarrow$ 1H Setup $\rightarrow$ 15m Tetikleyici onay kuralı.
     6. *SMC Yapıları*: BOS, CHoCH ve FVG dengesizlik alanlarının anlamı.
     7. *Emir Formu*: Market/Limit farkı ve minimum işlem tutarı ($5 USDT).
+
+### 2.4. Sade Dil Analiz ve 4-Boyutlu Eğitici Gösterge Standartları (Educational UI/UX)
+Kullanıcının analiz ekranındaki teknik jargondan dolayı kafa karışıklığı yaşamasını engellemek ve işlem kararlarını bilinçli almasını sağlamak için:
+1. **Sade Dil Piyasa Özeti & Eylem Tavsiyesi Kartı**:
+   - Analiz ekranının en üstünde yer alır (`#analysis-simple-summary-card`).
+   - Sade piyasa eğilimi (🟢 Yükseliş / 🔴 Düşüş / 🟡 Yatay).
+   - Net ve anlaşılır bir Türkçe eylem tavsiyesi (alıcı/satıcı dengesi, giriş ve kâr alma stratejisi).
+   - Risk seviyesi rozeti (Düşük / Orta / Yüksek) ve sahte kırılım / oynaklık açıklaması.
+2. **4-Boyutlu Eğitici Gerekçe Kartları**:
+   - Salt teknik gösterge değerleri yerine her gerekçe 4 boyutta açıklanır:
+     - 🏷️ **İndikatör**: Göstergenin adı ve analiz katmanı.
+     - 🔍 **Neden Oldu? (Koşul)**: Fiyatta hangi hareket veya göstergede hangi seviye aşıldı?
+     - 📊 **Neyi Gösterir? (Anlamı)**: Piyasanın dinamikleri ve kurumsal denge açısından bu ne anlama gelir?
+     - ⚡ **Neye Sebep Olur? (Piyasa Etkisi)**: Fiyat hareketi veya yön üzerinde ne tür bir sonuca yol açar?
+3. **Eğitici Risk Uyarısı Kartları**:
+   - Her risk faktörü için *Neden Oluştu?*, *Neyi Gösterir?*, *Neye Sebep Olur? (Tehlikesi)* ve *Korunma Tavsiyesi (Ne Yapılmalı?)* ayrı ayrı gösterilir.
 
 ---
 
@@ -360,6 +376,8 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-20 01:30:00** | **Akıllı Paket Emir (Bracket Order) Standardı Uygulandı**: Otomatik ATR tabanlı seviye motoru (`trade_setup`), Entry+TP1(%50)+TP2(%50)+SL(%100) paket icrası ve UI Akıllı Emir formu 8 yeni test ile tamamlandı (toplam 145/145 test %100 yeşil). | Onaylandı & Uygulandı (%100) |
 | **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11), Öneri Motoru (M3-C12) & Watchlist Entegrasyonu Standartları Doğrulandı**: `PUT /orders/{id}` ile açık emir düzenleme arayüzü, `RecommendationEngine` canlı tavsiye kartları ve Watchlist mini-widget & form datalist entegrasyonu tamamlandı. Toplam test sayısı 154/154'e ulaştı (%100 yeşil, %78 coverage). | Onaylandı & Tamamlandı (%100) |
 | **2026-09-20 16:40:00** | **Sub-15m (1m/3m/5m), Çoklu Piyasa (Spot/Margin/Futures) & Seviyeli Mum Grafiği UI Standartları Doğrulandı**: Analiz görünümünde piyasa türü seçici, sub-15m zaman dilimi desteği, trade setup seviyeleri paneli, seviye bindirmeli SVG mum grafiği ve "Bu Seviyelerle Akıllı Paket Emir Oluştur" hızlı aktarım standardı 11 yeni test ile doğrulandı (toplam 165/165 test %100 yeşil, %80 coverage). | Onaylandı & Tamamlandı (%100) |
+| **2026-09-20 16:45:00** | **Sade Dil Analiz & 4-Boyutlu Eğitici Gösterge Standartları Doğrulandı**: Analiz ekranı teknik jargon yerine sade Türkçe özet ve eylem tavsiyesi kartı (`.plain-summary-card`) ve 4 alandan ("İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?") oluşan eğitici gerekçe/uyarı kartları ile zenginleştirildi; Katman 9 piyasa geneli rejim standardı eklendi (toplam 169/169 test %100 yeşil, %81 coverage). | Onaylandı & Tamamlandı (%100) |
+
 
 
 

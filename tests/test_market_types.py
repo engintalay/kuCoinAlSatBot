@@ -198,3 +198,52 @@ class TestMarketAPIEndpoints:
         assert r.status_code == 200
         body = r.json()
         assert "success" in body
+
+    def test_api_market_regime_endpoint(self, client):
+        from unittest.mock import patch
+        sample_cg = {
+            "data": {
+                "total_market_cap": {"usd": 2500000000000},
+                "market_cap_change_percentage_24h_usd": 3.2,
+                "market_cap_percentage": {"btc": 54.2, "eth": 16.5, "usdt": 4.5, "usdc": 1.5},
+            }
+        }
+        with patch("requests.get") as mock_get:
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status.return_value = None
+            mock_resp.json.return_value = sample_cg
+            mock_get.return_value = mock_resp
+
+            r = client.get("/api/v1/market/regime")
+            assert r.status_code == 200
+            data = r.json()
+            assert data["success"] is True
+            assert data["data"]["regime"] == "RISK_ON"
+            assert data["data"]["btc_dominance"] == 54.2
+            assert data["data"]["stablecoin_dominance"] == 6.0
+
+
+class TestMarketRegimeUnit:
+    def test_risk_off_regime(self):
+        from unittest.mock import patch
+        from src.modules.market_regime import MarketRegime
+        mr = MarketRegime()
+        sample_cg = {
+            "data": {
+                "total_market_cap": {"usd": 2000000000000},
+                "market_cap_change_percentage_24h_usd": -3.5,
+                "market_cap_percentage": {"btc": 48.0, "eth": 15.0, "usdt": 7.0, "usdc": 2.5},
+            }
+        }
+        with patch("requests.get") as mock_get:
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status.return_value = None
+            mock_resp.json.return_value = sample_cg
+            mock_get.return_value = mock_resp
+
+            res = mr.get_regime()
+            assert res["success"] is True
+            assert res["data"]["regime"] == "RISK_OFF"
+            assert res["data"]["altseason_hint"] is True
+            assert res["data"]["stablecoin_dominance"] == 9.5
+

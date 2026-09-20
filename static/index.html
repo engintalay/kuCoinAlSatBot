@@ -50,6 +50,10 @@
           <div class="card-title">👁️ İzleme Listesi</div>
           <div id="mini-watchlist" class="mini-watchlist">Yükleniyor...</div>
         </div>
+        <div class="card glass">
+          <div class="card-title">🌍 Piyasa Geneli Rejim <button class="info-btn" data-info="regime">ℹ️</button></div>
+          <div id="market-regime" class="ticker-grid">Yükleniyor...</div>
+        </div>
         <div id="reco-cards" class="reco-cards"></div>
         <div class="cards-row">
           <div class="card glass">
@@ -115,6 +119,21 @@
           <button id="analysis-run" class="btn btn-accent">Analiz Et</button>
         </div>
 
+        <!-- 💡 Sade Piyasa Yorumu ve Eylem Tavsiyesi -->
+        <div id="analysis-simple-summary-card" class="card glass plain-summary-card" style="display:none;">
+          <div class="plain-summary-header">
+            <div id="analysis-plain-status" class="plain-summary-status">🟢 Piyasa Durumu</div>
+            <span id="analysis-plain-risk" class="plain-summary-risk risk-low">🛡️ Risk: Düşük</span>
+          </div>
+          <div id="analysis-plain-advice" class="plain-summary-advice">
+            Analiz sonucu burada sade bir dille özetlenecektir.
+          </div>
+          <div class="plain-summary-meta">
+            <span id="analysis-plain-market">🏛️ KuCoin Spot</span>
+            <span id="analysis-plain-risk-text">🔎 Risk açıklaması</span>
+          </div>
+        </div>
+
         <!-- Analiz Fiyat Grafiği ve Seviye Bindirmeleri -->
         <div class="card glass">
           <div class="card-title">
@@ -151,12 +170,17 @@
           </div>
         </div>
         <div class="card glass">
-          <div class="card-title">Gerekçeler <button class="info-btn" data-info="smc">ℹ️</button></div>
-          <ul id="analysis-reasons" class="reason-list"></ul>
+          <div class="card-title">
+            🎯 Analiz Gerekçeleri (İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur)
+            <button class="info-btn" data-info="smc">ℹ️</button>
+          </div>
+          <div id="analysis-reasons-grid" class="reasons-grid"></div>
+          <ul id="analysis-reasons" class="reason-list" style="display:none;"></ul>
         </div>
         <div class="card glass">
-          <div class="card-title">Risk Uyarıları</div>
-          <ul id="analysis-warnings" class="reason-list warn"></ul>
+          <div class="card-title">⚠️ Risk Uyarıları ve Korunma Tavsiyeleri</div>
+          <div id="analysis-warnings-grid" class="reasons-grid"></div>
+          <ul id="analysis-warnings" class="reason-list warn" style="display:none;"></ul>
         </div>
       </section>
 

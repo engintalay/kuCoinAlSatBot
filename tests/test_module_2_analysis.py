@@ -69,6 +69,56 @@ class TestScoringEngine:
         assert 0 <= result["bull_score"] <= 100
         assert 0 <= result["bear_score"] <= 100
 
+    def test_simple_summary_and_educational_reasons(self):
+        from src.modules.analysis.scoring_engine import compute_score
+        ind = _bullish_indicators()
+        result = compute_score(ind, market_type="spot")
+
+        # Basit Özet Kontrolleri
+        assert "simple_summary" in result
+        sm = result["simple_summary"]
+        assert "status" in sm and ("Yükseliş" in sm["status"] or "🟢" in sm["status"])
+        assert "advice" in sm and len(sm["advice"]) > 10
+        assert "risk_level" in sm and sm["risk_level"] in ("Düşük", "Orta", "Yüksek")
+        assert "risk_text" in sm
+        assert sm["market_label"] == "KuCoin Spot"
+
+        # Detaylı Gerekçeler (4 Alan: indicator, condition, meaning, impact)
+        assert "reasons_detail" in result
+        assert len(result["reasons_detail"]) > 0
+        for rd in result["reasons_detail"]:
+            assert "indicator" in rd and len(rd["indicator"]) > 0
+            assert "condition" in rd and len(rd["condition"]) > 0
+            assert "meaning" in rd and len(rd["meaning"]) > 0
+            assert "impact" in rd and len(rd["impact"]) > 0
+            assert rd["type"] in ("bullish", "bearish")
+            assert "summary" in rd
+
+    def test_educational_warnings_and_market_types(self):
+        from src.modules.analysis.scoring_engine import compute_score
+        ind = _bullish_indicators()
+        # ADX < 20 ve Choppiness ekle
+        ind["strength"]["adx"] = {"value": 15, "regime": "WEAK"}
+        ind["strength"]["choppiness"] = {"regime": "CONSOLIDATION"}
+
+        res_futures = compute_score(ind, market_type="futures")
+        assert "warnings_detail" in res_futures
+        assert len(res_futures["warnings_detail"]) >= 2
+        for wd in res_futures["warnings_detail"]:
+            assert "warning" in wd
+            assert "why" in wd
+            assert "meaning" in wd
+            assert "impact" in wd
+            assert "advice" in wd
+            assert "summary" in wd
+
+        # Marjin riski kontrolü
+        res_margin = compute_score(ind, market_type="margin")
+        assert any("Marjin" in w for w in res_margin["warnings"])
+        margin_wd = next((w for w in res_margin["warnings_detail"] if "Marjin" in w["warning"]), None)
+        assert margin_wd is not None
+        assert "Kaldıraç" in margin_wd["meaning"] or "teminat" in margin_wd["advice"].lower()
+
 
 class TestMTFEngine:
     def test_aligned_bullish_long_setup(self):

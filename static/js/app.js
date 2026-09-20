@@ -23,6 +23,16 @@ function fmtUsdt(v) {
   return Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USDT";
 }
 
+function escapeHtml(s) {
+  if (s === null || s === undefined) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function toast(message, type = "success") {
   const c = document.getElementById("toast-container");
   const el = document.createElement("div");
@@ -69,6 +79,7 @@ const INFO_TEXT = {
   smc: { t: "Smart Money Concepts", d: "BOS (yapı kırılımı), CHoCH (karakter değişimi), FVG (fiyat boşluğu) gibi kurumsal fiyat hareketi sinyalleri." },
   orders: { t: "Emir Verme", d: "Market: anlık fiyattan. Limit: hedef fiyattan. Bakiyenizden fazla emir pre-trade risk kontrolüyle engellenir." },
   bracket: { t: "Akıllı Paket Emir", d: "Analiz motorunun ATR/seviye hesabından otomatik Giriş + TP1 (%50) + TP2 (%50) + Stop-Loss üretir. Sadece USDT tutarı girin, tek tıkla tüm paket iletilir." },
+  regime: { t: "Piyasa Geneli Rejim", d: "BTC Dominance, toplam piyasa değeri ve stablecoin dominansından risk-on/risk-off ortamını ve altseason ipucunu üretir (CoinGecko verisi)." },
 };
 
 const popover = document.getElementById("info-popover");
@@ -195,10 +206,110 @@ async function loadAnalysis() {
     }
   }
 
-  document.getElementById("analysis-reasons").innerHTML =
-    (s.reasons || []).map((r) => `<li>${r}</li>`).join("") || "<li>Gerekçe yok</li>";
-  document.getElementById("analysis-warnings").innerHTML =
-    (s.warnings || []).map((w) => `<li>${w}</li>`).join("") || "<li>Uyarı yok</li>";
+  // Sade İnsan-Okunabilir Özet Kartı
+  const sumCard = document.getElementById("analysis-simple-summary-card");
+  if (sumCard && s.simple_summary) {
+    sumCard.style.display = "flex";
+    const sm = s.simple_summary;
+    const statusEl = document.getElementById("analysis-plain-status");
+    if (statusEl) statusEl.textContent = sm.status || "Piyasa Durumu";
+
+    const riskEl = document.getElementById("analysis-plain-risk");
+    if (riskEl) {
+      const lvl = (sm.risk_level || "Düşük").toLowerCase();
+      riskEl.className = "plain-summary-risk " + (lvl === "yüksek" ? "risk-high" : (lvl === "orta" ? "risk-med" : "risk-low"));
+      riskEl.textContent = `🛡️ Risk: ${sm.risk_level || "Düşük"}`;
+    }
+
+    const adviceEl = document.getElementById("analysis-plain-advice");
+    if (adviceEl) adviceEl.textContent = sm.advice || "";
+
+    const mktEl = document.getElementById("analysis-plain-market");
+    if (mktEl) mktEl.textContent = `🏛️ ${sm.market_label || "KuCoin"}`;
+
+    const rTxtEl = document.getElementById("analysis-plain-risk-text");
+    if (rTxtEl) rTxtEl.textContent = `🔎 ${sm.risk_text || ""}`;
+  }
+
+  // Detaylı & Eğitici Gerekçe Kartları
+  const reasonsGrid = document.getElementById("analysis-reasons-grid");
+  if (reasonsGrid) {
+    if (s.reasons_detail && s.reasons_detail.length > 0) {
+      reasonsGrid.innerHTML = s.reasons_detail.map((rd) => {
+        const isBull = rd.type === "bullish";
+        const typeBadge = isBull
+          ? `<span class="reason-edu-type bullish">Boğa (AL)</span>`
+          : `<span class="reason-edu-type bearish">Ayı (SAT)</span>`;
+        return `
+          <div class="reason-edu-card ${rd.type || 'bullish'}">
+            <div class="reason-edu-header">
+              <span>🏷️ ${escapeHtml(rd.indicator || 'Teknik Gösterge')}</span>
+              ${typeBadge}
+            </div>
+            <div class="reason-field-group">
+              <div class="reason-field-item">
+                <span class="reason-field-label">🔍 Neden Oldu? (Tetiklenen Durum)</span>
+                <span class="reason-field-val">${escapeHtml(rd.condition || rd.summary || '')}</span>
+              </div>
+              <div class="reason-field-item">
+                <span class="reason-field-label">📊 Neyi Gösterir? (Teknik Anlamı)</span>
+                <span class="reason-field-val">${escapeHtml(rd.meaning || '')}</span>
+              </div>
+              <div class="reason-field-item">
+                <span class="reason-field-label">⚡ Neye Sebep Olur? (Piyasa Etkisi)</span>
+                <span class="reason-field-val">${escapeHtml(rd.impact || '')}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    } else {
+      reasonsGrid.innerHTML = `<div class="hint">Herhangi bir teknik gerekçe tetiklenmedi.</div>`;
+    }
+  }
+
+  // Detaylı Risk Uyarısı Kartları
+  const warnGrid = document.getElementById("analysis-warnings-grid");
+  if (warnGrid) {
+    if (s.warnings_detail && s.warnings_detail.length > 0) {
+      warnGrid.innerHTML = s.warnings_detail.map((wd) => `
+        <div class="warning-edu-card">
+          <div class="warning-edu-title">⚠️ ${escapeHtml(wd.warning || wd.summary || 'Risk')}</div>
+          <div class="reason-field-group">
+            <div class="reason-field-item">
+              <span class="reason-field-label">🔍 Neden Oluştu?</span>
+              <span class="reason-field-val">${escapeHtml(wd.why || '')}</span>
+            </div>
+            <div class="reason-field-item">
+              <span class="reason-field-label">📊 Neyi Gösterir?</span>
+              <span class="reason-field-val">${escapeHtml(wd.meaning || '')}</span>
+            </div>
+            <div class="reason-field-item">
+              <span class="reason-field-label">⚡ Neye Sebep Olur? (Tehlikesi)</span>
+              <span class="reason-field-val">${escapeHtml(wd.impact || '')}</span>
+            </div>
+          </div>
+          <div class="warning-advice-box">
+            🛡️ <b>Korunma Tavsiyesi:</b> ${escapeHtml(wd.advice || '')}
+          </div>
+        </div>
+      `).join("");
+    } else {
+      warnGrid.innerHTML = `<div class="hint">Piyasada şu an aktif bir risk veya sahte sinyal uyarısı bulunmuyor.</div>`;
+    }
+  }
+
+  // Geriye dönük uyumluluk için liste elemanları
+  const legacyReasons = document.getElementById("analysis-reasons");
+  if (legacyReasons) {
+    legacyReasons.innerHTML =
+      (s.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("") || "<li>Gerekçe yok</li>";
+  }
+  const legacyWarnings = document.getElementById("analysis-warnings");
+  if (legacyWarnings) {
+    legacyWarnings.innerHTML =
+      (s.warnings || []).map((w) => `<li>${escapeHtml(w)}</li>`).join("") || "<li>Uyarı yok</li>";
+  }
 
   // 2. Yön Belirleme (Auto veya Manuel)
   let calcSide = sideChoice;

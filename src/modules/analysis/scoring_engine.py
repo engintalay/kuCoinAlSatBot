@@ -179,16 +179,336 @@ def _risk_filters(indicators: dict, market_type: str = "spot") -> list:
     return warnings
 
 
+REASON_EXPLANATIONS = {
+    # Trend
+    "Golden Cross": {
+        "indicator": "EMA 50 / 200 Hareketli Ortalama (Trend Yönü)",
+        "condition": "Fiyat 200 periyotluk ana ortalamanın üzerinde ve EMA50, EMA200'ü yukarı kesti (Golden Cross).",
+        "meaning": "Piyasanın uzun vadeli ana yönünün güçlü biçimde yukarı döndüğünü ve kurumsal yatırımcıların alım yaptığını gösterir.",
+        "impact": "Satış baskısının kırılmasına, geri çekilmelerin güçlü alım fırsatı olarak karşılanmasına ve yükselişin sürmesine sebep olur.",
+        "type": "bullish",
+    },
+    "Death Cross": {
+        "indicator": "EMA 50 / 200 Hareketli Ortalama (Trend Yönü)",
+        "condition": "Fiyat 200 periyotluk ana ortalamanın altında ve EMA50, EMA200'ü aşağı kesti (Death Cross).",
+        "meaning": "Piyasanın uzun vadeli ana trendinin düşüşe geçtiğini ve satıcıların piyasaya hakim olduğunu gösterir.",
+        "impact": "Yükseliş tepkilerinin satışla karşılanmasına ve düşüş dalgasının derinleşmesine sebep olur.",
+        "type": "bearish",
+    },
+    "Supertrend bullish": {
+        "indicator": "Supertrend (Volatilite Takip Göstergesi)",
+        "condition": "Fiyat dinamik volatilite stop bandının üzerine çıktı ve indikatör yeşil (AL) durumuna geçti.",
+        "meaning": "ATR oynaklığına göre dinamik trend takip seviyesinin korunduğunu ve alıcıların kontrolü ele aldığını gösterir.",
+        "impact": "Trend boyunca pozisyon taşımaya zemin hazırlar; olası ani düşüşlerde dinamik destek görevi görür.",
+        "type": "bullish",
+    },
+    "Supertrend bearish": {
+        "indicator": "Supertrend (Volatilite Takip Göstergesi)",
+        "condition": "Fiyat dinamik volatilite bandını aşağı kırdı ve indikatör kırmızı (SAT) durumuna geçti.",
+        "meaning": "Dinamik destek kırılmış, düşüş ivmesinin trend haline geldiğini gösterir.",
+        "impact": "Yeni alımların riskli olmasına ve kısa vadeli satış baskısının sürmesine sebep olur.",
+        "type": "bearish",
+    },
+    "Ichimoku bulutu üzerinde": {
+        "indicator": "Ichimoku Kinko Hyo (Kumo Bulut Dengesi)",
+        "condition": "Fiyat Senkou Span A ve B bulut katmanlarının üzerine çıktı.",
+        "meaning": "Orta vadeli denge seviyesinin alıcılar lehine aşıldığını ve piyasanın pozitif bölgeye girdiğini gösterir.",
+        "impact": "Bulutun üst sınırı güçlü bir destek tabanı oluşturarak yükseliş hareketini destekler.",
+        "type": "bullish",
+    },
+    "Ichimoku bulutu altında": {
+        "indicator": "Ichimoku Kinko Hyo (Kumo Bulut Dengesi)",
+        "condition": "Fiyat bulut katmanının altına indi.",
+        "meaning": "Orta vadeli denge bozulmuş, satıcı baskısının baskın olduğunu gösterir.",
+        "impact": "Olası yükselişlerde bulut güçlü bir tavan/direnç oluşturur ve fiyatın toparlanmasını zorlaştırır.",
+        "type": "bearish",
+    },
+    # Momentum
+    "RSI": {
+        "indicator": "RSI (Göreceli Güç Endeksi)",
+        "condition": "RSI 50 denge seviyesinin üzerinde ve son mumlarda yukarı yönlü yükseliyor.",
+        "meaning": "Son 14 mumdaki alım hızının satış hızından daha kuvvetli arttığını (alıcı iştahını) ölçer.",
+        "impact": "Fiyatın yukarı yönlü ivme kazanmasına ve alım baskısının sürmesine sebep olur.",
+        "type": "bullish",
+    },
+    "RSI < 50": {
+        "indicator": "RSI (Göreceli Güç Endeksi)",
+        "condition": "RSI 50 denge seviyesinin altında ve momentum aşağı yönlü zayıflıyor.",
+        "meaning": "Piyasadaki alım isteğinin zayıfladığını, satıcıların fiyatı aşağı ittiğini gösterir.",
+        "impact": "Fiyatın alt destekleri test etmesine ve düşüş eğiliminin devam etmesine sebep olur.",
+        "type": "bearish",
+    },
+    "MACD histogram pozitif": {
+        "indicator": "MACD (Fiyat İvmesi & Momentum)",
+        "condition": "Hızlı hareketli ortalama yavaş ortalamanın üzerine çıktı, histogram sıfırın üzerinde genişliyor.",
+        "meaning": "Kısa vadeli fiyat ivmesinin hızlandığını ve trend gücünün arttığını gösterir.",
+        "impact": "Alım baskısının hızlanmasına, yukarı yönlü mumların büyümesine sebep olur.",
+        "type": "bullish",
+    },
+    "MACD histogram negatif": {
+        "indicator": "MACD (Fiyat İvmesi & Momentum)",
+        "condition": "Hızlı ortalama yavaş ortalamanın altında, histogram sıfırın altında negatif bölgede.",
+        "meaning": "Kısa vadeli satış baskısının güçlendiğini ve düşüş hızının arttığını gösterir.",
+        "impact": "Fiyatın aşağı yönlü kaymasına ve alıcıların çekimser kalmasına sebep olur.",
+        "type": "bearish",
+    },
+    # Structure (SMC)
+    "Bullish BOS": {
+        "indicator": "SMC - BOS (Piyasa Yapısı Kırılımı)",
+        "condition": "Fiyat önceki swing tepe noktasını hacimle kırarak daha yüksek bir tepe (Higher High) yaptı.",
+        "meaning": "Kurumsal büyük sermayenin trendi yukarı yönde genişletmeye devam ettiğini gösterir.",
+        "impact": "Yükseliş trendinin geçerliliğini teyit eder; kırılan seviye geri çekilmelerde alım desteği olur.",
+        "type": "bullish",
+    },
+    "Bearish BOS": {
+        "indicator": "SMC - BOS (Piyasa Yapısı Kırılımı)",
+        "condition": "Fiyat önceki swing dip seviyesini aşağı kırarak daha düşük bir dip (Lower Low) yaptı.",
+        "meaning": "Satıcıların piyasa tabanını delerek düşüş yapısını sürdürdüğünü gösterir.",
+        "impact": "Stop patlatmalarına ve düşüş trendinin bir alt destek seviyesine kadar uzamasına sebep olur.",
+        "type": "bearish",
+    },
+    "Bullish FVG": {
+        "indicator": "SMC - FVG (Adil Değer Boşluğu)",
+        "condition": "Fiyatta ani bir agresif alım mumu oluştu ve 1. ile 3. mum arasında doldurulmamış fiyat boşluğu kaldı.",
+        "meaning": "Kurumsal alıcıların çok hızlı işlem yaptığını ve likidite dengesizliği oluştuğunu gösterir.",
+        "impact": "Fiyat bu boşluk bölgesine geri çekildiğinde alıcıların tekrar devreye girmesine ve yukarı sıçramaya sebep olur.",
+        "type": "bullish",
+    },
+    "Bearish FVG": {
+        "indicator": "SMC - FVG (Adil Değer Boşluğu)",
+        "condition": "Agresif satış mumu sonrası aşağı yönlü dengesizlik boşluğu oluştu.",
+        "meaning": "Satıcıların piyasayı tek taraflı domine ettiğini ve alıcıların kaçtığını gösterir.",
+        "impact": "Fiyat bu boşluğa doğru toparlanmaya çalıştığında güçlü satış direnciyle karşılaşmasına sebep olur.",
+        "type": "bearish",
+    },
+    # Strength
+    "ADX": {
+        "indicator": "ADX (Trend Gücü Endeksi)",
+        "condition": "ADX değeri 25 eşiğinin üzerinde ve +DI çizgisi -DI çizgisinden yüksek.",
+        "meaning": "Piyasanın yatayda sıkışmadığını, net ve güçlü bir trend içerisinde olduğunu gösterir.",
+        "impact": "Sahte sinyalleri azaltır, açılan trend pozisyonlarının hedefe ulaşma olasılığını yükseltir.",
+        "type": "bullish",
+    },
+    # Volume
+    "Yüksek RVOL ve fiyat VWAP üstünde": {
+        "indicator": "RVOL & VWAP (Hacimli Kurumsal Alım)",
+        "condition": "İşlem hacmi 20 günlük ortalamanın belirgin üzerinde ve fiyat günün hacim ağırlıklı ortalamasının üstünde.",
+        "meaning": "Yükselişin küçük yatırımcı spekülasyonu değil, kurumsal büyük sermaye girişiyle gerçekleştiğini gösterir.",
+        "impact": "Trendin gerçek alımlarla desteklendiğini kanıtlar; sahte kırılım (fakeout) ihtimalini düşürür.",
+        "type": "bullish",
+    },
+    "Yüksek RVOL ve fiyat VWAP altında": {
+        "indicator": "RVOL & VWAP (Hacimli Kurumsal Satış)",
+        "condition": "Hacim yüksek fakat fiyat hacim ağırlıklı maliyet ortalamasının altında seyrediyor.",
+        "meaning": "Büyük oyuncuların ellerindeki pozisyonları piyasaya boşalttığını (dağıtım) gösterir.",
+        "impact": "Satış baskısının hacimli ve kararlı olmasına, düşüşün devam etmesine sebep olur.",
+        "type": "bearish",
+    },
+    "CMF net sermaye girişi": {
+        "indicator": "CMF (Chaikin Para Akışı)",
+        "condition": "CMF göstergesi pozitif bölgede (sıfırın üzerinde).",
+        "meaning": "Mumların kapanış fiyatlarının tepeye yakın gerçekleştiğini, piyasaya net para girdiğini gösterir.",
+        "impact": "Fiyat düşse bile alttan toplandığını göstererek olası yükseliş hareketlerini destekler.",
+        "type": "bullish",
+    },
+    "CMF net sermaye çıkışı": {
+        "indicator": "CMF (Chaikin Para Akışı)",
+        "condition": "CMF göstergesi negatif bölgede seyrediyor.",
+        "meaning": "Mum kapanışlarının dip seviyelere yakın olduğunu, piyasadan net nakit çıktığını gösterir.",
+        "impact": "Tepki alımlarının zayıf kalmasına ve aşağı yönlü hareketlerin hızlanmasına sebep olur.",
+        "type": "bearish",
+    },
+    "OBV EMA20 üzerinde": {
+        "indicator": "OBV (Denge İşlem Hacmi)",
+        "condition": "OBV hacim çizgisi kendi 20 periyotluk hareketli ortalamasının üzerinde seyrediyor.",
+        "meaning": "Hacim birikiminin yükseliş yönlü olduğunu ve alıcıların hacmi artırdığını gösterir.",
+        "impact": "Fiyat hareketinin hacimce onaylandığını teyit eder.",
+        "type": "bullish",
+    },
+    "OBV EMA20 altında": {
+        "indicator": "OBV (Denge İşlem Hacmi)",
+        "condition": "OBV hacim çizgisi ortalamasının altına indi.",
+        "meaning": "Satışların daha yüksek hacimle gerçekleştiğini ve hacim tabanının eridiğini gösterir.",
+        "impact": "Zayıf hacimli yükselişlerin kalıcı olamamasına ve düşüşün devamına sebep olur.",
+        "type": "bearish",
+    },
+    # Derivatives
+    "Negatif fonlama": {
+        "indicator": "Vadeli Fonlama Oranı (Funding Rate)",
+        "condition": "Fonlama oranı negatif bölgede aşırıya kaçmış durumda (Short pozisyonlar Long'lara prim ödüyor).",
+        "meaning": "Vadeli piyasada herkesin düşüşe oynadığını ve Short tarafının aşırı kalabalıklaştığını gösterir.",
+        "impact": "Fiyat hafif yükseldiğinde Short pozisyonların stop olmasıyla ani bir yukarı sıçramaya (Short Squeeze) sebep olabilir.",
+        "type": "bullish",
+    },
+    "Aşırı pozitif fonlama": {
+        "indicator": "Vadeli Fonlama Oranı (Funding Rate)",
+        "condition": "Fonlama oranı +%0.03 eşiğini aşarak aşırı yükseldi (Long pozisyonlar ağır maliyet ödüyor).",
+        "meaning": "Piyasada aşırı coşku ve kaldıraçlı alıcı birikmesi (aşırı ısınma) olduğunu gösterir.",
+        "impact": "Büyük oyuncuların piyasayı aniden aşağı iterek aşırı kaldıraçlı Long'ları tasfiye etmesine (Long Squeeze) sebep olabilir.",
+        "type": "bearish",
+    },
+    "Fonlama oranı dengeli": {
+        "indicator": "Vadeli Fonlama Oranı (Funding Rate)",
+        "condition": "Fonlama oranı normal sınırlar içerisinde dengeli seyrediyor.",
+        "meaning": "Vadeli piyasada tek taraflı kaldıraç baskısı veya aşırı birikme olmadığını gösterir.",
+        "impact": "Piyasanın manipülasyondan uzak, teknik seviyelere daha sadık hareket etmesini sağlar.",
+        "type": "neutral",
+    },
+}
+
+WARNING_EXPLANATIONS = {
+    "Düşük ADX": {
+        "warning": "Düşük ADX (<20): Trend Gücü Zayıf.",
+        "why": "Fiyat belirli bir yöne gitmekte zorlanıyor, alıcı ve satıcı dengede.",
+        "meaning": "Piyasanın yönlü bir trend yerine yatay bant (konsolidasyon) içinde olduğunu gösterir.",
+        "impact": "Trend takip stratejilerinde sahte kırılımlara ve stop avlarına sebep olur.",
+        "advice": "Trend kırılımı gerçekleşip hacim teyit edilene kadar beklemek veya dar bantta küçük kârlar hedeflemek uygundur.",
+    },
+    "Choppiness yüksek": {
+        "warning": "Choppiness Yüksek: Konsolidasyon / Yatay Testere.",
+        "why": "Fiyat dar bir aralıkta testere hareketi yapıyor.",
+        "meaning": "Piyasanın enerji topladığını fakat yönün henüz belirsiz olduğunu ölçer.",
+        "impact": "Açılan işlemlerin sürekli kârdan zarara dönmesine ve yön tayin edilememesine sebep olur.",
+        "advice": "İşlem sıklığını azaltın; bot sinyali güvenliğiniz için nötr durumdadır.",
+    },
+    "ADX aşırı yüksek": {
+        "warning": "ADX Aşırı Yüksek (>40): Trend Tükenme / Klimaks Riski.",
+        "why": "Fiyat hareketi çok dik bir açıyla hızlandı.",
+        "meaning": "Mevcut trendin son aşamasına (coşku/panik evresi) gelmiş olabileceğini gösterir.",
+        "impact": "Beklenmedik sert düzeltmelere veya kâr satışlarına sebep olabilir.",
+        "advice": "Yeni pozisyon açmak yerine mevcut kârları realize etmek veya Stop-Loss'u başabaş seviyesine çekmek önerilir.",
+    },
+    "Squeeze aktif": {
+        "warning": "Bollinger / Keltner Squeeze: Volatilite Sıkışması.",
+        "why": "Bollinger bantları Keltner kanallarının içine girdi (fiyat daraldı).",
+        "meaning": "Piyasada fırtına öncesi sessizlik yaşandığını, büyük bir patlama hazırlığı olduğunu gösterir.",
+        "impact": "Bantlardan birinin kırılmasıyla birlikte yönlü çok sert ve ani bir fiyat hareketine sebep olur.",
+        "advice": "Kırılım yönü netleşmeden pozisyon almayın; kırılım anında yöne katılın.",
+    },
+    "Vadeli Uyarı": {
+        "warning": "Vadeli Fonlama Dengesizliği: Tasfiye Riski.",
+        "why": "Vadeli tarafta tek yönlü aşırı kaldıraç birikti.",
+        "meaning": "Borsadaki açık pozisyonların tasfiye (likidasyon) tehlikesi altında olduğunu gösterir.",
+        "impact": "Borsanın hızlı iğneler (kaldıraç avı) atarak stopları patlatmasına sebep olabilir.",
+        "advice": "Vadeli işlemlerde kaldıracı 3x-5x seviyesinde tutun ve geniş stop kullanın.",
+    },
+    "Marjin Uyarısı": {
+        "warning": "Marjin Kaldıraç Riski: Teminat Takibi.",
+        "why": "Marjin işlemi borçlanma faizi ve kaldıraçlı teminat gerektirir.",
+        "meaning": "Piyasa tersine hareket ettiğinde teminatın hızla eriyebileceğini gösterir.",
+        "impact": "Marjin çağrısı (Margin Call) veya zorunlu pozisyon kapatılmasına sebep olabilir.",
+        "advice": "Teminat oranınızı %200'ün üzerinde tutun ve anlık düşüşlerde likidasyon seviyesini gözleyin.",
+    },
+}
+
+
+def _build_reason_detail(reason_str: str) -> dict:
+    """Teknik gerekçeyi sade, öğretici ve 4-boyutlu yapıya dönüştürür."""
+    for key, val in REASON_EXPLANATIONS.items():
+        if key.lower() in reason_str.lower():
+            return {
+                "summary": reason_str,
+                "indicator": val["indicator"],
+                "condition": val["condition"],
+                "meaning": val["meaning"],
+                "impact": val["impact"],
+                "type": val["type"],
+            }
+    is_bull = any(w in reason_str.lower() for w in ("bull", "üst", "pozitif", "girişi", "+di"))
+    return {
+        "summary": reason_str,
+        "indicator": "Teknik Gösterge Kuralı",
+        "condition": reason_str,
+        "meaning": "Fiyat ve hacim göstergelerinde belirlenen strateji eşiği tetiklendi.",
+        "impact": "Bileşik skor motorunda yöne puan katkısı sağlayarak sinyali destekler.",
+        "type": "bullish" if is_bull else "bearish",
+    }
+
+
+def _build_warning_detail(warning_str: str) -> dict:
+    """Risk uyarısını sade açıklama ve korunma tavsiyesine dönüştürür."""
+    for key, val in WARNING_EXPLANATIONS.items():
+        if key.lower() in warning_str.lower():
+            return {
+                "summary": warning_str,
+                "warning": val["warning"],
+                "why": val["why"],
+                "meaning": val["meaning"],
+                "impact": val["impact"],
+                "advice": val["advice"],
+            }
+    return {
+        "summary": warning_str,
+        "warning": warning_str,
+        "why": "Piyasa koşullarında normal dışı bir teknik durum tespit edildi.",
+        "meaning": "Fiyat hareketinin belirsizlik veya yüksek oynaklık taşıdığını gösterir.",
+        "impact": "İşlemin risk/ödül dengesini olumsuz etkileyebilir.",
+        "advice": "İşlem büyüklüğünü küçük tutun ve Stop-Loss seviyesini titizlikle uygulayın.",
+    }
+
+
+def _build_simple_summary(
+    signal: str, bull_score: float, bear_score: float, warnings: list, market_type: str
+) -> dict:
+    """Kullanıcının bir bakışta anlayacağı sade dille piyasa durumu ve eylem tavsiyesi."""
+    if signal in ("STRONG_BULLISH", "BULLISH"):
+        status = (
+            "🟢 Güçlü Yükseliş Eğilimi (Alıcılar Kontrolde)"
+            if signal == "STRONG_BULLISH"
+            else "🟢 Yükseliş Eğilimi Hakim (Pozitif Görünüm)"
+        )
+        advice = (
+            "Teknik indikatörler ve piyasa yapısı alıcıların üstünlüğünü teyit ediyor. "
+            "Destek seviyelerine yakın noktalardan kademeli alım ve kâr hedeflerini (TP1 / TP2) takip etmek uygundur. "
+            "Hesaplanan Stop-Loss seviyesine mutlaka sadık kalınız."
+        )
+    elif signal in ("STRONG_BEARISH", "BEARISH"):
+        status = (
+            "🔴 Güçlü Düşüş Eğilimi (Satıcılar Baskın)"
+            if signal == "STRONG_BEARISH"
+            else "🔴 Düşüş Eğilimi Hakim (Temkinli Olun)"
+        )
+        advice = (
+            "Teknik göstergeler piyasada satıcıların baskın olduğunu gösteriyor. "
+            "Yeni alım yapmaktan kaçınmak, mevcut pozisyonlarda stop seviyelerini sıkılaştırmak "
+            "veya nakitte kalarak dip oluşumunu beklemek daha güvenlidir."
+        )
+    else:
+        status = "🟡 Kararsız / Yatay Piyasa (Net Yön Yok)"
+        advice = (
+            "Alıcı ve satıcılar dengede; fiyat yatay bir bantta sıkışmış durumda. "
+            "Sahte kırılımlardan (testereden) korunmak için net bir trend kırılımı teyit edilene kadar "
+            "beklemek veya yalnızca bant sınırlarında düşük riskli küçük işlemler yapmak önerilir."
+        )
+
+    if len(warnings) == 0:
+        risk_level = "Düşük"
+        risk_text = "Piyasa yapısı ve oynaklık dengeli. Göstergeler birbiriyle uyumlu, sahte sinyal riski az."
+    elif len(warnings) == 1:
+        risk_level = "Orta"
+        risk_text = f"1 risk faktörü aktif: {warnings[0]}"
+    else:
+        risk_level = "Yüksek"
+        risk_text = f"Birden fazla risk faktörü aktif ({len(warnings)} uyarı). Yüksek oynaklık veya yatay bant tuzağı riski mevcuttur."
+
+    market_label = (
+        "KuCoin Spot"
+        if market_type == "spot"
+        else ("KuCoin Marjin (5x Kaldıraç)" if market_type == "margin" else "KuCoin Vadeli (USDT-M Perpetual)")
+    )
+
+    return {
+        "status": status,
+        "advice": advice,
+        "risk_level": risk_level,
+        "risk_text": risk_text,
+        "market_label": market_label,
+    }
+
+
 def compute_score(indicators: dict, market_type: str = "spot") -> dict:
     """
-    Ağırlıklı boğa/ayı skoru ve sinyal durumu üretir.
-
-    Returns:
-        {
-          "bull_score": 0-100, "bear_score": 0-100, "net_score": ...,
-          "signal": "STRONG_BULLISH"|"BULLISH"|"NEUTRAL"|"BEARISH"|"STRONG_BEARISH",
-          "reasons": [...], "warnings": [...]
-        }
+    Ağırlıklı boğa/ayı skoru, sinyal durumu, sade özet ve detaylı gerekçeler üretir.
     """
     layers = [
         _score_trend(indicators.get("trend")),
@@ -205,7 +525,6 @@ def compute_score(indicators: dict, market_type: str = "spot") -> dict:
     reasons = [r for l in layers for r in l[2]]
     warnings = _risk_filters(indicators, market_type=market_type)
 
-    # Mevcut feature'ların maksimum toplam puanı (türev dahil/hariç):
     max_points = 90.0 if (market_type == "futures" or indicators.get("derivatives")) else 80.0
     bull_score = round(min(bull / max_points * 100, 100), 1)
     bear_score = round(min(bear / max_points * 100, 100), 1)
@@ -228,6 +547,11 @@ def compute_score(indicators: dict, market_type: str = "spot") -> dict:
     else:
         signal = "NEUTRAL"
 
+    # Sade insan-okunabilir özet & 4-boyutlu gerekçe/uyarı detayları
+    simple_summary = _build_simple_summary(signal, bull_score, bear_score, warnings, market_type)
+    reasons_detail = [_build_reason_detail(r) for r in reasons]
+    warnings_detail = [_build_warning_detail(w) for w in warnings]
+
     return {
         "bull_score": bull_score,
         "bear_score": bear_score,
@@ -235,6 +559,10 @@ def compute_score(indicators: dict, market_type: str = "spot") -> dict:
         "signal": signal,
         "market_type": market_type,
         "reasons": reasons,
+        "reasons_detail": reasons_detail,
         "warnings": warnings,
+        "warnings_detail": warnings_detail,
+        "simple_summary": simple_summary,
     }
+
 

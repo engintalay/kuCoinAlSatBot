@@ -208,3 +208,157 @@ body {
 .chart-level-text.tp { fill: #00e676; }
 .chart-level-text.liq { fill: #ffab00; }
 
+/* SADE PİYASA ÖZETİ & EĞİTİCİ GEREKÇE KARTLARI */
+.plain-summary-card {
+  background: linear-gradient(135deg, rgba(41, 121, 255, 0.08) 0%, rgba(18, 22, 34, 0.85) 100%);
+  border: 1px solid rgba(41, 121, 255, 0.35);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+.plain-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.plain-summary-status {
+  font-size: 1.2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plain-summary-risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.plain-summary-risk.risk-low { background: rgba(0, 230, 118, 0.15); color: var(--green); border: 1px solid rgba(0, 230, 118, 0.4); }
+.plain-summary-risk.risk-med { background: rgba(255, 171, 0, 0.15); color: #ffab00; border: 1px solid rgba(255, 171, 0, 0.4); }
+.plain-summary-risk.risk-high { background: rgba(255, 82, 82, 0.15); color: var(--red); border: 1px solid rgba(255, 82, 82, 0.4); }
+
+.plain-summary-advice {
+  background: var(--bg-0);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text);
+  border-left: 4px solid var(--accent);
+}
+.plain-summary-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+
+/* EĞİTİCİ GEREKÇE & UYARI GRIDLERİ */
+.reasons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+.reason-edu-card {
+  background: var(--bg-0);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.reason-edu-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.reason-edu-card.bullish {
+  border-left: 4px solid var(--green);
+}
+.reason-edu-card.bearish {
+  border-left: 4px solid var(--red);
+}
+.reason-edu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.reason-edu-type {
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.reason-edu-type.bullish { background: rgba(0, 230, 118, 0.2); color: var(--green); }
+.reason-edu-type.bearish { background: rgba(255, 82, 82, 0.2); color: var(--red); }
+
+.reason-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+.reason-field-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.reason-field-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.reason-field-val {
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.warning-edu-card {
+  background: var(--bg-0);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-left: 4px solid #ffab00;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.warning-edu-title {
+  font-weight: 700;
+  color: #ffab00;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.warning-advice-box {
+  background: rgba(255, 171, 0, 0.08);
+  border: 1px dashed rgba(255, 171, 0, 0.4);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #ffab00;
+  margin-top: 4px;
+  line-height: 1.45;
+}

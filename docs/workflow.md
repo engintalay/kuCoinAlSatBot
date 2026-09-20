@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Ayarlar + Bracket + Emir Düzenleme + Öneri Motoru + Watchlist + Sub-15m & Çoklu Piyasa (Spot/Margin/Futures) %100 ✅ (165/165 Test Geçiyor, %80 Coverage ✅) | **Son Güncelleme:** 2026-09-20 16:40:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Ayarlar + Bracket + Emir Düzenleme + Öneri Motoru + Watchlist + Sub-15m & Çoklu Piyasa (Spot/Margin/Futures) + Sade/Eğitici Analiz %100 ✅ (169/169 Test Geçiyor, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 16:45:00 (+03:00)
 
 ---
 
@@ -17,14 +17,14 @@
 | Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) |
 | Modül 2 — Faz 2b (İleri SMC, Scoring & MTF) | ✅ **%100 Tamamlandı** (Supertrend, Ichimoku, Parabolic SAR, ADX, Aroon, Choppiness, Squeeze, SMC Swings/BOS/CHoCH/FVG/OB, 0-100 Puanlama Motoru, MTF Hiyerarşisi, 3 REST endpoint'i) |
 | Modül 2 — İleri Katmanlar (Hacim & Seviyeler) | ✅ **%100 Tamamlandı** (`indicators/volume.py`: RVOL, OBV, VWAP, MFI, CMF, Volume Profile; `indicators/levels.py`: Pivots, Fib, Donchian; Hacim Puanlaması) — 10 test |
-| Modül 2 — Faz 2c (Ek Osilatörler, Türev, Çoklu Piyasa, Sub-15m) | ✅ **%100 Tamamlandı** (StochRSI, CCI, Williams %R, ROC; KuCoin Futures USDT-M funding/OI, 1m/3m/5m timeframe, Spot/Margin/Futures analiz ve trade-setup) — 20 test |
-| Modül 2 — Kapsam Notu (Kalan) | ⚠️ Yalnızca **Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D)** kaldı; KuCoin'de yok, harici API (ör. CoinGecko) gerektirir — kullanıcı onayı ile eklenebilir. |
-| Modül 2 — Test Dağılımı | ✅ 75 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`, `phase2c: 10`, `market_types: 10` |
+| Modül 2 — Faz 2c (Ek Osilatörler, Türev, Çoklu Piyasa, Sub-15m, Katman 9) | ✅ **%100 Tamamlandı** (StochRSI, CCI, Williams %R, ROC; KuCoin Futures USDT-M funding/OI, 1m/3m/5m timeframe, Spot/Margin/Futures analiz, trade-setup; Katman 9 CoinGecko BTC.D/Total MCap/Stablecoin.D) — 22 test |
+| Modül 2 — Sadeleştirilmiş & Eğitici Analiz Motoru | ✅ **%100 Tamamlandı** (Sade durum & tavsiye özeti, 4-boyutlu gerekçeler: İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur; Korunma tavsiyeli risk uyarıları) — 2 test |
+| Modül 2 — Test Dağılımı | ✅ 79 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 12`, `phase2c: 10`, `market_types: 12` |
 | Modül 3 (Emir Yönetimi, Bracket & Öneriler) | ✅ **%100 Tamamlandı** (Market/Limit, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k, mod geçişi, pre-trade risk, Bracket orders, Amend, RecommendationEngine) — 31 test |
 | Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, sembol arama; 5 REST endpoint'i) — 6 test |
-| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli, Seviye bindirmeli Analiz grafiği; `static/` mount) — 11 servis testi |
+| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli, Seviyeli mum grafiği, Sade özet kartı & 4-boyutlu eğitici gerekçe gridleri; `static/` mount) — 11 servis testi |
 | Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **165/165 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %80 coverage) |
+| Toplam Birim Test Durumu | ✅ **169/169 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %81 coverage) |
 
 
 
@@ -313,6 +313,9 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-20 01:22:00** | **Akıllı Paket Emir (Bracket Order) Tamamlandı**: Modül 2 `get_trade_setup` (ATR tabanlı Entry/SL/TP1/TP2/R:R, long+short) + `GET /market/trade-setup`. Modül 3 `create_bracket_order` (giriş market + TP1 %50 + TP2 %50 + SL %100 limit emirleri, `bracket_id`, risk/kâr hesabı) + `POST /orders/bracket`. Frontend "🚀 Akıllı Paket Emir" bileşeni (seviye hesapla → USDT gir → tek tık ilet). 8 yeni test ile proje genelinde **145/145 test %100 yeşil**; gerçek BTC/USDT verisiyle uçtan uca doğrulandı. | **Bracket Order Tamamlandı ✅** |
 | **2026-09-20 12:38:00** | **Emir Düzenleme + Öneri Motoru + Watchlist Entegrasyonu Tamamlandı**: Modül 3 `amend_order` (`PUT /orders/{id}`, paper güncelle/live cancel-replace). Yeni `recommendations.py` `RecommendationEngine` (SL yakınlık uyarısı, TP realizasyon önerisi) + `GET /orders/recommendations`, `POST /orders/recommendations/apply`. Frontend: emir düzenleme modalı, tıklanabilir Mini Watchlist Widget (aktif coin geçişi + dinamik grafik), dinamik öneri kartları. 9 yeni test ile proje genelinde **153/153 test %100 yeşil**. Kalan: sembol girişlerini watchlist dropdown'a çevirme (sonraki iterasyon), Katman 9 (harici API). | **Emir Yönetimi Tam ✅** |
 | **2026-09-20 16:17:00** | **Watchlist Sembol Entegrasyonu Tamamlandı**: Analiz, Emir ve Bracket sembol girişleri watchlist'ten beslenen `datalist` (`symbol-choices`) ile seçilebilir hale getirildi; watchlist değişiminde otomatik yenilenir. 1 yeni test ile **154/154 test %100 yeşil**. Watchlist global entegrasyonu tümüyle tamamlandı. Geriye yalnızca Katman 9 (piyasa-geneli, harici CoinGecko API onayı bekleyen) opsiyonel kalem kaldı. | **Watchlist Entegrasyonu Tam ✅** |
+| **2026-09-20 16:40:00** | **Sub-15m (1m/3m/5m), Çoklu Piyasa (Spot/Margin/Futures) & Seviyeli Grafik Tamamlandı**: 15m altı zaman dilimi desteği (`1m`, `3m`, `5m`), KuCoin Futures USDT-M swap mum ve fonlama/OI veri entegrasyonu, spot/marjin/vadeli çoklu analiz ve analiz ekranı seviye bindirmeli (Entry/SL/TP1/TP2/Liq) SVG mum grafiği 11 yeni test (`test_market_types.py`, `test_frontend.py`) ile doğrulanarak tamamlandı (toplam 165/165 test %100 yeşil, %80 coverage). | **Çoklu Piyasa Tamamlandı ✅** |
+| **2026-09-20 16:45:00** | **Sade Dil Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme Motoru Tamamlandı**: Analiz ekranındaki teknik jargon sadeleştirildi; en üste sade durum, eylem tavsiyesi ve risk seviyesi kartı eklendi. Gerekçeler ve uyarılar her biri için "İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?" ve "Korunma Tavsiyesi" alanlarını içeren eğitici kartlarla donatıldı. Katman 9 (CoinGecko BTC.D/Total MCap/Stablecoin.D) tamamlandı (toplam 169/169 test %100 yeşil, %81 coverage). | **Eğitici Analiz Tamamlandı ✅** |
+
 
 
 
