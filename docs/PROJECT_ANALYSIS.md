@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu - Proje Analiz ve Tasarım Dokümanı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket, Çoklu Piyasa & Eğitici Analiz Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (169/169 Test %100 Yeşil, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 16:45:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket, Çoklu Piyasa & Eğitici Analiz Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (174/174 Test %100 Yeşil, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 17:15:00 (+03:00)
 
 ## 1. Proje Genel Bakışı
 Bu doküman, KuCoin kripto para borsasında çalışacak modüler **Al-Sat Botu** uygulamasının mimarisini, veri akışını ve modül detaylarını içerir. 
@@ -242,7 +242,9 @@ Kullanıcının yalnızca Spot piyasada değil, Vadeli ve Marjin piyasalarında 
 | **2026-09-20 01:30:00** | **Akıllı Paket Emir (Bracket Order) Kodlandı & Doğrulandı**: Analiz motoru seviye hesaplayıcısı (`get_trade_setup`: Entry, SL, TP1 %50, TP2 %50, R:R), `POST /orders/bracket` tek tıkla paket icra motoru ve UI formu 8 yeni test ile tamamlandı (toplam 145/145 test %100 yeşil). | **Onaylandı & Uygulandı (%100) ✅** |
 | **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11), Öneri Motoru (M3-C12) & İzleme Listesi Entegrasyonu Tamamlandı**: `amend_order` açık emir güncelleme, `RecommendationEngine` dinamik öneri sistemi ve Watchlist'in Analiz/Emir/Bracket formları ile tam iki yönlü etkileşimi (mini widget, datalist) 9 yeni birim test ile doğrulanarak tamamlandı (toplam 154/154 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
 | **2026-09-20 16:40:00** | **Sub-15m Zaman Dilimleri (1m/3m/5m), Çoklu Piyasa (Spot/Margin/Futures) & Seviyeli Mum Grafiği Tamamlandı**: 15m altı zaman dilimi desteği (`1m`, `3m`, `5m`), KuCoin Futures USDT-M swap mum ve fonlama/OI veri entegrasyonu, spot/marjin/vadeli çoklu analiz ve analiz ekranı seviye bindirmeli (Entry/SL/TP1/TP2/Liq) SVG mum grafiği 11 yeni test (`test_market_types.py`, `test_frontend.py`) ile doğrulanarak tamamlandı (toplam 165/165 test %100 yeşil, %80 coverage). | **Onaylandı & Tamamlandı (%100) ✅** |
-| **2026-09-20 16:45:00** | **Sade Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme Motoru Tamamlandı**: Analiz ekranı teknik jargondan arındırılarak üst kısma sade dille durum, eylem tavsiyesi ve risk seviyesi kartı eklendi. Gerekçeler ve uyarılar her biri için "İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?" ve "Korunma Tavsiyesi" alanlarını içeren eğitici kartlarla zenginleştirildi; Katman 9 piyasa rejimi tamamlandı (toplam 169/169 test %100 yeşil, %81 coverage). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 16:45:00** | **Sade Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme Motoru Tamamlandı**: Analiz ekranı teknik jargondan arındırılarak üst kısma sade dille durum, eylem tavsiyesi ve risk seviyesi kartı eklendi. Gerekçeler ve uyarılar her biri için "İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?" ve "Korunma Tavsiyesi" alanlarını içeren eğitici kartlarla zenginleştirildi; Katman 9 piyasa rejimi tamamlandı. | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 17:15:00** | **Yan Yana 4-Sütunlu Eğitici Gerekçe Tablosu & Katman 9 Canlı Widget'ı Tamamlandı**: Analiz ekranındaki gerekçeler masaüstü ve mobilde "İndikatör & Sinyal", "Neden Oldu? (Koşul)", "İndikatör Neyi Gösterir?", "Neye Sebep Olur?" başlıklarıyla 4 sütunlu yan yana tablo düzenine kavuşturuldu. Katman 9 CoinGecko rejim verileri ön yüze entegre edildi (toplam 174/174 test %100 yeşil, %81 coverage). | **Onaylandı & Tamamlandı (%100) ✅** |
+
 
 
 

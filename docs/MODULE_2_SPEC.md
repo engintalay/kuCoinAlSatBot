@@ -1,6 +1,6 @@
 # Modül 2 Spesifikasyonu: Piyasa Verileri, Çok Katmanlı İndikatörler ve Analiz Motoru
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (Sub-15m, Spot/Margin/Futures Analizi & Seviyeli Mum Grafiği Dahil, Toplam 165/165 Test %100 Yeşil ✅, Coverage %80) | **Son Güncelleme:** 2026-09-20 16:40:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (10 Analiz Katmanının Tamamı, Sub-15m, Spot/Margin/Futures Analizi, Eğitici Tablo & Seviyeli Grafik Dahil, Toplam 174/174 Test %100 Yeşil ✅, Coverage %81) | **Son Güncelleme:** 2026-09-20 17:15:00 (+03:00)
 
 ---
 
@@ -553,7 +553,7 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **M2-C10** | **Faz 2b** | İleri Volatilite (Bollinger Bands, Keltner Squeeze) | `src/modules/indicators/volatility.py` | `tests/test_module_2_indicators.py` | ✅ Tamamlandı (2 test geçiyor) |
 | **M2-C11** | **Faz 2b** | Destek/Direnç (Pivots, Fib, Donchian, Prev H/L) | `src/modules/indicators/levels.py` | `tests/test_module_2_volume_levels.py` | ✅ Tamamlandı (4 test geçiyor) |
 | **M2-C12** | **Faz 2b** | Market Structure SMC (Swings, BOS, CHoCH, FVG, OB) | `src/modules/indicators/structure.py` | `tests/test_module_2_structure.py` | ✅ Tamamlandı (8 test geçiyor) |
-| **M2-C13** | **Faz 2b** | Türev Veriler & Uyumsuzluk (OI, Funding, CVD, Div) | `src/modules/indicators/derivatives.py` | `tests/test_indicators_derivatives.py` | ⏳ İsteğe Bağlı Ek Katman |
+| **M2-C13** | **Faz 2c** | Türev Veriler & Uyumsuzluk (OI, Funding, CVD, Div) | `src/modules/indicators/derivatives.py` | `tests/test_module_2_phase2c.py` | ✅ Tamamlandı (10 test geçiyor) |
 | **M2-C14** | **Faz 2b** | Feature Engine & Normalizasyon | `src/modules/module2_market.py` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (`_all_features`) |
 | **M2-C15** | **Faz 2b** | Composite Scoring Engine (0-100 & Explainability) | `src/modules/analysis/scoring_engine.py` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (5 test geçiyor) |
 | **M2-C16** | **Faz 2b** | False Signal & Risk Filtreleri | `src/modules/analysis/scoring_engine.py` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (ADX/Chop/Squeeze) |
@@ -561,7 +561,8 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **M2-C18** | **Faz 2c** | 15 Dakika Altı Zaman Dilimleri (`1m`, `3m`, `5m`) | `src/modules/module2_market.py` | `tests/test_market_types.py` | ✅ Tamamlandı (3 test geçiyor) |
 | **M2-C19** | **Faz 2c** | Çoklu Piyasa Analizi (`spot`, `margin`, `futures`) | `src/modules/module2_market.py` / `main.py` | `tests/test_market_types.py` | ✅ Tamamlandı (7 test geçiyor) |
 | **M2-C20** | **Faz 2c** | Analiz Ekranı Al/Sat Seviyeleri & Seviyeli Mum Grafiği | `static/index.html` / `app.js` | `tests/test_frontend.py` | ✅ Tamamlandı (1 yeni test, UI aktif) |
-| **M2-C21** | **Faz 2c** | Sade Dil Piyasa Özeti & 4-Boyutlu Eğitici Gerekçe/Risk Motoru (İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur) | `src/modules/analysis/scoring_engine.py` / `static/` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (2 yeni test, UI aktif, 169/169 test %100 yeşil) |
+| **M2-C21** | **Faz 2c** | Sade Dil Piyasa Özeti & Yan Yana 4-Boyutlu Eğitici Gerekçe Tablosu (İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur) | `src/modules/analysis/scoring_engine.py` / `static/` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (Tablo/Row UI aktif, 174/174 test %100 yeşil) |
+| **M2-C22** | **Faz 2c** | Katman 9: Piyasa Geneli Rejim Göstergeleri (BTC.D, Total MCap, Stablecoin.D - CoinGecko) | `src/modules/market_regime.py` / `main.py` | `tests/test_market_types.py` | ✅ Tamamlandı (2 test geçiyor, dashboard widget aktif) |
 
 ---
 
@@ -579,6 +580,8 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **2026-09-19 23:25:00** | v1.4 | Faz 2b Analiz, SMC, Scoring ve MTF Motoru %100 Tamamlandı: Trend, Güç, SMC, Puanlama ve MTF yazıldı. (26 yeni test, toplam 74/74 test) | Tamamlandı |
 | **2026-09-19 23:48:00** | v1.5 | Hacim ve Destek/Direnç Seviyeleri Katmanları %100 Tamamlandı: `indicators/volume.py` ve `indicators/levels.py` yazıldı. | Tamamlandı |
 | **2026-09-20 16:35:00** | v1.6 | Sub-15m Timeframe (`1m`, `3m`, `5m`), Spot/Margin/Futures Analizi & Seviyeli Mum Grafiği Eklendi. | Onaylandı & Genişletildi (%100) ✅ |
-| **2026-09-20 16:45:00** | **v1.7** | **Sade Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme & Risk Motoru**: Kullanıcı talebiyle teknik jargon sadeleştirildi; her gerekçeye "İndikatör", "Neden Oldu? (Koşul)", "Neyi Gösterir? (Anlamı)" ve "Neye Sebep Olur? (Piyasa Etkisi)" alanları eklendi. Üst özet kartı (Genel durum, eylem tavsiyesi, risk seviyesi) dashboard'a entegre edildi. (Toplam 169 test %100 yeşil, coverage %81). | **Onaylandı & Genişletildi (%100) ✅** |
+| **2026-09-20 16:45:00** | v1.7 | Sade Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme & Risk Motoru eklendi. | Onaylandı & Genişletildi (%100) ✅ |
+| **2026-09-20 17:15:00** | **v1.8** | **Yan Yana Eğitici Gerekçe Tablosu & Katman 9 (Piyasa Rejimi) %100 Tamamlandı**: Gerekçeler "İndikatör & Sinyal", "Neden Oldu? (Koşul)", "İndikatör Neyi Gösterir?", "Neye Sebep Olur?" başlıklarıyla 4 sütunlu yan yana tablo düzenine kavuşturuldu; `why`, `shows`, `causes` tam eşleşmesi sağlandı; Katman 9 CoinGecko BTC.D/Total MCap/Stablecoin.D motoru ve dashboard widget'ı devreye alındı. (Toplam 174 test %100 yeşil, coverage %81). | **Onaylandı & Tamamlandı (%100) ✅** |
+
 
 

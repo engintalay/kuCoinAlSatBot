@@ -1,6 +1,6 @@
 # Genel Proje Özellikleri ve Standartlar Spesifikasyonu
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket, Çoklu Piyasa & Eğitici Analiz Onaylandı ✅) | **Kodlama & Test Durumu:** Backend, Dashboard, Ayarlar, Çoklu Piyasa & Eğitici Analiz Motoru %100 Tamamlandı (169/169 Test, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 16:45:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket, Çoklu Piyasa & Eğitici Analiz Onaylandı ✅) | **Kodlama & Test Durumu:** Backend, Dashboard, Ayarlar, Çoklu Piyasa & Eğitici Analiz Motoru %100 Tamamlandı (174/174 Test, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 17:15:00 (+03:00)
 
 ## 1. Dokümanın Amacı
 Bu doküman, KuCoin Al-Sat Botu uygulamasının **tüm ekranlarında, modüllerinde ve genel yapısında** geçerli olacak standart kuralları, arayüz (UI/UX) standartlarını, genel sistem ayarlarını ve hata yönetim prensiplerini tanımlar.
@@ -376,7 +376,9 @@ Projenin kalitesini, mimari tutarlılığını ve kod güvenliğini denetlemek i
 | **2026-09-20 01:30:00** | **Akıllı Paket Emir (Bracket Order) Standardı Uygulandı**: Otomatik ATR tabanlı seviye motoru (`trade_setup`), Entry+TP1(%50)+TP2(%50)+SL(%100) paket icrası ve UI Akıllı Emir formu 8 yeni test ile tamamlandı (toplam 145/145 test %100 yeşil). | Onaylandı & Uygulandı (%100) |
 | **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11), Öneri Motoru (M3-C12) & Watchlist Entegrasyonu Standartları Doğrulandı**: `PUT /orders/{id}` ile açık emir düzenleme arayüzü, `RecommendationEngine` canlı tavsiye kartları ve Watchlist mini-widget & form datalist entegrasyonu tamamlandı. Toplam test sayısı 154/154'e ulaştı (%100 yeşil, %78 coverage). | Onaylandı & Tamamlandı (%100) |
 | **2026-09-20 16:40:00** | **Sub-15m (1m/3m/5m), Çoklu Piyasa (Spot/Margin/Futures) & Seviyeli Mum Grafiği UI Standartları Doğrulandı**: Analiz görünümünde piyasa türü seçici, sub-15m zaman dilimi desteği, trade setup seviyeleri paneli, seviye bindirmeli SVG mum grafiği ve "Bu Seviyelerle Akıllı Paket Emir Oluştur" hızlı aktarım standardı 11 yeni test ile doğrulandı (toplam 165/165 test %100 yeşil, %80 coverage). | Onaylandı & Tamamlandı (%100) |
-| **2026-09-20 16:45:00** | **Sade Dil Analiz & 4-Boyutlu Eğitici Gösterge Standartları Doğrulandı**: Analiz ekranı teknik jargon yerine sade Türkçe özet ve eylem tavsiyesi kartı (`.plain-summary-card`) ve 4 alandan ("İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?") oluşan eğitici gerekçe/uyarı kartları ile zenginleştirildi; Katman 9 piyasa geneli rejim standardı eklendi (toplam 169/169 test %100 yeşil, %81 coverage). | Onaylandı & Tamamlandı (%100) |
+| **2026-09-20 16:45:00** | **Sade Dil Analiz & 4-Boyutlu Eğitici Gösterge Standartları Doğrulandı**: Analiz ekranı teknik jargon yerine sade Türkçe özet ve eylem tavsiyesi kartı (`.plain-summary-card`) ve 4 alandan ("İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?") oluşan eğitici gerekçe/uyarı kartları ile zenginleştirildi; Katman 9 piyasa geneli rejim standardı eklendi. | Onaylandı & Tamamlandı (%100) |
+| **2026-09-20 17:15:00** | **Yan Yana 4-Sütunlu Eğitici Gerekçe Tablosu & Katman 9 Widget Standartları Tamamlandı**: Analiz gerekçeleri yan yana 4 sütunlu (`.reasons-table-header` / `.reason-row-item`) tablo mimarisine kavuşturuldu. Katman 9 CoinGecko canlı rejim widget'ı Dashboard'a entegre edildi (toplam 174/174 test %100 yeşil, %81 coverage). | Onaylandı & Tamamlandı (%100) |
+
 
 
 
