@@ -24,7 +24,7 @@
 | Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, sembol arama; 5 REST endpoint'i) — 6 test |
 | Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli; `static/` mount) — 7 servis testi |
 | Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **145/145 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Toplam Birim Test Durumu | ✅ **153/153 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 ---
@@ -133,8 +133,8 @@ kuCoinAlSatBot/
 - ⏳ **Yeni Eklenen Backend Görevleri (Kullanıcı Talepleri):**
   - [x] Modül 2: Otomatik Seviye Hesaplayıcı (`trade_setup`: Entry, TP1, TP2, SL, R:R) — `get_trade_setup`, `GET /market/trade-setup`
   - [x] Modül 3: Akıllı Paket Emir Motoru (`POST /api/v1/orders/bracket`) — giriş + TP1(%50) + TP2(%50) + SL(%100), `bracket_id`
-  - [ ] Modül 3: Açık Emir Düzenleme Motoru (`PUT /api/v1/orders/{order_id}`)
-  - [ ] Modül 3: Dinamik Öneri Motoru (`GET /api/v1/orders/recommendations` & `/apply`)
+  - [x] Modül 3: Açık Emir Düzenleme Motoru (`PUT /api/v1/orders/{order_id}`) — `amend_order`, paper güncelle / live cancel-replace
+  - [x] Modül 3: Dinamik Öneri Motoru (`GET /api/v1/orders/recommendations` & `/apply`) — `recommendations.py`, SL yakınlık/TP realizasyon tavsiyeleri
   - [x] Ayarlar Modülü: Çoklu coin & Watchlist, mod seçimi, risk parametreleri (`/api/v1/settings/*` & SQLite kalıcılığı) — `settings.py`, 5 endpoint, 6 test
 
 ### Adım 5 — Frontend Dashboard (HTML5/CSS3/JS)
@@ -150,14 +150,14 @@ kuCoinAlSatBot/
   - [x] Ana sayfadan erişilebilir **Kullanım Kılavuzu Sayfası / Görünümü** (Uygulamanın nasıl çalıştığı, modlar, göstergelerin yorumu, panic stop rehberi) — `view-guide` + sol menü/header linki
   - [x] Önemli noktalarda **Bağlamsal Info Düğmeleri (`ℹ️`)** (Portföy, mod, panic stop, bileşik puan, MTF, SMC, emir formu açıklamaları) — 7 nokta + glass popover
   - [x] **Ayarlar Ekranı (`⚙️ Ayarlar` Görünümü)**: Çoklu coin izleme listesi (Watchlist ekle/çıkar), mod seçimi, varsayılan sembol/timeframe, maks emir tutarı — *not: sembol arama backend'de hazır (`/settings/symbols`), UI'da otomatik-tamamlama sonraki iterasyon*
-  - [ ] **İzleme Listesi (Watchlist) Global Arayüz Entegrasyonu**:
-    - [ ] Dashboard ve Header'a izleme listesindeki coin'leri gösteren **Aktif Koin Seçici (Hap Butonlar / Dropdown)** eklenmesi
-    - [ ] Koin seçildiğinde Dashboard Canlı Fiyatı, 24s verileri, SVG mum grafiği ve WebSocket akışının seçilen koine dinamik geçmesi
-    - [ ] Analiz ve Emirler ekranlarındaki sembol girişlerinin izleme listesinden beslenen açılır menü (`<select>`) haline getirilmesi
-    - [ ] Dashboard'a izlenen tüm koinlerin anlık fiyat ve % değişimini özetleyen **Mini Watchlist Widget** eklenmesi
+  - [~] **İzleme Listesi (Watchlist) Global Arayüz Entegrasyonu** (kısmen):
+    - [x] Dashboard'a izleme listesindeki coin'leri gösteren **Aktif Koin Seçici** (tıklanabilir mini widget)
+    - [x] Koin seçildiğinde Dashboard Canlı Fiyatı ve SVG mum grafiğinin seçilen koine dinamik geçmesi
+    - [ ] Analiz ve Emirler ekranlarındaki sembol girişlerinin izleme listesinden beslenen açılır menü (`<select>`) haline getirilmesi — *sonraki iterasyon*
+    - [x] Dashboard'a izlenen tüm koinlerin anlık fiyat ve % değişimini özetleyen **Mini Watchlist Widget**
   - [x] **Akıllı Paket Emir Bileşeni**: Analiz motorundan otomatik seviye yükleme (Entry, TP1, TP2, SL, R:R), USDT tutar girişi, "🚀 Akıllı Emri İlet" tek tıkla paket iletim butonu — Emirler görünümünde
-  - [ ] **Açık Emir Düzenleme Modalı**: Açık emirler tablosunda "Düzenle" butonu, fiyat/miktar/SL/TP değiştirme modalı
-  - [ ] **Dinamik Öneri Motoru Kartları**: Canlı piyasa değişikliklerinde veya hedeflere ulaşıldığında çıkan `[ ✅ Uygula ]` / `[ ✖ Yoksay ]` tavsiye bileşeni
+  - [x] **Açık Emir Düzenleme Modalı**: Açık emirler tablosunda "Düzenle" butonu, fiyat/miktar değiştirme modalı
+  - [x] **Dinamik Öneri Motoru Kartları**: Canlı piyasa değişikliklerinde çıkan tavsiye kartları (`✖ Yoksay`) — Dashboard'da
 
 
 
@@ -310,6 +310,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-20 01:06:00** | **Kullanım Kılavuzu & Bağlamsal Info Düğmeleri Tamamlandı (Kod)**: `static/index.html`'e Kullanım Kılavuzu görünümü (API kurulumu + withdraw güvenlik uyarısı, işlem modları, analiz göstergeleri, emir & panic rehberi) ve sol menü/header linki eklendi. 7 kritik noktaya (portföy/mod/panic/skor/MTF/SMC/emir) bağlamsal `ℹ️` info düğmesi + glass popover (`app.js` + `style.css`). 2 yeni frontend test ile proje genelinde **131/131 test %100 yeşil**. | **Kılavuz & Info Düğmeleri Tamamlandı ✅** |
 | **2026-09-20 01:08:00** | **Ayarlar & Çoklu Coin (Watchlist) Tamamlandı**: `src/modules/settings.py` (`SettingsManager`) — SQLite kalıcılıklı ayarlar (watchlist, varsayılan mod/sembol/timeframe, risk parametreleri), sembol arama. 5 endpoint (`GET/POST /settings`, `GET /settings/symbols`, `POST/DELETE /settings/watchlist`). Frontend `⚙️ Ayarlar` görünümü (mod/sembol/tf/maks-emir formu + watchlist ekle/çıkar). 6 birim test (SQLite kalıcılık dahil) ile proje genelinde **137/137 test %100 yeşil**. | **Ayarlar & Watchlist Tamamlandı ✅** |
 | **2026-09-20 01:22:00** | **Akıllı Paket Emir (Bracket Order) Tamamlandı**: Modül 2 `get_trade_setup` (ATR tabanlı Entry/SL/TP1/TP2/R:R, long+short) + `GET /market/trade-setup`. Modül 3 `create_bracket_order` (giriş market + TP1 %50 + TP2 %50 + SL %100 limit emirleri, `bracket_id`, risk/kâr hesabı) + `POST /orders/bracket`. Frontend "🚀 Akıllı Paket Emir" bileşeni (seviye hesapla → USDT gir → tek tık ilet). 8 yeni test ile proje genelinde **145/145 test %100 yeşil**; gerçek BTC/USDT verisiyle uçtan uca doğrulandı. | **Bracket Order Tamamlandı ✅** |
+| **2026-09-20 12:38:00** | **Emir Düzenleme + Öneri Motoru + Watchlist Entegrasyonu Tamamlandı**: Modül 3 `amend_order` (`PUT /orders/{id}`, paper güncelle/live cancel-replace). Yeni `recommendations.py` `RecommendationEngine` (SL yakınlık uyarısı, TP realizasyon önerisi) + `GET /orders/recommendations`, `POST /orders/recommendations/apply`. Frontend: emir düzenleme modalı, tıklanabilir Mini Watchlist Widget (aktif coin geçişi + dinamik grafik), dinamik öneri kartları. 9 yeni test ile proje genelinde **153/153 test %100 yeşil**. Kalan: sembol girişlerini watchlist dropdown'a çevirme (sonraki iterasyon), Katman 9 (harici API). | **Emir Yönetimi Tam ✅** |
 
 
 
