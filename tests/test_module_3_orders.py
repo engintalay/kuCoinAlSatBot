@@ -58,6 +58,45 @@ class TestOrderValidation:
         assert types == ["futures", "margin"]
 
     @pytest.mark.asyncio
+    async def test_futures_symbol_normalized(self):
+        """
+        Futures emri sembolü BASE/QUOTE:SETTLE biçimine çevrilmeli.
+        (KuCoin Futures 'kucoinfutures does not have market symbol PEPE/USDT' hatası fix'i)
+        """
+        from unittest.mock import MagicMock, AsyncMock
+        o = _paper_orders()
+        # markets'ta normalize hedefi var → aday geçerli kabul edilir
+        fake_fut = MagicMock()
+        fake_fut.markets = {"PEPE/USDT:USDT": {}}
+        fake_fut.load_markets = AsyncMock()
+        o.futures_exchange = fake_fut
+        o.exchange = MagicMock()
+        norm = await o._normalize_symbol("PEPE/USDT", "futures")
+        assert norm == "PEPE/USDT:USDT"
+        # spot/margin değişmemeli
+        assert await o._normalize_symbol("PEPE/USDT", "spot") == "PEPE/USDT"
+        assert await o._normalize_symbol("PEPE/USDT", "margin") == "PEPE/USDT"
+
+    @pytest.mark.asyncio
+    async def test_live_futures_order_uses_normalized_symbol(self):
+        """Canlı futures emri ccxt'e normalize edilmiş sembolle gitmeli."""
+        from unittest.mock import MagicMock, AsyncMock
+        o = _paper_orders()
+        o.mode = "live"
+        fake_fut = MagicMock()
+        fake_fut.markets = {"PEPE/USDT:USDT": {}}
+        fake_fut.load_markets = AsyncMock()
+        fake_fut.create_order = AsyncMock(return_value={"id": "F1", "status": "open"})
+        o.futures_exchange = fake_fut
+        o.exchange = MagicMock()
+        r = await o.create_order("PEPE/USDT", "buy", "market", 1000000, None, "futures")
+        assert r.success is True
+        # create_order ilk argümanı (sembol) normalize edilmiş olmalı
+        called_symbol = fake_fut.create_order.call_args[0][0]
+        assert called_symbol == "PEPE/USDT:USDT"
+        assert r.data["venue_symbol"] == "PEPE/USDT:USDT"
+
+    @pytest.mark.asyncio
     async def test_limit_requires_price(self):
         o = _paper_orders()
         r = await o.create_order("BTC/USDT", "buy", "limit", 0.001, None)

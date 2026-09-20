@@ -84,6 +84,36 @@ class KuCoinOrders:
             self.connect()
         return self.futures_exchange if market_type == "futures" else self.exchange
 
+    async def _normalize_symbol(self, symbol: str, market_type: str) -> str:
+        """
+        Sembolü market_type'a uygun ccxt formatına çevirir.
+
+        KuCoin Futures perpetual sözleşmeleri `BASE/QUOTE:SETTLE` biçimindedir
+        (ör. spot `PEPE/USDT` -> futures `PEPE/USDT:USDT`). Spot/margin için
+        sembol olduğu gibi kullanılır. Dönüşüm sonrası borsa piyasalarında
+        geçerlilik doğrulanır.
+        """
+        if market_type != "futures":
+            return symbol
+        # Zaten settle eki varsa dokunma
+        if ":" in symbol:
+            return symbol
+        base_quote = symbol
+        quote = symbol.split("/")[-1] if "/" in symbol else "USDT"
+        candidate = f"{base_quote}:{quote}"
+        # Geçerlilik kontrolü (markets yüklüyse)
+        try:
+            ex = self._venue("futures")
+            if ex is not None:
+                if not ex.markets:
+                    await ex.load_markets()
+                if candidate in ex.markets:
+                    return candidate
+                # USDT-margined perpetual varsayılanı yoksa hata net dönsün
+        except Exception as e:
+            logger.error(f"Futures sembol doğrulama hatası ({symbol}): {e}")
+        return candidate
+
     # ------------------------------------------------------------------ #
     # M3-C01: Pre-trade risk & doğrulama
     # ------------------------------------------------------------------ #
@@ -196,6 +226,9 @@ class KuCoinOrders:
                     success=False, data={},
                     error="Borsa bağlantısı kurulamadı.", timestamp=timestamp())
 
+            # Futures sembolünü BASE/QUOTE:SETTLE biçimine çevir (ör. PEPE/USDT -> PEPE/USDT:USDT)
+            venue_symbol = await self._normalize_symbol(symbol, market_type)
+
             # market_type'a göre ccxt parametreleri
             params = {}
             if market_type == "margin":
@@ -204,14 +237,15 @@ class KuCoinOrders:
             # futures için ayrı venue (kucoinfutures) zaten seçildi
 
             price_arg = price if order_type == "limit" else None
-            order = await venue.create_order(symbol, order_type, side, amount, price_arg, params)
+            order = await venue.create_order(venue_symbol, order_type, side, amount, price_arg, params)
             return OrderCreateResponse(
                 success=True,
                 data={
                     "id": order.get("id"), "symbol": symbol, "side": side,
                     "type": order_type, "amount": amount, "price": price,
                     "status": order.get("status", "open"), "mode": "live",
-                    "market_type": market_type, "created_at": timestamp(),
+                    "market_type": market_type, "venue_symbol": venue_symbol,
+                    "created_at": timestamp(),
                 },
                 error=None, timestamp=timestamp())
         except Exception as e:
@@ -252,7 +286,8 @@ class KuCoinOrders:
                 logger.error(f"Spot açık emir çekme hatası: {e}")
             # Futures açık emirler (ayrı kucoinfutures uç noktası)
             try:
-                fut_orders = await self.futures_exchange.fetch_open_orders(symbol)
+                fut_symbol = await self._normalize_symbol(symbol, "futures") if symbol else None
+                fut_orders = await self.futures_exchange.fetch_open_orders(fut_symbol)
                 for o in fut_orders:
                     o["market_type"] = "futures"
                     merged.append(o)
