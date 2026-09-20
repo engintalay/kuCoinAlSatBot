@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Ayarlar + Bracket + Emir Düzenleme + Öneri Motoru + Watchlist + Sub-15m & Çoklu Piyasa (Spot/Margin/Futures) + Sade/Eğitici Analiz %100 ✅ (169/169 Test Geçiyor, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 16:45:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Ayarlar + Bracket + Emir Düzenleme + Öneri Motoru + Watchlist + Çoklu Piyasa + Katman 9 (Piyasa Geneli) %100 ✅ — spec'teki tüm katmanlar tamamlandı (174/174 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 16:51:00 (+03:00)
 
 ---
 
@@ -24,7 +24,7 @@
 | Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, sembol arama; 5 REST endpoint'i) — 6 test |
 | Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli, Seviyeli mum grafiği, Sade özet kartı & 4-boyutlu eğitici gerekçe gridleri; `static/` mount) — 11 servis testi |
 | Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **169/169 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %81 coverage) |
+| Toplam Birim Test Durumu | ✅ **174/174 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
 
 
 
@@ -32,7 +32,7 @@
 
 ## 2. Proje Yapısı
 
-> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Kaynak: `src/{config,database,main}.py`, `src/utils/*`, `src/models/*`, `src/modules/{module1_account,module2_market,module3_orders,settings,recommendations}.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels,derivatives}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py`, Frontend `static/{index.html,css/style.css,js/app.js}`. Testler: 13 dosya (`test_module_1_account`, `test_module_2_{market,indicators,structure,analysis,volume_levels,phase2c}`, `test_module_3_orders`, `test_frontend`, `test_utils`, `test_settings`, `test_bracket_orders`, `test_amend_recommendations`) — toplam **154 test**. Henüz oluşturulmayanlar (opsiyonel): `analysis/feature_engine.py`, `analysis/filters.py` (mantık `_all_features`/`scoring_engine` içine gömülü), `conftest.py`, Katman 9 (piyasa-geneli, harici API).
+> **Not:** Aşağıdaki ağaç **hedef (nihai) yapıdır**. Kaynak: `src/{config,database,main}.py`, `src/utils/*`, `src/models/*`, `src/modules/{module1_account,module2_market,module3_orders,settings,recommendations,market_regime}.py`, `src/modules/indicators/{trend,momentum,strength,volatility,structure,volume,levels,derivatives}.py`, `src/modules/analysis/{scoring_engine,mtf_engine}.py`, Frontend `static/{index.html,css/style.css,js/app.js}`. Testler: 15 dosya — toplam **174 test**. Henüz oluşturulmayanlar (opsiyonel): `analysis/feature_engine.py`, `analysis/filters.py` (mantık `_all_features`/`scoring_engine` içine gömülü), `conftest.py`, CVD/L-S Ratio (taker-akış verisi gerektirir).
 
 ```
 kuCoinAlSatBot/
@@ -119,7 +119,7 @@ kuCoinAlSatBot/
   - ✅ `mtf_engine.py` (4H Rejim → 1H Setup → 15m Tetikleyici)
 - ✅ `main.py` — `/api/v1/market/*` endpoint'leri (8 adet: 4 veri + 4 analiz)
 - ✅ **Faz 2c yapıldı:** Ek momentum osilatörleri (StochRSI, CCI, Williams %R, ROC) `indicators/momentum.py`'ye; Katman 8 (Türev — Funding Rate + Open Interest) `indicators/derivatives.py`'ye eklendi (`include_derivatives` flag).
-- ⏳ **Kalan:** Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D) — KuCoin'de yok, harici API (CoinGecko vb.) gerektirir; CVD/L-S Ratio taker-akış verisi gerektirir. Kullanıcı onayı ile eklenebilir.
+- ✅ **Katman 9 (Piyasa Geneli) Tamamlandı:** BTC.D / Total Market Cap / Stablecoin.D — `market_regime.py` (CoinGecko `/global`), risk-on/risk-off + altseason yorumu, `GET /market/regime`, Dashboard rejim kartı. (CVD/L-S Ratio hâlâ taker-akış verisi gerektirir; kapsam dışı.)
 
 ### ✅ Adım 4 — Modül 3: Al-Sat Emir Yönetimi (Tamamlandı)
 - ✅ `models/orders.py` — Pydantic şemaları (`OrderCreateResponse`, `OpenOrdersResponse`, `OrderHistoryResponse`, `OrderCancelResponse`, `PanicStopResponse`, `SwitchModeResponse`)
@@ -315,6 +315,7 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-20 16:17:00** | **Watchlist Sembol Entegrasyonu Tamamlandı**: Analiz, Emir ve Bracket sembol girişleri watchlist'ten beslenen `datalist` (`symbol-choices`) ile seçilebilir hale getirildi; watchlist değişiminde otomatik yenilenir. 1 yeni test ile **154/154 test %100 yeşil**. Watchlist global entegrasyonu tümüyle tamamlandı. Geriye yalnızca Katman 9 (piyasa-geneli, harici CoinGecko API onayı bekleyen) opsiyonel kalem kaldı. | **Watchlist Entegrasyonu Tam ✅** |
 | **2026-09-20 16:40:00** | **Sub-15m (1m/3m/5m), Çoklu Piyasa (Spot/Margin/Futures) & Seviyeli Grafik Tamamlandı**: 15m altı zaman dilimi desteği (`1m`, `3m`, `5m`), KuCoin Futures USDT-M swap mum ve fonlama/OI veri entegrasyonu, spot/marjin/vadeli çoklu analiz ve analiz ekranı seviye bindirmeli (Entry/SL/TP1/TP2/Liq) SVG mum grafiği 11 yeni test (`test_market_types.py`, `test_frontend.py`) ile doğrulanarak tamamlandı (toplam 165/165 test %100 yeşil, %80 coverage). | **Çoklu Piyasa Tamamlandı ✅** |
 | **2026-09-20 16:45:00** | **Sade Dil Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme Motoru Tamamlandı**: Analiz ekranındaki teknik jargon sadeleştirildi; en üste sade durum, eylem tavsiyesi ve risk seviyesi kartı eklendi. Gerekçeler ve uyarılar her biri için "İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?" ve "Korunma Tavsiyesi" alanlarını içeren eğitici kartlarla donatıldı. Katman 9 (CoinGecko BTC.D/Total MCap/Stablecoin.D) tamamlandı (toplam 169/169 test %100 yeşil, %81 coverage). | **Eğitici Analiz Tamamlandı ✅** |
+| **2026-09-20 16:51:00** | **Katman 9 (Piyasa Geneli Rejim) Tamamlandı**: `src/modules/market_regime.py` (`MarketRegime`) — CoinGecko `/api/v3/global` ile BTC Dominance, Total Market Cap, Stablecoin Dominance; risk-on/risk-off ve altseason yorumu. `GET /market/regime` endpoint (asyncio.to_thread), Dashboard'a piyasa rejimi kartı + info düğmesi. 4 birim test (CoinGecko mock'lu) + 1 frontend test ile proje genelinde **174/174 test %100 yeşil**; gerçek veriyle doğrulandı (BTC.D %58.95, RISK_OFF). **MODULE_2_SPEC'teki 10 analiz katmanının tamamı artık kodlandı** (yalnızca CVD/L-S Ratio taker-akış verisi gerektirdiğinden kapsam dışı). | **Katman 9 Tamamlandı — Analiz Motoru Tam ✅** |
 
 
 
