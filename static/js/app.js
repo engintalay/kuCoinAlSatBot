@@ -155,28 +155,259 @@ async function loadBalances() {
   }
 }
 
-// ---- Analiz ----
+// ---- Analiz & Seviyeli Mum Grafiği ----
 document.getElementById("analysis-run").addEventListener("click", loadAnalysis);
+
+let lastAnalysisSetup = null;
+
 async function loadAnalysis() {
-  const symbol = document.getElementById("analysis-symbol").value;
-  const tf = document.getElementById("analysis-tf").value;
-  setFooterLog("Analiz çalıştırılıyor...");
-  const res = await apiGet(`/market/analysis/score?symbol=${encodeURIComponent(symbol)}&timeframe=${tf}`);
-  if (res.success) {
-    const s = res.data.score;
-    const sig = document.getElementById("analysis-signal");
-    sig.textContent = s.signal;
-    sig.className = "card-value signal-" + s.signal.toLowerCase().replace(/_/g, "-");
-    document.getElementById("analysis-score").textContent = `${s.bull_score} / ${s.bear_score}`;
-    document.getElementById("analysis-reasons").innerHTML =
-      (s.reasons || []).map((r) => `<li>${r}</li>`).join("") || "<li>Gerekçe yok</li>";
-    document.getElementById("analysis-warnings").innerHTML =
-      (s.warnings || []).map((w) => `<li>${w}</li>`).join("") || "<li>Uyarı yok</li>";
-    toast(`Analiz: ${s.signal}`, "success");
-  } else {
+  const symbol = (document.getElementById("analysis-symbol").value || "BTC/USDT").trim();
+  const marketType = (document.getElementById("analysis-market-type") || {}).value || "spot";
+  const tf = (document.getElementById("analysis-tf") || {}).value || "1h";
+  const sideChoice = (document.getElementById("analysis-side") || {}).value || "auto";
+
+  setFooterLog(`Analiz çalıştırılıyor (${symbol} - ${marketType.toUpperCase()} - ${tf})...`);
+
+  // 1. Puanlama Analizi
+  const res = await apiGet(`/market/analysis/score?symbol=${encodeURIComponent(symbol)}&timeframe=${tf}&market_type=${marketType}`);
+  if (!res.success) {
     toast("Analiz başarısız: " + (res.error || ""), "error");
+    return;
   }
+
+  const s = res.data.score;
+  const sig = document.getElementById("analysis-signal");
+  sig.textContent = s.signal;
+  sig.className = "card-value signal-" + s.signal.toLowerCase().replace(/_/g, "-");
+  document.getElementById("analysis-score").textContent = `${s.bull_score} / ${s.bear_score}`;
+
+  const mBadge = document.getElementById("analysis-market-badge");
+  if (mBadge) mBadge.textContent = `Piyasa: ${marketType.toUpperCase()}`;
+
+  const derivInfo = document.getElementById("analysis-derivatives-info");
+  if (derivInfo) {
+    if (marketType === "futures") {
+      derivInfo.textContent = "KuCoin Vadeli (USDT-M Perpetual)";
+    } else if (marketType === "margin") {
+      derivInfo.textContent = "KuCoin Marjin (5x Kaldıraç)";
+    } else {
+      derivInfo.textContent = "KuCoin Spot İşlem Çifti";
+    }
+  }
+
+  document.getElementById("analysis-reasons").innerHTML =
+    (s.reasons || []).map((r) => `<li>${r}</li>`).join("") || "<li>Gerekçe yok</li>";
+  document.getElementById("analysis-warnings").innerHTML =
+    (s.warnings || []).map((w) => `<li>${w}</li>`).join("") || "<li>Uyarı yok</li>";
+
+  // 2. Yön Belirleme (Auto veya Manuel)
+  let calcSide = sideChoice;
+  if (calcSide === "auto") {
+    calcSide = (s.signal && s.signal.includes("BEAR")) ? "sell" : "buy";
+  }
+
+  // 3. Trade Setup Seviyeleri
+  const setupRes = await apiGet(`/market/trade-setup?symbol=${encodeURIComponent(symbol)}&timeframe=${tf}&side=${calcSide}&market_type=${marketType}&leverage=5.0`);
+  let tradeSetup = null;
+  if (setupRes.success && setupRes.data.trade_setup) {
+    tradeSetup = setupRes.data.trade_setup;
+    lastAnalysisSetup = { symbol, side: calcSide, ...tradeSetup };
+    renderAnalysisSetup(calcSide, tradeSetup, marketType);
+    const toBracketBtn = document.getElementById("analysis-to-bracket-btn");
+    if (toBracketBtn) toBracketBtn.style.display = "inline-block";
+  } else {
+    const sc = document.getElementById("analysis-setup-content");
+    if (sc) sc.innerHTML = `<div class="hint">İşlem seviyeleri hesaplanamadı.</div>`;
+  }
+
+  // 4. Analiz Mum Grafiği & Seviyeleri Çiz
+  await loadAnalysisChart(symbol, tf, marketType, tradeSetup, calcSide);
+
+  toast(`Analiz tamamlandı: ${s.signal} (${marketType.toUpperCase()})`, "success");
 }
+
+function renderAnalysisSetup(side, ts, marketType) {
+  const container = document.getElementById("analysis-setup-content");
+  if (!container) return;
+  const isBuy = side === "buy";
+  const dirLabel = isBuy ? "🟢 LONG (ALIŞ)" : "🔴 SHORT (SATIŞ)";
+  const riskDiff = Math.abs(ts.entry_price - ts.stop_loss_price);
+  const riskPct = ((riskDiff / ts.entry_price) * 100).toFixed(2);
+  const tp1Diff = Math.abs(ts.tp1_price - ts.entry_price);
+  const tp1Pct = ((tp1Diff / ts.entry_price) * 100).toFixed(2);
+  const tp2Diff = Math.abs(ts.tp2_price - ts.entry_price);
+  const tp2Pct = ((tp2Diff / ts.entry_price) * 100).toFixed(2);
+
+  let html = `
+    <div class="setup-tile">
+      <span class="label">İşlem Yönü</span>
+      <span class="val ${isBuy ? 'tp' : 'sl'}">${dirLabel}</span>
+      <span class="sub">ATR: ${ts.atr}</span>
+    </div>
+    <div class="setup-tile">
+      <span class="label">Giriş Seviyesi</span>
+      <span class="val entry">${ts.entry_price}</span>
+      <span class="sub">Hedef Giriş</span>
+    </div>
+    <div class="setup-tile">
+      <span class="label">Stop-Loss (SL)</span>
+      <span class="val sl">${ts.stop_loss_price}</span>
+      <span class="sub">-%${riskPct} Risk</span>
+    </div>
+    <div class="setup-tile">
+      <span class="label">Hedef 1 (TP1 %50)</span>
+      <span class="val tp">${ts.tp1_price}</span>
+      <span class="sub">+%${tp1Pct} (1.5R)</span>
+    </div>
+    <div class="setup-tile">
+      <span class="label">Hedef 2 (TP2 %50)</span>
+      <span class="val tp">${ts.tp2_price}</span>
+      <span class="sub">+%${tp2Pct} (3.0R)</span>
+    </div>
+    <div class="setup-tile">
+      <span class="label">Risk / Kazanç</span>
+      <span class="val">1 : ${ts.risk_reward_ratio}</span>
+      <span class="sub">Optimal Oran</span>
+    </div>
+  `;
+
+  if (ts.est_liquidation_price) {
+    html += `
+      <div class="setup-tile">
+        <span class="label">Tahmini Likidasyon</span>
+        <span class="val liq">${ts.est_liquidation_price}</span>
+        <span class="sub">%${ts.liquidation_distance_percent} Mesafe (5x)</span>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+// "Bu Seviyelerle Akıllı Paket Emir Oluştur" buton dinleyicisi
+const toBracketBtnEl = document.getElementById("analysis-to-bracket-btn");
+if (toBracketBtnEl) {
+  toBracketBtnEl.addEventListener("click", () => {
+    if (!lastAnalysisSetup) return;
+    switchView("orders");
+    document.getElementById("bracket-symbol").value = lastAnalysisSetup.symbol;
+    document.getElementById("bracket-side").value = lastAnalysisSetup.side;
+    bracketSetup = {
+      entry_price: lastAnalysisSetup.entry_price,
+      stop_loss_price: lastAnalysisSetup.stop_loss_price,
+      tp1_price: lastAnalysisSetup.tp1_price,
+      tp2_price: lastAnalysisSetup.tp2_price,
+      risk_reward_ratio: lastAnalysisSetup.risk_reward_ratio,
+    };
+    const box = document.getElementById("bracket-levels");
+    if (box) {
+      box.innerHTML = `
+        <div class="level-row"><span>Giriş</span><b>${bracketSetup.entry_price}</b></div>
+        <div class="level-row up"><span>TP1 (%50)</span><b>${bracketSetup.tp1_price}</b></div>
+        <div class="level-row up"><span>TP2 (%50)</span><b>${bracketSetup.tp2_price}</b></div>
+        <div class="level-row down"><span>Stop-Loss</span><b>${bracketSetup.stop_loss_price}</b></div>
+        <div class="level-row"><span>Risk/Ödül</span><b>1 : ${bracketSetup.risk_reward_ratio}</b></div>`;
+    }
+    const subBtn = document.getElementById("bracket-submit");
+    if (subBtn) subBtn.disabled = false;
+    toast("Analiz seviyeleri Akıllı Paket Emir formuna aktarıldı!", "success");
+  });
+}
+
+// Analiz Sekmesi SVG Mum Grafiği & Seviye Çizgileri
+async function loadAnalysisChart(symbol, timeframe, marketType, setup, side) {
+  const wrap = document.getElementById("analysis-candle-chart");
+  const tag = document.getElementById("analysis-chart-tag");
+  if (tag) tag.textContent = `${symbol} (${timeframe} - ${marketType.toUpperCase()})`;
+  if (!wrap) return;
+
+  const res = await apiGet(`/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=50&market_type=${marketType}`);
+  if (!res.success || !res.data.candles || !res.data.candles.length) {
+    wrap.textContent = "Grafik verisi alınamadı.";
+    return;
+  }
+
+  const candles = res.data.candles;
+  const W = Math.max(680, candles.length * 13);
+  const H = 280, padTop = 25, padBottom = 25, padLeft = 65, padRight = 85;
+
+  let allPrices = [];
+  candles.forEach((c) => { allPrices.push(c.high); allPrices.push(c.low); });
+  if (setup) {
+    if (setup.entry_price) allPrices.push(setup.entry_price);
+    if (setup.stop_loss_price) allPrices.push(setup.stop_loss_price);
+    if (setup.tp1_price) allPrices.push(setup.tp1_price);
+    if (setup.tp2_price) allPrices.push(setup.tp2_price);
+    if (setup.est_liquidation_price) allPrices.push(setup.est_liquidation_price);
+  }
+
+  const maxP = Math.max(...allPrices);
+  const minP = Math.min(...allPrices);
+  const range = maxP - minP || 1;
+
+  const y = (p) => padTop + (H - padTop - padBottom) * (1 - (p - minP) / range);
+  const innerW = W - padLeft - padRight;
+  const cw = innerW / candles.length;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:100%;">`;
+  svg += `<line class="chart-axis" x1="${padLeft}" y1="${H - padBottom}" x2="${W - padRight}" y2="${H - padBottom}"/>`;
+  svg += `<text class="chart-label" x="5" y="${y(maxP) + 4}">${maxP.toFixed(2)}</text>`;
+  svg += `<text class="chart-label" x="5" y="${y(minP) - 2}">${minP.toFixed(2)}</text>`;
+
+  // Mumlar
+  candles.forEach((c, i) => {
+    const x = padLeft + i * cw + cw / 2;
+    const cls = c.close >= c.open ? "candle-up" : "candle-down";
+    svg += `<line class="${cls}" x1="${x}" y1="${y(c.high)}" x2="${x}" y2="${y(c.low)}" stroke-width="1.2"/>`;
+    const bodyTop = y(Math.max(c.open, c.close));
+    const bodyH = Math.max(1.5, Math.abs(y(c.open) - y(c.close)));
+    svg += `<rect class="${cls}" x="${x - cw * 0.35}" y="${bodyTop}" width="${cw * 0.7}" height="${bodyH}"/>`;
+  });
+
+  // Yatay İşlem Seviyeleri (Trade Setup Çizgileri)
+  if (setup) {
+    const x1 = padLeft;
+    const x2 = W - padRight;
+    const textX = W - padRight + 5;
+
+    // Giriş (Entry)
+    if (setup.entry_price) {
+      const yEntry = y(setup.entry_price);
+      svg += `<line class="chart-level-entry" x1="${x1}" y1="${yEntry}" x2="${x2}" y2="${yEntry}"/>`;
+      svg += `<text class="chart-level-text entry" x="${textX}" y="${yEntry + 3}">GİRİŞ: ${setup.entry_price}</text>`;
+    }
+    // Stop Loss (SL)
+    if (setup.stop_loss_price) {
+      const ySL = y(setup.stop_loss_price);
+      svg += `<line class="chart-level-sl" x1="${x1}" y1="${ySL}" x2="${x2}" y2="${ySL}"/>`;
+      svg += `<text class="chart-level-text sl" x="${textX}" y="${ySL + 3}">SL: ${setup.stop_loss_price}</text>`;
+    }
+    // TP1
+    if (setup.tp1_price) {
+      const yTP1 = y(setup.tp1_price);
+      svg += `<line class="chart-level-tp" x1="${x1}" y1="${yTP1}" x2="${x2}" y2="${yTP1}"/>`;
+      svg += `<text class="chart-level-text tp" x="${textX}" y="${yTP1 + 3}">TP1: ${setup.tp1_price}</text>`;
+    }
+    // TP2
+    if (setup.tp2_price) {
+      const yTP2 = y(setup.tp2_price);
+      svg += `<line class="chart-level-tp" x1="${x1}" y1="${yTP2}" x2="${x2}" y2="${yTP2}"/>`;
+      svg += `<text class="chart-level-text tp" x="${textX}" y="${yTP2 + 3}">TP2: ${setup.tp2_price}</text>`;
+    }
+    // Likidasyon (Futures/Margin)
+    if (setup.est_liquidation_price) {
+      const yLiq = y(setup.est_liquidation_price);
+      if (yLiq >= 0 && yLiq <= H) {
+        svg += `<line class="chart-level-liq" x1="${x1}" y1="${yLiq}" x2="${x2}" y2="${yLiq}"/>`;
+        svg += `<text class="chart-level-text liq" x="${textX}" y="${yLiq + 3}">LİQ: ${setup.est_liquidation_price}</text>`;
+      }
+    }
+  }
+
+  svg += `</svg>`;
+  wrap.innerHTML = svg;
+}
+
 
 // ---- Emirler ----
 document.getElementById("order-submit").addEventListener("click", async () => {

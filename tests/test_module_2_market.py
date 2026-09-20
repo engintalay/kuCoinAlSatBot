@@ -96,7 +96,7 @@ class TestGetCandles:
     async def test_candles_invalid_timeframe(self):
         from src.modules.module2_market import KuCoinMarket
         m = KuCoinMarket()
-        result = await m.get_candles("BTC/USDT", "3m", 10)
+        result = await m.get_candles("BTC/USDT", "7m", 10)
         assert result.success is False
         assert "timeframe" in result.error.lower()
 

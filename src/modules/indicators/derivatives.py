@@ -91,6 +91,30 @@ class DerivativesData:
         result["available"] = result["funding_rate"] is not None or result["open_interest"] is not None
         return result
 
+    async def get_futures_ticker(self, symbol: str) -> dict | None:
+        """KuCoin Futures son ticker verisini döner."""
+        if not self._ensure():
+            return None
+        swap = _to_swap_symbol(symbol)
+        try:
+            return await self.exchange.fetch_ticker(swap)
+        except Exception as e:
+            logger.error(f"Futures ticker hatası ({swap}): {e}")
+            return None
+
+    async def get_futures_ohlcv(
+        self, symbol: str, timeframe: str = "1h", limit: int = 200
+    ) -> list | None:
+        """KuCoin Futures mum verilerini (OHLCV) döner."""
+        if not self._ensure():
+            return None
+        swap = _to_swap_symbol(symbol)
+        try:
+            return await self.exchange.fetch_ohlcv(swap, timeframe, limit=limit)
+        except Exception as e:
+            logger.error(f"Futures OHLCV hatası ({swap} {timeframe}): {e}")
+            return None
+
     async def close(self) -> None:
         if self.exchange is not None:
             try:
@@ -99,3 +123,4 @@ class DerivativesData:
                 logger.error(f"kucoinfutures kapatma hatası: {e}")
             finally:
                 self.exchange = None
+

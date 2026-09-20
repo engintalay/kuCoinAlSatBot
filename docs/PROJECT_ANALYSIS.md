@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu - Proje Analiz ve Tasarım Dokümanı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket & Öneri Motoru Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (154/154 Test %100 Yeşil, %78 Coverage ✅), Yalnızca Harici Katman 9 Opsiyonel ⏳ | **Son Güncelleme:** 2026-09-20 16:30:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket & Çoklu Piyasa Analizi Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (165/165 Test %100 Yeşil, %80 Coverage ✅), Yalnızca Harici Katman 9 Opsiyonel ⏳ | **Son Güncelleme:** 2026-09-20 16:40:00 (+03:00)
 
 ## 1. Proje Genel Bakışı
 Bu doküman, KuCoin kripto para borsasında çalışacak modüler **Al-Sat Botu** uygulamasının mimarisini, veri akışını ve modül detaylarını içerir. 
@@ -172,6 +172,31 @@ Proje; hesap doğrulama ve bakiye takibinden, canlı piyasa analizi ve gösterge
      * **SMC Market Structure**: `ℹ️` *"Kurumsal fiyat hareketleri: BOS trend devamını, CHoCH trend dönüşünü, FVG ise fiyatın geri çekilebileceği dengesizlik alanını gösterir."*
      * **Emir Formu (Market / Limit)**: `ℹ️` *"Market emri anlık tahta fiyatından hemen gerçekleşir. Limit emri belirlediğiniz fiyata gelene kadar bekler. Min. tutar 5 USDT'dir."*
 
+---
+
+### 2.4. Çoklu Piyasa Türü (Spot, Margin, Futures) ve İnce Zaman Dilimi (Sub-15m) Mimarisi
+Kullanıcının yalnızca Spot piyasada değil, Vadeli ve Marjin piyasalarında da derinlemesine teknik analiz yapabilmesini sağlamak amacıyla:
+1. **Piyasa Türleri (Market Types)**:
+   - **Spot (`spot`)**: KuCoin standart spot işlem çiftleri (`BTC/USDT`).
+   - **Margin (`margin`)**: Kaldıraçlı spot piyasa. Analizde spot mumlar kullanılır; ek olarak kaldıraç katsayısı (3x-10x) ve tahmini likidasyon mesafesi risk raporuna eklenir.
+   - **Futures (`futures`)**: KuCoin Vadeli İşlemler (USDT-M Perpetual Swap, örn: `BTC/USDT:USDT`). Analizde doğrudan KuCoin Futures OHLCV mumları kullanılır; Fonlama Oranı (Funding Rate), Açık Pozisyon Tutarı (Open Interest) ve Long/Short sıkışma riskleri (Overheated Long/Short Squeeze) analize katılır.
+2. **15 Dakika Altı İnce Zaman Dilimleri (Sub-15m Timeframes)**:
+   - Desteklenen zaman dilimleri: `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1d`.
+   - 15 dakikanın altındaki scalping / intraday incelemeleri için `1m`, `3m` ve `5m` mum verisi çekilir.
+   - Dinamik MTF uyarlaması: Kullanıcı 5m seçtiğinde MTF zinciri dinamik olarak `1h` (Rejim) $\rightarrow$ `15m` (Kurulum) $\rightarrow$ `5m` (Tetikleyici) şeklinde hesaplanır.
+
+---
+
+### 2.5. Analiz Ekranı Al/Sat Seviyeleri ve Seviye Bindirmeli Mum Grafiği
+1. **Hazır Al/Sat Seviyeleri (Trade Setup)**:
+   - Analiz sekmesinde kullanıcı "Analiz Et" butonuna bastığında sistem sinyale uygun otomatik işlem seviyelerini (Entry, SL, TP1, TP2, R:R) anında üretir.
+   - Seviyeler kullanıcıya görsel kartlar halinde gösterilir (Giriş, Stop-Loss ve Risk tutarı, Hedef 1 ve Hedef 2 kâr oranları, R:R oranı).
+   - "🚀 Bu Seviyelerle Akıllı Emir Ver" butonu ile değerler doğrudan Akıllı Paket Emir formuna aktarılır.
+2. **Seviye Bindirmeli Mum Grafiği (Chart with Level Overlays)**:
+   - Analiz ekranında tam genişlikte interaktif SVG mum grafiği gösterilir.
+   - Grafik üzerinde hesaplanan seviyeler yatay renkli kesikli çizgilerle (Mavi: Giriş, Kırmızı: Stop-Loss, Yeşil: TP1 & TP2, Sarı: Futures/Margin Likidasyon) görselleştirilir.
+
+
 
 ---
 
@@ -216,6 +241,7 @@ Proje; hesap doğrulama ve bakiye takibinden, canlı piyasa analizi ve gösterge
 | **2026-09-20 01:15:00** | **Kullanım Kılavuzu, Info Düğmeleri ve Ayarlar Paneli Kodlandı & Doğrulandı**: `view-guide` görünümü, 7 noktada bağlamsal `ℹ️` info butonu ve glass popover'lar, `view-settings` paneli, çoklu coin watchlist yönetimi ve SQLite kalıcılığı (`src/modules/settings.py`, 5 REST endpoint'i) kodlanıp 8 yeni test ile doğrulandı (toplam 137/137 test %100 yeşil, coverage %78). | **Onaylandı & Uygulandı (%100) ✅** |
 | **2026-09-20 01:30:00** | **Akıllı Paket Emir (Bracket Order) Kodlandı & Doğrulandı**: Analiz motoru seviye hesaplayıcısı (`get_trade_setup`: Entry, SL, TP1 %50, TP2 %50, R:R), `POST /orders/bracket` tek tıkla paket icra motoru ve UI formu 8 yeni test ile tamamlandı (toplam 145/145 test %100 yeşil). | **Onaylandı & Uygulandı (%100) ✅** |
 | **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11), Öneri Motoru (M3-C12) & İzleme Listesi Entegrasyonu Tamamlandı**: `amend_order` açık emir güncelleme, `RecommendationEngine` dinamik öneri sistemi ve Watchlist'in Analiz/Emir/Bracket formları ile tam iki yönlü etkileşimi (mini widget, datalist) 9 yeni birim test ile doğrulanarak tamamlandı (toplam 154/154 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 16:40:00** | **Sub-15m Zaman Dilimleri (1m/3m/5m), Çoklu Piyasa (Spot/Margin/Futures) & Seviyeli Mum Grafiği Tamamlandı**: 15m altı zaman dilimi desteği (`1m`, `3m`, `5m`), KuCoin Futures USDT-M swap mum ve fonlama/OI veri entegrasyonu, spot/marjin/vadeli çoklu analiz ve analiz ekranı seviye bindirmeli (Entry/SL/TP1/TP2/Liq) SVG mum grafiği 11 yeni test (`test_market_types.py`, `test_frontend.py`) ile doğrulanarak tamamlandı (toplam 165/165 test %100 yeşil, %80 coverage). | **Onaylandı & Tamamlandı (%100) ✅** |
 
 
 

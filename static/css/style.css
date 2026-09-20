@@ -185,3 +185,26 @@ body {
 .reco-card { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; font-size: 0.88rem; }
 .reco-card.warning { border-left: 3px solid var(--red); }
 .reco-card.success { border-left: 3px solid var(--green); }
+
+/* TRADE SETUP GRID & LEVEL OVERLAYS */
+.trade-setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.setup-tile { background: var(--bg-0); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.setup-tile .label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.setup-tile .val { font-size: 1.05rem; font-weight: bold; font-family: monospace; }
+.setup-tile .val.entry { color: var(--accent); }
+.setup-tile .val.sl { color: var(--red); }
+.setup-tile .val.tp { color: var(--green); }
+.setup-tile .val.liq { color: #ffab00; }
+.setup-tile .sub { font-size: 0.75rem; color: var(--text-dim); }
+
+/* SVG CHART LEVEL LINES */
+.chart-level-entry { stroke: #2979ff; stroke-width: 1.5; stroke-dasharray: 5,4; }
+.chart-level-sl { stroke: #ff5252; stroke-width: 1.5; stroke-dasharray: 4,4; }
+.chart-level-tp { stroke: #00e676; stroke-width: 1.5; stroke-dasharray: 5,4; }
+.chart-level-liq { stroke: #ffab00; stroke-width: 1.5; stroke-dasharray: 3,3; }
+.chart-level-text { font-size: 10px; font-family: monospace; font-weight: bold; }
+.chart-level-text.entry { fill: #2979ff; }
+.chart-level-text.sl { fill: #ff5252; }
+.chart-level-text.tp { fill: #00e676; }
+.chart-level-text.liq { fill: #ffab00; }
+

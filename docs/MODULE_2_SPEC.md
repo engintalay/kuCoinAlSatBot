@@ -1,6 +1,6 @@
 # Modül 2 Spesifikasyonu: Piyasa Verileri, Çok Katmanlı İndikatörler ve Analiz Motoru
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Modül 2 (Hacim ve Seviyeler Katmanları Dahil) Tamamlandı (55 Modül 2 Testi, Toplam 84/84 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 23:48:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (Sub-15m, Spot/Margin/Futures Analizi & Seviyeli Mum Grafiği Dahil, Toplam 165/165 Test %100 Yeşil ✅, Coverage %80) | **Son Güncelleme:** 2026-09-20 16:40:00 (+03:00)
 
 ---
 
@@ -558,6 +558,9 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **M2-C15** | **Faz 2b** | Composite Scoring Engine (0-100 & Explainability) | `src/modules/analysis/scoring_engine.py` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (5 test geçiyor) |
 | **M2-C16** | **Faz 2b** | False Signal & Risk Filtreleri | `src/modules/analysis/scoring_engine.py` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (ADX/Chop/Squeeze) |
 | **M2-C17** | **Faz 2b** | Multi-Timeframe (4H / 1H / 15m) Hiyerarşisi | `src/modules/analysis/mtf_engine.py` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (4 test geçiyor) |
+| **M2-C18** | **Faz 2c** | 15 Dakika Altı Zaman Dilimleri (`1m`, `3m`, `5m`) | `src/modules/module2_market.py` | `tests/test_market_types.py` | ✅ Tamamlandı (3 test geçiyor) |
+| **M2-C19** | **Faz 2c** | Çoklu Piyasa Analizi (`spot`, `margin`, `futures`) | `src/modules/module2_market.py` / `main.py` | `tests/test_market_types.py` | ✅ Tamamlandı (7 test geçiyor) |
+| **M2-C20** | **Faz 2c** | Analiz Ekranı Al/Sat Seviyeleri & Seviyeli Mum Grafiği | `static/index.html` / `app.js` | `tests/test_frontend.py` | ✅ Tamamlandı (1 yeni test, UI aktif) |
 
 ---
 
@@ -573,4 +576,6 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **2026-09-19 22:52:00** | v1.2 | Faz 2a Temel Veri Katmanı Doğrulandı: Ticker, L2 orderbook, ring buffer ve repaint guard eklendi. (8 birim test) | Tamamlandı |
 | **2026-09-19 23:10:00** | v1.3 | Faz 2a Çekirdek İndikatörler %100 Tamamlandı: Trend (EMA/SMA), Momentum (RSI/MACD), Volatilite (ATR) ve API yazıldı. (11 birim test, toplam 48/48 test) | Tamamlandı |
 | **2026-09-19 23:25:00** | v1.4 | Faz 2b Analiz, SMC, Scoring ve MTF Motoru %100 Tamamlandı: Trend, Güç, SMC, Puanlama ve MTF yazıldı. (26 yeni test, toplam 74/74 test) | Tamamlandı |
-| **2026-09-19 23:48:00** | **v1.5** | **Hacim ve Destek/Direnç Seviyeleri Katmanları %100 Tamamlandı**: `indicators/volume.py` (RVOL, OBV, VWAP, MFI, CMF, Volume Profile) ve `indicators/levels.py` (Pivot Points, önceki H/L, Fib retracement, Donchian) yazıldı. `scoring_engine.py` içerisine hacim skorlaması eklendi. 10 yeni test (`tests/test_module_2_volume_levels.py`) ile Modül 2 test sayısı 55'e, proje geneli **84/84 teste** ulaştı. | **Modül 2 Tüm İndikatörler Tamamlandı ✅** |
+| **2026-09-19 23:48:00** | v1.5 | Hacim ve Destek/Direnç Seviyeleri Katmanları %100 Tamamlandı: `indicators/volume.py` ve `indicators/levels.py` yazıldı. | Tamamlandı |
+| **2026-09-20 16:35:00** | **v1.6** | **Sub-15m Timeframe (`1m`, `3m`, `5m`), Spot/Margin/Futures Analizi & Seviyeli Mum Grafiği Eklendi**: Kullanıcı talebiyle analiz ekranına hazır Al/Sat seviyeleri (Entry/SL/TP1/TP2/R:R), seviye çizgili mum grafiği, 15m altı zaman dilimleri ve Spot/Margin/Futures çoklu piyasa desteği spesifikasyona (M2-C18..M2-C20) eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
+

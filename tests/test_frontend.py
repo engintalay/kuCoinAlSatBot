@@ -97,3 +97,17 @@ def test_symbol_datalist_integration(client):
     r = client.get("/")
     assert 'id="symbol-choices"' in r.text
     assert r.text.count('list="symbol-choices"') == 3  # analiz + emir + bracket
+
+
+def test_analysis_view_chart_and_levels(client):
+    """Analiz görünümünde piyasa türü seçici, grafik alanı, trade-setup seviyeleri ve sub-15m olmalı."""
+    r = client.get("/")
+    assert 'id="analysis-market-type"' in r.text
+    assert 'value="futures"' in r.text
+    assert 'value="margin"' in r.text
+    assert 'id="analysis-candle-chart"' in r.text
+    assert 'id="analysis-setup-content"' in r.text
+    assert 'id="analysis-to-bracket-btn"' in r.text
+    assert '<option value="1m">1m</option>' in r.text
+    assert '<option value="5m">5m</option>' in r.text
+

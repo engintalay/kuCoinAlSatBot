@@ -123,7 +123,33 @@ def _score_volume(volume: dict) -> tuple[float, float, list]:
     return bull, bear, reasons
 
 
-def _risk_filters(indicators: dict) -> list:
+def _score_derivatives(derivatives: dict | None) -> tuple[float, float, list]:
+    """Türev piyasa puanlaması (Katman 8: funding rate & open interest)."""
+    bull = bear = 0.0
+    reasons = []
+    if not derivatives or not derivatives.get("available"):
+        return bull, bear, reasons
+
+    fr = derivatives.get("funding_rate") or {}
+    st = fr.get("status")
+    val = fr.get("value")
+    if st == "OVERHEATED_SHORT":
+        bull += 10
+        reasons.append(f"Negatif fonlama ({val}): Short tarafı sıkışık, yukarı tepki potansiyeli")
+    elif st == "OVERHEATED_LONG":
+        bear += 10
+        reasons.append(f"Aşırı pozitif fonlama ({val}): Long tarafı kalabalık, long squeeze riski")
+    elif st == "NORMAL" and val is not None:
+        reasons.append(f"Fonlama oranı dengeli ({val})")
+
+    oi = derivatives.get("open_interest") or {}
+    if oi.get("amount") is not None:
+        reasons.append(f"Açık pozisyon hacmi: {oi['amount']:,.0f}")
+
+    return bull, bear, reasons
+
+
+def _risk_filters(indicators: dict, market_type: str = "spot") -> list:
     """Sahte sinyal / risk filtreleri (spec 3.3, 3.5). Uyarı listesi döndürür."""
     warnings = []
     strength = indicators.get("strength") or {}
@@ -140,10 +166,20 @@ def _risk_filters(indicators: dict) -> list:
     bk = vol.get("bollinger_keltner") or {}
     if bk.get("squeeze") == "SQUEEZE_ON":
         warnings.append("Bollinger/Keltner Squeeze aktif: Düşük volatilite, patlama beklentisi.")
+
+    # Piyasa türü özel risk uyarıları
+    if market_type == "futures":
+        deriv = indicators.get("derivatives") or {}
+        fr = deriv.get("funding_rate") or {}
+        if fr.get("status") in ("OVERHEATED_LONG", "OVERHEATED_SHORT"):
+            warnings.append(f"Vadeli Uyarı: Aşırı fonlama oranı ({fr.get('status')}) — ani tasfiye (liquidation cascade) riski.")
+    elif market_type == "margin":
+        warnings.append("Marjin Uyarısı: Kaldıraçlı borçlanma — teminat seviyesini ve faiz yükünü izleyin.")
+
     return warnings
 
 
-def compute_score(indicators: dict) -> dict:
+def compute_score(indicators: dict, market_type: str = "spot") -> dict:
     """
     Ağırlıklı boğa/ayı skoru ve sinyal durumu üretir.
 
@@ -161,14 +197,16 @@ def compute_score(indicators: dict) -> dict:
         _score_volume(indicators.get("volume")),
         _score_structure(indicators.get("structure")),
     ]
+    if market_type == "futures" or indicators.get("derivatives"):
+        layers.append(_score_derivatives(indicators.get("derivatives")))
+
     bull = sum(l[0] for l in layers)
     bear = sum(l[1] for l in layers)
     reasons = [r for l in layers for r in l[2]]
-    warnings = _risk_filters(indicators)
+    warnings = _risk_filters(indicators, market_type=market_type)
 
-    # Mevcut feature'ların maksimum toplam puanı (türev hariç): 80.
-    # trend 25 + momentum 15 + strength 5 + volume 20 + structure 20 (yaklaşık).
-    max_points = 80.0
+    # Mevcut feature'ların maksimum toplam puanı (türev dahil/hariç):
+    max_points = 90.0 if (market_type == "futures" or indicators.get("derivatives")) else 80.0
     bull_score = round(min(bull / max_points * 100, 100), 1)
     bear_score = round(min(bear / max_points * 100, 100), 1)
     net = round(bull_score - bear_score, 1)
@@ -195,6 +233,8 @@ def compute_score(indicators: dict) -> dict:
         "bear_score": bear_score,
         "net_score": net,
         "signal": signal,
+        "market_type": market_type,
         "reasons": reasons,
         "warnings": warnings,
     }
+

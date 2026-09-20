@@ -91,20 +91,63 @@
       <!-- Analiz görünümü -->
       <section id="view-analysis" class="view">
         <div class="toolbar">
-          <input id="analysis-symbol" class="input" value="BTC/USDT" list="symbol-choices" />
+          <input id="analysis-symbol" class="input" value="BTC/USDT" list="symbol-choices" placeholder="Sembol" />
+          <select id="analysis-market-type" class="input">
+            <option value="spot" selected>Spot Piyasa</option>
+            <option value="margin">Marjin (Kaldıraçlı)</option>
+            <option value="futures">Vadeli (Futures)</option>
+          </select>
           <select id="analysis-tf" class="input">
-            <option>15m</option><option selected>1h</option><option>4h</option><option>1d</option>
+            <option value="1m">1m</option>
+            <option value="3m">3m</option>
+            <option value="5m">5m</option>
+            <option value="15m">15m</option>
+            <option value="30m">30m</option>
+            <option value="1h" selected>1h</option>
+            <option value="4h">4h</option>
+            <option value="1d">1d</option>
+          </select>
+          <select id="analysis-side" class="input">
+            <option value="auto" selected>Oto Sinyal Yönü</option>
+            <option value="buy">LONG (Alış)</option>
+            <option value="sell">SHORT (Satış)</option>
           </select>
           <button id="analysis-run" class="btn btn-accent">Analiz Et</button>
         </div>
+
+        <!-- Analiz Fiyat Grafiği ve Seviye Bindirmeleri -->
+        <div class="card glass">
+          <div class="card-title">
+            📈 Fiyat Grafiği ve Seviye Görünümü
+            <span id="analysis-chart-tag" class="hint">BTC/USDT (1h - Spot)</span>
+          </div>
+          <div id="analysis-candle-chart" class="chart-wrap">Analiz yapıldığında grafik ve seviyeler burada görüntülenecektir.</div>
+        </div>
+
+        <!-- Hesaplanan Al / Sat Seviyeleri (Trade Setup) -->
+        <div class="card glass" id="analysis-setup-card">
+          <div class="card-title">
+            🎯 Hesaplanan Al / Sat Seviyeleri (Trade Setup)
+            <button class="info-btn" data-info="bracket">ℹ️</button>
+          </div>
+          <div id="analysis-setup-content" class="trade-setup-grid">
+            <div class="hint">Analiz butonuna basarak seviyeleri otomatik hesaplayın.</div>
+          </div>
+          <div class="toolbar" style="margin-top: 10px;">
+            <button id="analysis-to-bracket-btn" class="btn btn-buy" style="display:none;">🚀 Bu Seviyelerle Akıllı Paket Emir Oluştur</button>
+          </div>
+        </div>
+
         <div class="cards-row">
           <div class="card glass">
-            <div class="card-title">Sinyal <button class="info-btn" data-info="score">ℹ️</button></div>
+            <div class="card-title">Sinyal & Mod <button class="info-btn" data-info="score">ℹ️</button></div>
             <div id="analysis-signal" class="card-value">--</div>
+            <div id="analysis-market-badge" class="hint">Piyasa: Spot</div>
           </div>
           <div class="card glass">
             <div class="card-title">Boğa / Ayı Skoru <button class="info-btn" data-info="mtf">ℹ️</button></div>
             <div id="analysis-score" class="card-value">-- / --</div>
+            <div id="analysis-derivatives-info" class="hint"></div>
           </div>
         </div>
         <div class="card glass">
@@ -204,7 +247,14 @@
             <label>Varsayılan Sembol <input id="set-symbol" class="input" value="BTC/USDT" /></label>
             <label>Varsayılan Zaman Dilimi
               <select id="set-tf" class="input">
-                <option>15m</option><option selected>1h</option><option>4h</option><option>1d</option>
+                <option value="1m">1m</option>
+                <option value="3m">3m</option>
+                <option value="5m">5m</option>
+                <option value="15m">15m</option>
+                <option value="30m">30m</option>
+                <option value="1h" selected>1h</option>
+                <option value="4h">4h</option>
+                <option value="1d">1d</option>
               </select>
             </label>
             <label>Maks. Emir Tutarı (USDT) <input id="set-maxorder" class="input" type="number" value="1000" /></label>

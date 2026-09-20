@@ -43,8 +43,8 @@ ORDERBOOK_LIMIT = 20
 # Ring buffer başına tutulacak maksimum kapanmış mum sayısı (spec 2.2).
 RING_BUFFER_SIZE = 500
 
-# Desteklenen zaman dilimleri (spec 2.2).
-SUPPORTED_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
+# Desteklenen zaman dilimleri (spec 2.2 — 15m altı 1m/3m/5m dahil).
+SUPPORTED_TIMEFRAMES = ("1m", "3m", "5m", "15m", "30m", "1h", "4h", "1d")
 
 
 class KuCoinMarket:
@@ -76,12 +76,33 @@ class KuCoinMarket:
             self.connect()
         return self.exchange is not None
 
-    async def get_ticker(self, symbol: str) -> TickerResponse:
+    async def get_ticker(self, symbol: str, market_type: str = "spot") -> TickerResponse:
         """
-        Belirtilen sembolün anlık fiyat ve 24s verilerini getirir.
+        Belirtilen sembolün anlık fiyat ve 24s verilerini getirir (Spot, Margin, Futures).
         MODULE_2_SPEC 2.1.
         """
         try:
+            if market_type == "futures":
+                ft = await self.derivatives.get_futures_ticker(symbol)
+                if ft:
+                    return TickerResponse(
+                        success=True,
+                        data={
+                            "symbol": symbol,
+                            "market_type": "futures",
+                            "last_price": ft.get("last"),
+                            "high_24h": ft.get("high"),
+                            "low_24h": ft.get("low"),
+                            "volume_24h": ft.get("baseVolume"),
+                            "quote_volume_24h": ft.get("quoteVolume"),
+                            "change_percentage_24h": ft.get("percentage"),
+                            "best_bid": ft.get("bid"),
+                            "best_ask": ft.get("ask"),
+                        },
+                        error=None,
+                        timestamp=timestamp(),
+                    )
+
             if not self._ensure_exchange():
                 return TickerResponse(
                     success=False, data={},
@@ -94,6 +115,7 @@ class KuCoinMarket:
                 success=True,
                 data={
                     "symbol": symbol,
+                    "market_type": market_type,
                     "last_price": t.get("last"),
                     "high_24h": t.get("high"),
                     "low_24h": t.get("low"),
@@ -107,7 +129,7 @@ class KuCoinMarket:
                 timestamp=timestamp(),
             )
         except Exception as e:
-            logger.error(f"Ticker hatası ({symbol}): {e}")
+            logger.error(f"Ticker hatası ({symbol} {market_type}): {e}")
             return TickerResponse(
                 success=False, data={},
                 error=f"Ticker alınamadı: {e}",
@@ -174,7 +196,8 @@ class KuCoinMarket:
             )
 
     async def get_candles(
-        self, symbol: str, timeframe: str = "1h", limit: int = 200
+        self, symbol: str, timeframe: str = "1h", limit: int = 200,
+        market_type: str = "spot"
     ) -> CandlesResponse:
         """
         Geçmiş OHLCV mum verilerini getirir ve ring buffer'a yazar.
@@ -190,20 +213,33 @@ class KuCoinMarket:
                     timestamp=timestamp(),
                 )
 
-            if not self._ensure_exchange():
-                return CandlesResponse(
-                    success=False, data={},
-                    error="KuCoin API'ye bağlanılamadı",
-                    timestamp=timestamp(),
-                )
-
-            raw = await self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            if market_type == "futures":
+                raw = await self.derivatives.get_futures_ohlcv(symbol, timeframe, limit=limit)
+                if raw is None:
+                    # fallback to spot if futures public endpoint fails or connection unavailable
+                    if not self._ensure_exchange():
+                        return CandlesResponse(
+                            success=False, data={},
+                            error="KuCoin Futures ve Spot API'ye bağlanılamadı",
+                            timestamp=timestamp(),
+                        )
+                    raw = await self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            else:
+                if not self._ensure_exchange():
+                    return CandlesResponse(
+                        success=False, data={},
+                        error="KuCoin API'ye bağlanılamadı",
+                        timestamp=timestamp(),
+                    )
+                raw = await self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
 
             # Ring buffer'ı güncelle (kapanmış mumlar).
             key = (symbol, timeframe)
             buf = self._candle_buffers.setdefault(key, deque(maxlen=RING_BUFFER_SIZE))
             buf.clear()
             buf.extend(raw)
+            if market_type != "spot":
+                self._candle_buffers[(f"{symbol}:{market_type}", timeframe)] = buf
 
             candles = []
             last_index = len(raw) - 1
@@ -223,6 +259,7 @@ class KuCoinMarket:
                 success=True,
                 data={
                     "symbol": symbol,
+                    "market_type": market_type,
                     "timeframe": timeframe,
                     "count": len(candles),
                     "candles": candles,
@@ -231,7 +268,7 @@ class KuCoinMarket:
                 timestamp=timestamp(),
             )
         except Exception as e:
-            logger.error(f"Candle hatası ({symbol} {timeframe}): {e}")
+            logger.error(f"Candle hatası ({symbol} {timeframe} {market_type}): {e}")
             return CandlesResponse(
                 success=False, data={},
                 error=f"Mum verisi alınamadı: {e}",
@@ -389,12 +426,14 @@ class KuCoinMarket:
                 error=f"Yapı analizi yapılamadı: {e}", timestamp=timestamp(),
             )
 
-    async def _all_features(self, symbol: str, timeframe: str, limit: int) -> dict | None:
+    async def _all_features(
+        self, symbol: str, timeframe: str, limit: int, market_type: str = "spot"
+    ) -> dict | None:
         """
-        Tek çekimle tüm katman feature'larını (indikatör + structure) üretir.
+        Tek çekimle tüm katman feature'larını (indikatör + structure + türev) üretir.
         Yeterli kapanmış mum yoksa None döner.
         """
-        candles_resp = await self.get_candles(symbol, timeframe, limit)
+        candles_resp = await self.get_candles(symbol, timeframe, limit, market_type=market_type)
         if not candles_resp.success:
             return None
         confirmed = [c for c in candles_resp.data.get("candles", []) if c.get("confirmed")]
@@ -402,7 +441,7 @@ class KuCoinMarket:
             return None
 
         df = pd.DataFrame(confirmed)
-        return {
+        feats = {
             "confirmed_candles": len(confirmed),
             "trend": compute_trend(df),
             "momentum": compute_momentum(df),
@@ -412,27 +451,32 @@ class KuCoinMarket:
             "levels": compute_levels(df),
             "structure": compute_structure(df),
         }
+        if market_type == "futures":
+            feats["derivatives"] = await self.derivatives.get_derivatives(symbol)
+        return feats
 
     async def get_score(
-        self, symbol: str, timeframe: str = "1h", limit: int = 300
+        self, symbol: str, timeframe: str = "1h", limit: int = 300,
+        market_type: str = "spot"
     ) -> AnalysisSignalResponse:
         """
         Bileşik puanlama motoru: 0-100 boğa/ayı skoru, sinyal, gerekçe, uyarılar.
         MODULE_2_SPEC 4.2 & 4.3.
         """
         try:
-            features = await self._all_features(symbol, timeframe, limit)
+            features = await self._all_features(symbol, timeframe, limit, market_type=market_type)
             if features is None:
                 return AnalysisSignalResponse(
                     success=False, data={"data_quality": "UNAVAILABLE"},
                     error="Puanlama için yetersiz kapanmış mum verisi.",
                     timestamp=timestamp(),
                 )
-            score = compute_score(features)
+            score = compute_score(features, market_type=market_type)
             return AnalysisSignalResponse(
                 success=True,
                 data={
                     "symbol": symbol,
+                    "market_type": market_type,
                     "timeframe": timeframe,
                     "data_quality": "OK" if features["confirmed_candles"] >= 250 else "DEGRADED",
                     "score": score,
@@ -440,52 +484,61 @@ class KuCoinMarket:
                 error=None, timestamp=timestamp(),
             )
         except Exception as e:
-            logger.error(f"Puanlama hatası ({symbol} {timeframe}): {e}")
+            logger.error(f"Puanlama hatası ({symbol} {timeframe} {market_type}): {e}")
             return AnalysisSignalResponse(
                 success=False, data={"data_quality": "UNAVAILABLE"},
                 error=f"Puanlama yapılamadı: {e}", timestamp=timestamp(),
             )
 
-    async def get_mtf(self, symbol: str, limit: int = 300) -> AnalysisSignalResponse:
+    async def get_mtf(
+        self, symbol: str, limit: int = 300, base_timeframe: str = "15m",
+        market_type: str = "spot"
+    ) -> AnalysisSignalResponse:
         """
-        Multi-Timeframe analiz: 4H rejim → 1H setup → 15m trigger.
-        MODULE_2_SPEC 3.10.
+        Multi-Timeframe analiz:
+        Standart: 4H rejim → 1H setup → 15m trigger.
+        15m altı (1m/3m/5m): 1H rejim → 15m setup → alt tetikleyici (örn. 5m).
         """
         try:
-            scores = {}
-            for tf in ("4h", "1h", "15m"):
-                feats = await self._all_features(symbol, tf, limit)
-                scores[tf] = compute_score(feats) if feats else {"signal": "NEUTRAL"}
+            if base_timeframe in ("1m", "3m", "5m"):
+                chain = ("1h", "15m", base_timeframe)
+            else:
+                chain = ("4h", "1h", "15m")
 
-            decision = evaluate_mtf(scores["4h"], scores["1h"], scores["15m"])
+            scores = {}
+            for tf in chain:
+                feats = await self._all_features(symbol, tf, limit, market_type=market_type)
+                scores[tf] = compute_score(feats, market_type=market_type) if feats else {"signal": "NEUTRAL"}
+
+            decision = evaluate_mtf(scores[chain[0]], scores[chain[1]], scores[chain[2]])
             return AnalysisSignalResponse(
                 success=True,
                 data={
                     "symbol": symbol,
-                    "timeframes": {"4h": scores["4h"], "1h": scores["1h"], "15m": scores["15m"]},
+                    "market_type": market_type,
+                    "timeframe_chain": list(chain),
+                    "timeframes": {chain[0]: scores[chain[0]], chain[1]: scores[chain[1]], chain[2]: scores[chain[2]]},
                     "decision": decision,
                 },
                 error=None, timestamp=timestamp(),
             )
         except Exception as e:
-            logger.error(f"MTF analiz hatası ({symbol}): {e}")
+            logger.error(f"MTF analiz hatası ({symbol} {market_type}): {e}")
             return AnalysisSignalResponse(
                 success=False, data={},
                 error=f"MTF analizi yapılamadı: {e}", timestamp=timestamp(),
             )
 
     async def get_trade_setup(
-        self, symbol: str, timeframe: str = "1h", side: str = "buy", limit: int = 300
+        self, symbol: str, timeframe: str = "1h", side: str = "buy",
+        limit: int = 300, market_type: str = "spot", leverage: float = 5.0
     ) -> AnalysisSignalResponse:
         """
-        Analiz motorundan otomatik işlem seviyeleri üretir (Bracket Order için).
-        MODULE_3_SPEC 2.5: Entry, TP1, TP2, Stop-Loss, R:R.
-
-        Long (buy): stop = entry - 1.5*ATR, tp1 = entry + 1.5*risk, tp2 = entry + 3.0*risk.
-        Short (sell): yönler terslenir.
+        Analiz motorundan otomatik işlem seviyeleri üretir (Spot, Margin, Futures).
+        MODULE_3_SPEC 2.5: Entry, TP1, TP2, Stop-Loss, R:R ve likidasyon seviyesi.
         """
         try:
-            features = await self._all_features(symbol, timeframe, limit)
+            features = await self._all_features(symbol, timeframe, limit, market_type=market_type)
             if features is None:
                 return AnalysisSignalResponse(
                     success=False, data={"data_quality": "UNAVAILABLE"},
@@ -517,34 +570,55 @@ class KuCoinMarket:
                 tp1 = entry - 1.5 * risk
                 tp2 = entry - 3.0 * risk
 
+            setup_data = {
+                "entry_price": round(float(entry), 8),
+                "stop_loss_price": round(float(stop_loss), 8),
+                "tp1_price": round(float(tp1), 8),
+                "tp2_price": round(float(tp2), 8),
+                "atr": round(float(atr), 8),
+                "risk_per_unit": round(float(risk), 8),
+                "risk_reward_ratio": 3.0,
+            }
+
+            # Margin ve Futures için kaldıraç & likidasyon seviyesi
+            if market_type in ("futures", "margin"):
+                lev = max(1.0, float(leverage or 5.0))
+                liq_buffer = 0.9 / lev
+                if side == "buy":
+                    est_liq = entry * (1.0 - liq_buffer)
+                else:
+                    est_liq = entry * (1.0 + liq_buffer)
+                setup_data["leverage"] = lev
+                setup_data["est_liquidation_price"] = round(float(est_liq), 8)
+                setup_data["liquidation_distance_percent"] = round(abs(entry - est_liq) / entry * 100, 2)
+                if market_type == "futures" and "derivatives" in features:
+                    setup_data["derivatives"] = features["derivatives"]
+
             return AnalysisSignalResponse(
                 success=True,
                 data={
                     "symbol": symbol,
+                    "market_type": market_type,
                     "timeframe": timeframe,
                     "side": side,
-                    "trade_setup": {
-                        "entry_price": round(float(entry), 8),
-                        "stop_loss_price": round(float(stop_loss), 8),
-                        "tp1_price": round(float(tp1), 8),
-                        "tp2_price": round(float(tp2), 8),
-                        "atr": round(float(atr), 8),
-                        "risk_per_unit": round(float(risk), 8),
-                        "risk_reward_ratio": 3.0,
-                    },
+                    "trade_setup": setup_data,
                 },
                 error=None, timestamp=timestamp(),
             )
         except Exception as e:
-            logger.error(f"Trade setup hatası ({symbol} {timeframe}): {e}")
+            logger.error(f"Trade setup hatası ({symbol} {timeframe} {market_type}): {e}")
             return AnalysisSignalResponse(
                 success=False, data={},
                 error=f"İşlem seviyeleri hesaplanamadı: {e}", timestamp=timestamp(),
             )
 
-    def get_buffer(self, symbol: str, timeframe: str) -> list:
+    def get_buffer(self, symbol: str, timeframe: str, market_type: str = "spot") -> list:
         """Bellekteki ring buffer'ın kopyasını döndürür (analiz motoru için)."""
+        key = (f"{symbol}:{market_type}", timeframe)
+        if key in self._candle_buffers:
+            return list(self._candle_buffers[key])
         return list(self._candle_buffers.get((symbol, timeframe), []))
+
 
     async def close(self) -> None:
         """ccxt async exchange kaynaklarını serbest bırak."""

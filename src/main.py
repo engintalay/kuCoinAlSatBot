@@ -123,9 +123,9 @@ async def test_connection():
 # ============================================================================
 
 @app.get("/api/v1/market/ticker")
-async def get_market_ticker(symbol: str = "BTC/USDT"):
-    """Belirtilen sembolün anlık fiyat ve 24s verilerini getirir."""
-    result = await market.get_ticker(symbol)
+async def get_market_ticker(symbol: str = "BTC/USDT", market_type: str = "spot"):
+    """Belirtilen sembolün anlık fiyat ve 24s verilerini getirir (Spot, Margin, Futures)."""
+    result = await market.get_ticker(symbol, market_type=market_type)
     return result
 
 
@@ -138,10 +138,11 @@ async def get_market_orderbook(symbol: str = "BTC/USDT"):
 
 @app.get("/api/v1/market/candles")
 async def get_market_candles(
-    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 200
+    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 200,
+    market_type: str = "spot"
 ):
-    """Belirtilen zaman dilimindeki geçmiş OHLCV mum verilerini getirir."""
-    result = await market.get_candles(symbol, timeframe, limit)
+    """Belirtilen zaman dilimindeki geçmiş OHLCV mum verilerini getirir (Spot, Margin, Futures)."""
+    result = await market.get_candles(symbol, timeframe, limit, market_type=market_type)
     return result
 
 
@@ -180,33 +181,45 @@ async def get_market_structure(
 
 @app.get("/api/v1/market/analysis/score")
 async def get_market_score(
-    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 300
+    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 300,
+    market_type: str = "spot"
 ):
     """
     Bileşik puanlama: 0-100 boğa/ayı skoru, sinyal durumu, gerekçe ve risk uyarıları.
+    Spot, Margin ve Futures piyasa türleri desteklenir.
     """
-    result = await market.get_score(symbol, timeframe, limit)
+    result = await market.get_score(symbol, timeframe, limit, market_type=market_type)
     return result
 
 
 @app.get("/api/v1/market/analysis/mtf")
-async def get_market_mtf(symbol: str = "BTC/USDT", limit: int = 300):
+async def get_market_mtf(
+    symbol: str = "BTC/USDT", limit: int = 300, base_timeframe: str = "15m",
+    market_type: str = "spot"
+):
     """
-    Multi-Timeframe hiyerarşik analiz: 4H rejim → 1H setup → 15m tetikleyici.
+    Multi-Timeframe hiyerarşik analiz:
+    Standart: 4H rejim → 1H setup → 15m tetikleyici.
+    Sub-15m (1m/3m/5m): 1H rejim → 15m setup → alt tetikleyici.
     """
-    result = await market.get_mtf(symbol, limit)
+    result = await market.get_mtf(symbol, limit, base_timeframe=base_timeframe, market_type=market_type)
     return result
 
 
 @app.get("/api/v1/market/trade-setup")
 async def get_trade_setup(
-    symbol: str = "BTC/USDT", timeframe: str = "1h", side: str = "buy", limit: int = 300
+    symbol: str = "BTC/USDT", timeframe: str = "1h", side: str = "buy",
+    limit: int = 300, market_type: str = "spot", leverage: float = 5.0
 ):
     """
-    Analiz motorundan otomatik işlem seviyeleri (Entry/TP1/TP2/SL/R:R) — Bracket Order için.
+    Analiz motorundan otomatik işlem seviyeleri (Entry/TP1/TP2/SL/R:R, likidasyon).
+    Spot, Margin ve Futures piyasa türleri desteklenir.
     """
-    result = await market.get_trade_setup(symbol, timeframe, side, limit)
+    result = await market.get_trade_setup(
+        symbol, timeframe, side, limit, market_type=market_type, leverage=leverage
+    )
     return result
+
 
 
 # ============================================================================

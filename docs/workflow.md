@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Ayarlar + Bracket + Emir Düzenleme + Öneri Motoru + Watchlist entegrasyonu %100 ✅ — yalnızca Katman 9 (piyasa-geneli, harici API onayı) opsiyonel kaldı ⏳ (154/154 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 16:17:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Ayarlar + Bracket + Emir Düzenleme + Öneri Motoru + Watchlist + Sub-15m & Çoklu Piyasa (Spot/Margin/Futures) %100 ✅ (165/165 Test Geçiyor, %80 Coverage ✅) | **Son Güncelleme:** 2026-09-20 16:40:00 (+03:00)
 
 ---
 
@@ -17,14 +17,15 @@
 | Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) |
 | Modül 2 — Faz 2b (İleri SMC, Scoring & MTF) | ✅ **%100 Tamamlandı** (Supertrend, Ichimoku, Parabolic SAR, ADX, Aroon, Choppiness, Squeeze, SMC Swings/BOS/CHoCH/FVG/OB, 0-100 Puanlama Motoru, MTF Hiyerarşisi, 3 REST endpoint'i) |
 | Modül 2 — İleri Katmanlar (Hacim & Seviyeler) | ✅ **%100 Tamamlandı** (`indicators/volume.py`: RVOL, OBV, VWAP, MFI, CMF, Volume Profile; `indicators/levels.py`: Pivots, Fib, Donchian; Hacim Puanlaması) — 10 test |
-| Modül 2 — Faz 2c (Ek Osilatörler & Türev) | ✅ **%100 Tamamlandı** (StochRSI, CCI, Williams %R, ROC; `indicators/derivatives.py`: KuCoin Futures Funding Rate + Open Interest, `include_derivatives` flag) — 10 test |
-| Modül 2 — Kapsam Notu (Kalan) | ⚠️ Yalnızca **Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D)** kaldı; KuCoin'de yok, harici API (ör. CoinGecko) gerektirir — kullanıcı onayı ile eklenebilir. CVD/L-S Ratio da taker-akış verisi gerektirir. |
-| Modül 2 — Test Dağılımı | ✅ 65 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`, `phase2c: 10` |
-| Modül 3 (Emir Yönetimi & Simülasyon) | ✅ **%100 Tamamlandı** (Market/Limit emir, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k sanal USDT, mod geçişi, pre-trade risk; 6 REST endpoint'i) — 16 test |
+| Modül 2 — Faz 2c (Ek Osilatörler, Türev, Çoklu Piyasa, Sub-15m) | ✅ **%100 Tamamlandı** (StochRSI, CCI, Williams %R, ROC; KuCoin Futures USDT-M funding/OI, 1m/3m/5m timeframe, Spot/Margin/Futures analiz ve trade-setup) — 20 test |
+| Modül 2 — Kapsam Notu (Kalan) | ⚠️ Yalnızca **Katman 9 (Piyasa Geneli — BTC.D/Total3/Stablecoin.D)** kaldı; KuCoin'de yok, harici API (ör. CoinGecko) gerektirir — kullanıcı onayı ile eklenebilir. |
+| Modül 2 — Test Dağılımı | ✅ 75 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 10`, `phase2c: 10`, `market_types: 10` |
+| Modül 3 (Emir Yönetimi, Bracket & Öneriler) | ✅ **%100 Tamamlandı** (Market/Limit, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k, mod geçişi, pre-trade risk, Bracket orders, Amend, RecommendationEngine) — 31 test |
 | Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, sembol arama; 5 REST endpoint'i) — 6 test |
-| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli; `static/` mount) — 7 servis testi |
+| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli, Seviye bindirmeli Analiz grafiği; `static/` mount) — 11 servis testi |
 | Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **154/154 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Toplam Birim Test Durumu | ✅ **165/165 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %80 coverage) |
+
 
 
 ---
