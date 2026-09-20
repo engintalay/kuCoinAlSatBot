@@ -97,6 +97,37 @@ class TestOrderValidation:
         assert r.data["venue_symbol"] == "PEPE/USDT:USDT"
 
     @pytest.mark.asyncio
+    async def test_futures_margin_mode_sent_and_fallback_on_330005(self):
+        """
+        Futures emrinde marginMode gönderilmeli; 330005 (mod uyuşmazlığı)
+        alınırsa diğer modla otomatik yeniden denenmeli.
+        (KuCoin hata: 'order's margin mode does not match the selected one')
+        """
+        from unittest.mock import MagicMock, AsyncMock
+        o = _paper_orders()
+        o.mode = "live"
+        fake_fut = MagicMock()
+        fake_fut.markets = {"PEPE/USDT:USDT": {}}
+        fake_fut.load_markets = AsyncMock()
+        # 1. çağrı (cross) 330005 fırlatır, 2. çağrı (isolated) başarılı
+        fake_fut.create_order = AsyncMock(side_effect=[
+            Exception('kucoinfutures {"msg":"...does not match...","code":"330005"}'),
+            {"id": "F2", "status": "open"},
+        ])
+        o.futures_exchange = fake_fut
+        o.exchange = MagicMock()
+        r = await o.create_order("PEPE/USDT", "buy", "market", 1000000, None,
+                                 "futures", "cross")
+        assert r.success is True
+        assert fake_fut.create_order.call_count == 2
+        # ilk çağrı marginMode=cross, ikinci çağrı marginMode=isolated olmalı
+        first_params = fake_fut.create_order.call_args_list[0][0][5]
+        second_params = fake_fut.create_order.call_args_list[1][0][5]
+        assert first_params.get("marginMode") == "cross"
+        assert second_params.get("marginMode") == "isolated"
+        assert r.data["margin_mode"] == "isolated"
+
+    @pytest.mark.asyncio
     async def test_limit_requires_price(self):
         o = _paper_orders()
         r = await o.create_order("BTC/USDT", "buy", "limit", 0.001, None)

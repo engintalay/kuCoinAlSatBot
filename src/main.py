@@ -260,6 +260,8 @@ class OrderCreateRequest(BaseModel):
     amount: float = 0.001
     price: float | None = None  # limit için gerekli
     market_type: str = "spot"   # spot | margin | futures
+    margin_mode: str = "cross"  # futures: cross | isolated
+    leverage: float | None = None  # futures kaldıraç (opsiyonel)
 
 
 class SwitchModeRequest(BaseModel):
@@ -270,7 +272,8 @@ class SwitchModeRequest(BaseModel):
 async def create_order(req: OrderCreateRequest):
     """Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal). Spot/Margin/Futures."""
     result = await orders.create_order(
-        req.symbol, req.side, req.order_type, req.amount, req.price, req.market_type
+        req.symbol, req.side, req.order_type, req.amount, req.price, req.market_type,
+        req.margin_mode, req.leverage,
     )
     return result
 
@@ -284,6 +287,8 @@ class BracketOrderRequest(BaseModel):
     tp1_price: float
     tp2_price: float
     market_type: str = "spot"  # spot | margin | futures
+    margin_mode: str = "cross"  # futures: cross | isolated
+    leverage: float | None = None
 
 
 @app.post("/api/v1/orders/bracket")
@@ -292,7 +297,7 @@ async def create_bracket(req: BracketOrderRequest):
     result = await orders.create_bracket_order(
         req.symbol, req.side, req.usdt_amount,
         req.entry_price, req.stop_loss_price, req.tp1_price, req.tp2_price,
-        req.market_type,
+        req.market_type, req.margin_mode, req.leverage,
     )
     return result
 

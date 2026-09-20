@@ -155,7 +155,8 @@ class KuCoinOrders:
     # ------------------------------------------------------------------ #
     async def create_order(self, symbol: str, side: str, order_type: str,
                            amount: float, price: float | None = None,
-                           market_type: str = "spot") -> OrderCreateResponse:
+                           market_type: str = "spot",
+                           margin_mode: str = "cross", leverage: float | None = None) -> OrderCreateResponse:
         side = (side or "").lower()
         order_type = (order_type or "").lower()
         market_type = (market_type or "spot").lower()
@@ -166,7 +167,8 @@ class KuCoinOrders:
 
         if self.mode == "paper":
             return await self._create_paper_order(symbol, side, order_type, amount, price, market_type)
-        return await self._create_live_order(symbol, side, order_type, amount, price, market_type)
+        return await self._create_live_order(symbol, side, order_type, amount, price,
+                                             market_type, margin_mode, leverage)
 
     async def _create_paper_order(self, symbol, side, order_type, amount, price, market_type="spot"):
         """Paper trading emir motoru (M3-C07)."""
@@ -217,8 +219,14 @@ class KuCoinOrders:
         self.paper_open_orders[order_id] = record
         return OrderCreateResponse(success=True, data=record, error=None, timestamp=timestamp())
 
-    async def _create_live_order(self, symbol, side, order_type, amount, price, market_type="spot"):
-        """Gerçek KuCoin emri (M3-C02/C03). Spot, Margin (cross) ve Futures destekli."""
+    async def _create_live_order(self, symbol, side, order_type, amount, price,
+                                 market_type="spot", margin_mode="cross", leverage=None):
+        """Gerçek KuCoin emri (M3-C02/C03). Spot, Margin (cross) ve Futures destekli.
+
+        Futures'ta KuCoin, emrin margin modunun (cross/isolated) sembolün hesapta
+        ayarlı moduyla eşleşmesini ister (aksi halde 330005). marginMode gönderilir;
+        330005 alınırsa diğer modla bir kez daha denenir.
+        """
         try:
             venue = self._venue(market_type)
             if venue is None:
@@ -228,16 +236,32 @@ class KuCoinOrders:
 
             # Futures sembolünü BASE/QUOTE:SETTLE biçimine çevir (ör. PEPE/USDT -> PEPE/USDT:USDT)
             venue_symbol = await self._normalize_symbol(symbol, market_type)
-
-            # market_type'a göre ccxt parametreleri
-            params = {}
-            if market_type == "margin":
-                # KuCoin cross-margin spot emri
-                params["marginMode"] = "cross"
-            # futures için ayrı venue (kucoinfutures) zaten seçildi
-
             price_arg = price if order_type == "limit" else None
-            order = await venue.create_order(venue_symbol, order_type, side, amount, price_arg, params)
+
+            def _params(mm: str) -> dict:
+                p = {}
+                if market_type == "margin":
+                    p["marginMode"] = "cross"
+                elif market_type == "futures":
+                    p["marginMode"] = mm  # cross | isolated
+                    if leverage:
+                        p["leverage"] = leverage
+                return p
+
+            used_mode = margin_mode
+            try:
+                order = await venue.create_order(
+                    venue_symbol, order_type, side, amount, price_arg, _params(margin_mode))
+            except Exception as e:
+                # 330005: margin modu uyuşmazlığı → diğer modla bir kez daha dene
+                if market_type == "futures" and "330005" in str(e):
+                    alt = "isolated" if margin_mode == "cross" else "cross"
+                    logger.info(f"Futures margin modu uyuşmadı ({margin_mode}), {alt} deneniyor.")
+                    order = await venue.create_order(
+                        venue_symbol, order_type, side, amount, price_arg, _params(alt))
+                    used_mode = alt
+                else:
+                    raise
             return OrderCreateResponse(
                 success=True,
                 data={
@@ -245,6 +269,7 @@ class KuCoinOrders:
                     "type": order_type, "amount": amount, "price": price,
                     "status": order.get("status", "open"), "mode": "live",
                     "market_type": market_type, "venue_symbol": venue_symbol,
+                    "margin_mode": used_mode if market_type == "futures" else None,
                     "created_at": timestamp(),
                 },
                 error=None, timestamp=timestamp())
@@ -413,6 +438,7 @@ class KuCoinOrders:
         entry_price: float, stop_loss_price: float,
         tp1_price: float, tp2_price: float,
         market_type: str = "spot",
+        margin_mode: str = "cross", leverage: float | None = None,
     ) -> "OrderCreateResponse":
         """
         Tek pakette: Giriş emri + TP1 (%50) + TP2 (%50) + SL (%100).
@@ -448,7 +474,8 @@ class KuCoinOrders:
         exit_side = "sell" if side == "buy" else "buy"
 
         # Giriş emri (market)
-        entry_res = await self.create_order(symbol, side, "market", amount, None, market_type)
+        entry_res = await self.create_order(symbol, side, "market", amount, None, market_type,
+                                            margin_mode=margin_mode, leverage=leverage)
         if not entry_res.success:
             return OrderCreateResponse(success=False, data={},
                                        error=f"Giriş emri başarısız: {entry_res.error}",
@@ -461,7 +488,8 @@ class KuCoinOrders:
             ("tp2", tp2_price, amount * 0.5),
             ("sl", stop_loss_price, amount),
         ]:
-            leg = await self.create_order(symbol, exit_side, "limit", qty, price, market_type)
+            leg = await self.create_order(symbol, exit_side, "limit", qty, price, market_type,
+                                          margin_mode=margin_mode, leverage=leverage)
             if leg.success:
                 leg.data["bracket_leg"] = name
                 leg.data["bracket_id"] = bracket_id
