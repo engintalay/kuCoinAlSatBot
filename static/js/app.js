@@ -604,6 +604,17 @@ async function cancelOrder(id) {
   else toast("İptal başarısız", "error");
 }
 
+function updateModeBadge(mode) {
+  const badge = document.getElementById("mode-badge");
+  if (!badge) return;
+  const isLive = mode === "live";
+  badge.textContent = isLive ? "⚡ LIVE KUCOIN" : "🧪 SIMULATION";
+  badge.className = "mode-badge " + (isLive ? "live" : "sim");
+  badge.title = isLive
+    ? "Canlı KuCoin modu aktif (Gerçek bakiye & emirler). Tıkla: Simülasyon moduna geç"
+    : "Simülasyon (Paper) modu aktif ($10.000 sanal USDT). Tıkla: Canlı moda geç";
+}
+
 // ---- Ayarlar & Watchlist ----
 async function loadSettings() {
   const res = await apiGet("/settings");
@@ -614,6 +625,7 @@ async function loadSettings() {
   document.getElementById("set-tf").value = s.default_timeframe;
   document.getElementById("set-maxorder").value = (s.risk && s.risk.max_order_usdt) || 1000;
   renderWatchlist(s.watchlist || []);
+  if (s.default_mode) updateModeBadge(s.default_mode);
 }
 
 function renderWatchlist(list) {
@@ -629,15 +641,57 @@ function renderWatchlist(list) {
 }
 
 document.getElementById("settings-save").addEventListener("click", async () => {
+  const newMode = document.getElementById("set-mode").value;
   const body = {
-    default_mode: document.getElementById("set-mode").value,
+    default_mode: newMode,
     default_symbol: document.getElementById("set-symbol").value,
     default_timeframe: document.getElementById("set-tf").value,
     risk: { max_order_usdt: parseFloat(document.getElementById("set-maxorder").value) || 1000 },
   };
   const res = await apiSend("/settings", "POST", body);
-  toast(res.success ? "Ayarlar kaydedildi" : "Ayar kaydı başarısız", res.success ? "success" : "error");
+  if (res.success) {
+    // orders.mode'u da senkronize olarak geçir
+    await apiSend("/orders/switch-mode", "POST", { mode: newMode });
+    updateModeBadge(newMode);
+    const modeLabel = newMode === "live" ? "⚡ CANLI (LIVE KUCOIN)" : "🧪 SİMÜLASYON (SIMULATION)";
+    toast(`Ayarlar kaydedildi! Çalışma modu: ${modeLabel}`, "success");
+    loadSummary();
+    loadStatus();
+    loadOpenOrders();
+    loadDiagnostics();
+  } else {
+    toast("Ayar kaydı başarısız: " + (res.error || ""), "error");
+  }
 });
+
+// Başlıktaki #mode-badge rozetine tıklayarak doğrudan canlı/simülasyon geçişi
+const modeBadgeEl = document.getElementById("mode-badge");
+if (modeBadgeEl) {
+  modeBadgeEl.style.cursor = "pointer";
+  modeBadgeEl.addEventListener("click", async () => {
+    const isLive = modeBadgeEl.classList.contains("live");
+    const targetMode = isLive ? "paper" : "live";
+    const confirmMsg = isLive
+      ? "Simülasyon (Paper Trading) moduna geçmek istiyor musunuz?"
+      : "⚡ DİKKAT: CANLI (LIVE KUCOIN) moduna geçmek üzeresiniz!\nGerçek bakiye ve gerçek emirler kullanılacaktır. Onaylıyor musunuz?";
+    if (!confirm(confirmMsg)) return;
+
+    const res = await apiSend("/orders/switch-mode", "POST", { mode: targetMode });
+    if (res.success) {
+      updateModeBadge(targetMode);
+      const sel = document.getElementById("set-mode");
+      if (sel) sel.value = targetMode;
+      const label = targetMode === "live" ? "⚡ CANLI (LIVE KUCOIN)" : "🧪 SİMÜLASYON (SIMULATION)";
+      toast(`Çalışma modu değiştirildi: ${label}`, "success");
+      loadSummary();
+      loadStatus();
+      loadOpenOrders();
+      loadDiagnostics();
+    } else {
+      toast("Mod değiştirilemedi: " + (res.error || ""), "error");
+    }
+  });
+}
 
 document.getElementById("watch-add").addEventListener("click", async () => {
   const sym = document.getElementById("watch-symbol").value.trim();
@@ -1229,7 +1283,17 @@ if (btnCopyDiag) {
   });
 }
 
+async function loadMode() {
+  const res = await apiGet("/orders/mode");
+  if (res.success && res.data.mode) {
+    updateModeBadge(res.data.mode);
+    const sel = document.getElementById("set-mode");
+    if (sel) sel.value = res.data.mode;
+  }
+}
+
 // İlk yükleme
+loadMode();
 loadStatus();
 loadSummary();
 loadTicker();

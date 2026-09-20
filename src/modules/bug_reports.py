@@ -24,6 +24,19 @@ DEFAULT_BUG_1 = {
     "resolution_note": "Analiz ekranındaki koin seçimi, hem kullanıcının İzleme Listesi'ni (Watchlist) hem de KuCoin popüler koinlerini (ETH, SOL, XRP, DOGE, BNB, SUI, AVAX, PEPE vb.) gruplu olarak listeleyen gerçek bir açılır kutu (<select>) mimarisine kavuşturuldu. Ayrıca tek tıkla analiz başlatan hızlı koin çipleri ve özel koin girme desteği eklendi.",
 }
 
+DEFAULT_BUG_2 = {
+    "title": "Ayarlardan canlı (live) moda geçiş olmuyor",
+    "category": "settings",
+    "severity": "critical",
+    "status": "resolved",
+    "description": "Ayarlar sekmesinde 'Varsayılan Mod' olarak '⚡ LIVE KUCOIN' seçilip 'Kaydet' yapıldığında sistem canlı moda geçmiyordu; başlık çubuğundaki rozet '🧪 SIMULATION' kalmaya ve emir motoru modu paper olarak işlemeye devam ediyordu.",
+    "steps_to_reproduce": "1. Ayarlar sekmesine gidin.\n2. 'Varsayılan Mod' açılır kutusundan '⚡ LIVE KUCOIN' seçin.\n3. 'Kaydet' butonuna tıklayın.\n4. Başlıktaki rozetin ve emir motorunun değişmediğini görün.",
+    "expected_behavior": "Ayarlar'da 'LIVE' seçilip kaydedildiğinde; 1. Backend orders.mode 'live' olmalı, 2. SQLite veritabanında kalıcı olarak saklanmalı, 3. Başlık çubuğundaki mod rozeti derhal yeşil '⚡ LIVE KUCOIN' olmalı, 4. Başlıktaki rozete tıklandığında da kolayca mod geçişi yapılabilmelidir.",
+    "actual_behavior": "POST /settings endpoint'i yalnızca SQLite ayar tablosunu güncelliyor fakat emir motorunun (orders.switch_mode) çalışma modunu güncellemiyordu. Ayrıca startup_event kaydedilen modu yüklemiyor ve arayüzdeki başlık rozeti güncellenmiyordu.",
+    "system_info": f"Platform: {platform.system()} {platform.release()}, Python: {sys.version.split()[0]}, Modül: Ayarlar & Emir Motoru",
+    "resolution_note": "1. POST /settings endpoint'ine default_mode parametresi geldiğinde orders.switch_mode senkronizasyonu eklendi. 2. Uygulama açılışında (startup_event) kaydedilmiş default_mode otomatik yüklenerek emir motoruna uygulandı. 3. GET /orders/mode uç noktası eklendi. 4. Frontend'de ayar kaydı sonrası anında mod geçişi sağlandı ve başlık rozeti (#mode-badge) tıklanabilir interaktif hızlı geçiş düğmesine dönüştürüldü.",
+}
+
 
 class BugTracker:
     """Hata raporlama ve sorun takip yöneticisi."""
@@ -90,6 +103,35 @@ class BugTracker:
                     DEFAULT_BUG_1["actual_behavior"],
                     DEFAULT_BUG_1["system_info"],
                     DEFAULT_BUG_1["resolution_note"],
+                    now_str,
+                    now_str
+                ))
+                await db.commit()
+
+            # Hata #2 tohumlama kontrolü
+            cursor2 = await db.execute("SELECT COUNT(*) as cnt FROM bug_reports WHERE id = 2")
+            row2 = await cursor2.fetchone()
+            if row2 and row2["cnt"] == 0:
+                now_str = datetime.now(timezone.utc).isoformat()
+                await db.execute("""
+                    INSERT INTO bug_reports (
+                        id, title, category, severity, status, description,
+                        steps_to_reproduce, expected_behavior, actual_behavior,
+                        system_info, resolution_note, created_at, updated_at
+                    ) VALUES (
+                        2, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                """, (
+                    DEFAULT_BUG_2["title"],
+                    DEFAULT_BUG_2["category"],
+                    DEFAULT_BUG_2["severity"],
+                    DEFAULT_BUG_2["status"],
+                    DEFAULT_BUG_2["description"],
+                    DEFAULT_BUG_2["steps_to_reproduce"],
+                    DEFAULT_BUG_2["expected_behavior"],
+                    DEFAULT_BUG_2["actual_behavior"],
+                    DEFAULT_BUG_2["system_info"],
+                    DEFAULT_BUG_2["resolution_note"],
                     now_str,
                     now_str
                 ))

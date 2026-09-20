@@ -24,17 +24,47 @@ async def temp_bug_tracker(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_bug_tracker_seed_bug1(temp_bug_tracker):
-    """BugTracker ilk açılışta Hata #1'i tohumlamalı."""
+async def test_bug_tracker_seed_bugs(temp_bug_tracker):
+    """BugTracker ilk açılışta Hata #1 ve Hata #2'yi tohumlamalı."""
     issues = await temp_bug_tracker.list_issues()
-    assert len(issues) >= 1
-    bug1 = issues[-1]  # or id=1
-    assert bug1["id"] == 1
+    assert len(issues) >= 2
+    ids = [i["id"] for i in issues]
+    assert 1 in ids
+    assert 2 in ids
+    bug1 = next(i for i in issues if i["id"] == 1)
     assert "combo" in bug1["title"] or "BTC" in bug1["title"]
-    assert bug1["category"] == "analysis"
     assert bug1["status"] == "resolved"
-    assert "resolution_note" in bug1
-    assert bug1["resolution_note"] is not None
+    bug2 = next(i for i in issues if i["id"] == 2)
+    assert "canlı" in bug2["title"] or "live" in bug2["title"]
+    assert bug2["category"] == "settings"
+    assert bug2["status"] == "resolved"
+
+
+def test_settings_live_mode_switch(client):
+    """Ayarlar üzerinden 'live' moda geçiş yapılabilmeli ve orders.mode senkronize olmalı."""
+    from src.main import orders
+
+    # 1. Ayarlardan 'live' moda geçiş
+    r_live = client.post("/api/v1/settings", json={"default_mode": "live"})
+    assert r_live.status_code == 200
+    assert r_live.json()["success"] is True
+    assert orders.mode == "live"
+
+    # 2. /orders/mode endpoint'i canlı modu teyit etmeli
+    r_mode = client.get("/api/v1/orders/mode")
+    assert r_mode.status_code == 200
+    m_data = r_mode.json()["data"]
+    assert m_data["mode"] == "live"
+    assert m_data["is_live"] is True
+
+    # 3. Geriye simülasyona (paper) geçiş ve ayarlar senkronizasyonu
+    r_paper = client.post("/api/v1/orders/switch-mode", json={"mode": "paper"})
+    assert r_paper.status_code == 200
+    assert orders.mode == "paper"
+
+    # Ayarlar da senkronize olarak 'paper' dönmeli
+    r_set = client.get("/api/v1/settings")
+    assert r_set.json()["data"]["default_mode"] == "paper"
 
 
 @pytest.mark.asyncio

@@ -53,6 +53,16 @@ async def startup_event():
     MODULE_1_SPEC 3.3: REST bakiye çekimi sonrası WebSocket aboneliği.
     """
     await bug_tracker.init_db()
+    # Kaydedilmiş varsayılan modu yükle ve emir motoruna uygula
+    try:
+        s_data = await settings_mgr.get_settings()
+        saved_mode = s_data.get("data", {}).get("default_mode")
+        if saved_mode in ("paper", "live"):
+            await orders.switch_mode(saved_mode)
+            logger.info(f"💾 Kaydedilmiş mod yüklendi: {saved_mode}")
+    except Exception as e:
+        logger.error(f"Başlangıç mod yükleme hatası: {e}")
+
     if account.config.validate_credentials():
         # İlk REST bakiye çekimi (state'i hazırlar)
         await account.get_balances()
@@ -346,7 +356,25 @@ async def panic_stop():
 async def switch_mode(req: SwitchModeRequest):
     """Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar."""
     result = await orders.switch_mode(req.mode)
+    if result.success:
+        await settings_mgr.update_settings({"default_mode": req.mode})
     return result
+
+
+@app.get("/api/v1/orders/mode")
+async def get_order_mode():
+    """Mevcut emir motoru modunu (paper veya live) döner."""
+    return {
+        "success": True,
+        "data": {
+            "mode": orders.mode,
+            "bot_active": orders.bot_active,
+            "is_live": orders.mode == "live",
+            "has_credentials": account.config.validate_credentials()
+        },
+        "error": None,
+        "timestamp": timestamp()
+    }
 
 
 # ============================================================================
@@ -374,6 +402,8 @@ async def get_settings():
 async def update_settings(req: SettingsUpdateRequest):
     """Ayarları kaydeder ve SQLite'ta kalıcı kılar."""
     payload = {k: v for k, v in req.model_dump().items() if v is not None}
+    if "default_mode" in payload and payload["default_mode"] in ("paper", "live"):
+        await orders.switch_mode(payload["default_mode"])
     return await settings_mgr.update_settings(payload)
 
 
