@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Ayarlar + Bracket + Emir Düzenleme + Öneri Motoru + Watchlist + Çoklu Piyasa + Katman 9 (Piyasa Geneli) %100 ✅ — spec'teki tüm katmanlar tamamlandı (174/174 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-20 16:51:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Hata Raporlama (Issue Tracker) + Koin Combo Çözümü %100 ✅ (180/180 Test Geçiyor, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 17:35:00 (+03:00)
 
 ---
 
@@ -317,6 +317,8 @@ Her adım öncekinin tamamlanmasını bekler. **Modül 1** uygulama için temel 
 | **2026-09-20 16:45:00** | **Sade Dil Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme Motoru Tamamlandı**: Analiz ekranındaki teknik jargon sadeleştirildi; en üste sade durum, eylem tavsiyesi ve risk seviyesi kartı eklendi. Gerekçeler ve uyarılar her biri için "İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?" ve "Korunma Tavsiyesi" alanlarını içeren eğitici kartlarla donatıldı. Katman 9 (CoinGecko BTC.D/Total MCap/Stablecoin.D) tamamlandı (toplam 169/169 test %100 yeşil, %81 coverage). | **Eğitici Analiz Tamamlandı ✅** |
 | **2026-09-20 16:51:00** | **Katman 9 (Piyasa Geneli Rejim) Tamamlandı**: `src/modules/market_regime.py` (`MarketRegime`) — CoinGecko `/api/v3/global` ile BTC Dominance, Total Market Cap, Stablecoin Dominance; risk-on/risk-off ve altseason yorumu. `GET /market/regime` endpoint (asyncio.to_thread), Dashboard'a piyasa rejimi kartı + info düğmesi. 4 birim test (CoinGecko mock'lu) + 1 frontend test ile proje genelinde **174/174 test %100 yeşil**; gerçek veriyle doğrulandı (BTC.D %58.95, RISK_OFF). **MODULE_2_SPEC'teki 10 analiz katmanının tamamı artık kodlandı**. | **Katman 9 Tamamlandı — Analiz Motoru Tam ✅** |
 | **2026-09-20 17:15:00** | **Yan Yana 4-Sütunlu Eğitici Gerekçe Tablosu Tamamlandı**: Analiz ekranında listelenen gerekçeler "İndikatör & Sinyal", "Neden Oldu? (Koşul)", "İndikatör Neyi Gösterir?", "Neye Sebep Olur?" başlıklarıyla 4 sütunlu yan yana tablo düzenine kavuşturuldu; `why`, `shows`, `causes` anahtarları ile tam eşleşme sağlandı. (Toplam 174/174 test %100 yeşil, %81 coverage). | **Eğitici Tablo Düzeni Tamamlandı ✅** |
+| **2026-09-20 17:35:00** | **Hata Raporlama ve Sorun Takip Sistemi Devreye Alındı & Hata #1 Çözüldü**: Kullanıcı talebiyle bağımsız Hata Raporlama bölümü (`#view-issues`), SQLite kalıcı veri tablosu (`bug_reports`), REST API (`/issues`, `/system/diagnostics`) ve teşhis log konsolu kodlandı. Kullanıcının bildirdiği 1. Hata (Analiz ekranındaki koin combo'sunda yalnızca BTC olması) sisteme tohumlandı ve çözüldü: gerçek açılır kutu (`<select id="analysis-symbol-select">`), Watchlist + Popüler 20 KuCoin çifti optgroup'ları ve tek tıkla analiz yapan hızlı koin çipleri (`quick-chips`) eklendi. (6 yeni test, toplam 180/180 test %100 yeşil, %81 coverage). | **Hata Raporlama ve Koin Combo Tamamlandı ✅** |
+
 
 
 

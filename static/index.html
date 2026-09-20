@@ -40,6 +40,7 @@
       <a class="nav-item" data-view="orders">📋 Emirler</a>
       <a class="nav-item" data-view="guide">📖 Kullanım Kılavuzu</a>
       <a class="nav-item" data-view="settings">⚙️ Ayarlar</a>
+      <a class="nav-item" data-view="issues">🐛 Hata Raporlama</a>
     </nav>
 
     <!-- ANA İÇERİK -->
@@ -95,7 +96,8 @@
       <!-- Analiz görünümü -->
       <section id="view-analysis" class="view">
         <div class="toolbar">
-          <input id="analysis-symbol" class="input" value="BTC/USDT" list="symbol-choices" placeholder="Sembol" />
+          <select id="analysis-symbol-select" class="input symbol-dropdown" title="Koin Seçimi"></select>
+          <input id="analysis-symbol" class="input" value="BTC/USDT" list="symbol-choices" placeholder="Sembol" title="Sembol Adı veya Özel Koin" />
           <select id="analysis-market-type" class="input">
             <option value="spot" selected>Spot Piyasa</option>
             <option value="margin">Marjin (Kaldıraçlı)</option>
@@ -117,6 +119,10 @@
             <option value="sell">SHORT (Satış)</option>
           </select>
           <button id="analysis-run" class="btn btn-accent">Analiz Et</button>
+        </div>
+        <div class="quick-symbol-bar">
+          <span class="quick-label">⚡ Hızlı Seçim:</span>
+          <div id="analysis-quick-chips" class="quick-chips"></div>
         </div>
 
         <!-- 💡 Sade Piyasa Yorumu ve Eylem Tavsiyesi -->
@@ -308,6 +314,114 @@
             <button id="watch-add" class="btn btn-buy">Ekle</button>
           </div>
           <ul id="watchlist" class="reason-list"></ul>
+        </div>
+      </section>
+
+      <!-- Hata Raporlama görünümü -->
+      <section id="view-issues" class="view">
+        <div class="cards-row">
+          <div class="card glass">
+            <div class="card-title">Toplam Bildirim</div>
+            <div id="issues-total-count" class="card-value">--</div>
+          </div>
+          <div class="card glass">
+            <div class="card-title">Açık / İncelenen</div>
+            <div id="issues-open-count" class="card-value">--</div>
+          </div>
+          <div class="card glass">
+            <div class="card-title">Çözülen / Kapatılan</div>
+            <div id="issues-resolved-count" class="card-value">--</div>
+          </div>
+          <div class="card glass">
+            <div class="card-title">Sistem Sağlık Durumu</div>
+            <div id="issues-sys-status" class="card-value up">🟢 Normal</div>
+          </div>
+        </div>
+
+        <div class="issues-grid">
+          <!-- Sol Sütun: Yeni Hata Bildir Formu -->
+          <div class="card glass">
+            <div class="card-title-row">
+              <div class="card-title">📝 Yeni Hata veya Sorun Bildir <button class="info-btn" data-info="bug-report">ℹ️</button></div>
+            </div>
+            <form id="issue-form" class="issue-form">
+              <div class="form-group">
+                <label>Hata Başlığı *</label>
+                <input id="issue-title" class="input" placeholder="Örn: Analiz ekranında koin combo'su boş görünüyor" required />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Kategori</label>
+                  <select id="issue-category" class="input">
+                    <option value="analysis">📈 Analiz Ekranı</option>
+                    <option value="orders">📋 Emirler & Akıllı Paket</option>
+                    <option value="account">👛 Hesap & Bakiye</option>
+                    <option value="settings">⚙️ Ayarlar & Watchlist</option>
+                    <option value="chart">📊 Grafik & İndikatörler</option>
+                    <option value="api">🔌 API & Borsa Bağlantısı</option>
+                    <option value="general" selected>🛠️ Genel / Diğer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Önem Derecesi</label>
+                  <select id="issue-severity" class="input">
+                    <option value="critical">🔴 Kritik (İşlem Engelliyor)</option>
+                    <option value="high">🟠 Yüksek (Önemli Hata)</option>
+                    <option value="medium" selected>🟡 Orta (Standart)</option>
+                    <option value="low">🔵 Düşük (Kozmetik / Öneri)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Hata Açıklaması *</label>
+                <textarea id="issue-description" class="input textarea" rows="3" placeholder="Hatanın detayını ve ne olduğunu açıklayın..." required></textarea>
+              </div>
+              <div class="form-group">
+                <label>Tekrarlama Adımları (Steps to Reproduce)</label>
+                <textarea id="issue-steps" class="input textarea" rows="2" placeholder="1. Analiz sayfasına git&#10;2. Koin seçimine tıkla&#10;3. Hata meydana geldi"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Beklenen Davranış</label>
+                  <input id="issue-expected" class="input" placeholder="Ne olması gerekiyordu?" />
+                </div>
+                <div class="form-group">
+                  <label>Gerçekleşen Davranış</label>
+                  <input id="issue-actual" class="input" placeholder="Bunun yerine ne oldu?" />
+                </div>
+              </div>
+              <div class="form-group checkbox-group">
+                <label><input type="checkbox" id="issue-auto-env" checked /> Sistem ve tarayıcı bilgilerini rapora otomatik ekle</label>
+              </div>
+              <button type="submit" class="btn btn-accent" style="width: 100%;">🚀 Hata Raporunu Kaydet & İlet</button>
+            </form>
+          </div>
+
+          <!-- Sağ Sütun: Kayıtlı Hata Raporları Listesi -->
+          <div class="card glass">
+            <div class="card-title-row">
+              <div class="card-title">📑 Kayıtlı Hata Bildirimleri</div>
+              <div class="issue-filter-bar">
+                <button type="button" class="btn btn-sm btn-filter active" data-filter="all">Tümü</button>
+                <button type="button" class="btn btn-sm btn-filter" data-filter="open">Açık</button>
+                <button type="button" class="btn btn-sm btn-filter" data-filter="in_progress">İnceleniyor</button>
+                <button type="button" class="btn btn-sm btn-filter" data-filter="resolved">Çözüldü</button>
+              </div>
+            </div>
+            <div id="issues-list" class="issues-list">
+              Yükleniyor...
+            </div>
+          </div>
+        </div>
+
+        <!-- Sistem Teşhis Bilgileri & Canlı Log Alanı -->
+        <div class="card glass" style="margin-top: 1.25rem;">
+          <div class="card-title-row">
+            <div class="card-title">🖥️ Sistem Teşhis Bilgileri & Olay Konsolu</div>
+            <button id="btn-copy-diagnostics" class="btn btn-sm">📋 Bilgileri Kopyala</button>
+          </div>
+          <div id="diagnostics-summary" class="diagnostics-summary">Yükleniyor...</div>
+          <div id="diagnostics-log-box" class="diagnostics-log-box"></div>
         </div>
       </section>
     </main>

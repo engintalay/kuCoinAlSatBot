@@ -43,10 +43,19 @@ function toast(message, type = "success") {
   setFooterLog(message);
 }
 
+let systemLogs = [];
 function setFooterLog(msg) {
   document.getElementById("footer-log").textContent = msg;
+  const timeStr = new Date().toLocaleTimeString("tr-TR");
   document.getElementById("footer-updated").textContent =
-    "Son Güncelleme: " + new Date().toLocaleTimeString("tr-TR");
+    "Son Güncelleme: " + timeStr;
+  systemLogs.push(`[${timeStr}] ${msg}`);
+  if (systemLogs.length > 50) systemLogs.shift();
+  const logBox = document.getElementById("diagnostics-log-box");
+  if (logBox) {
+    logBox.textContent = systemLogs.join("\n");
+    logBox.scrollTop = logBox.scrollHeight;
+  }
 }
 
 // ---- Görünüm geçişleri ----
@@ -61,6 +70,7 @@ function switchView(view) {
   if (view === "orders") loadOpenOrders();
   if (view === "settings") loadSettings();
   if (view === "analysis") loadAnalysis();
+  if (view === "issues") { loadIssues(); loadDiagnostics(); }
 }
 
 document.querySelectorAll(".nav-item").forEach((item) => {
@@ -81,6 +91,7 @@ const INFO_TEXT = {
   orders: { t: "Emir Verme", d: "Market: anlık fiyattan. Limit: hedef fiyattan. Bakiyenizden fazla emir pre-trade risk kontrolüyle engellenir." },
   bracket: { t: "Akıllı Paket Emir", d: "Analiz motorunun ATR/seviye hesabından otomatik Giriş + TP1 (%50) + TP2 (%50) + Stop-Loss üretir. Sadece USDT tutarı girin, tek tıkla tüm paket iletilir." },
   regime: { t: "Piyasa Geneli Rejim", d: "BTC Dominance, toplam piyasa değeri ve stablecoin dominansından risk-on/risk-off ortamını ve altseason ipucunu üretir (CoinGecko verisi)." },
+  "bug-report": { t: "Hata & Sorun Bildirimi", d: "Sistemde karşılaştığınız hataları buradan doğrudan kaydedebilirsiniz. Bildirimler sistem teşhis günlüğüne işlenir ve çözümleriyle birlikte takip edilir." },
 };
 
 const popover = document.getElementById("info-popover");
@@ -684,13 +695,112 @@ document.getElementById("bracket-submit").addEventListener("click", async () => 
   }
 });
 
-// ---- Sembol girişlerini watchlist ile besleme (datalist) ----
+const POPULAR_SYMBOLS = [
+  "BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT",
+  "BNB/USDT", "ADA/USDT", "AVAX/USDT", "LINK/USDT", "SUI/USDT",
+  "PEPE/USDT", "NEAR/USDT", "LTC/USDT", "DOT/USDT", "TRX/USDT",
+  "APT/USDT", "INJ/USDT", "ARB/USDT", "OP/USDT", "TIA/USDT"
+];
+
+// ---- Sembol girişlerini watchlist + popüler koinler ile besleme ----
 async function populateSymbolChoices() {
   const res = await apiGet("/settings");
-  if (!res.success) return;
-  const list = res.data.watchlist || [];
+  const watchlist = (res.success && res.data.watchlist && res.data.watchlist.length > 0)
+    ? res.data.watchlist
+    : ["BTC/USDT", "ETH/USDT", "SOL/USDT"];
+
+  const allSymbols = Array.from(new Set([...watchlist, ...POPULAR_SYMBOLS]));
   const dl = document.getElementById("symbol-choices");
-  if (dl) dl.innerHTML = list.map((s) => `<option value="${s}"></option>`).join("");
+  if (dl) dl.innerHTML = allSymbols.map((s) => `<option value="${s}"></option>`).join("");
+
+  // Analiz dropdown combo'sunu doldur
+  const sel = document.getElementById("analysis-symbol-select");
+  const input = document.getElementById("analysis-symbol");
+  if (sel) {
+    let html = `<optgroup label="👁️ İzleme Listesi (Watchlist)">`;
+    watchlist.forEach((s) => {
+      html += `<option value="${s}">${s}</option>`;
+    });
+    html += `</optgroup><optgroup label="🔥 Popüler KuCoin Çiftleri">`;
+    POPULAR_SYMBOLS.filter((s) => !watchlist.includes(s)).forEach((s) => {
+      html += `<option value="${s}">${s}</option>`;
+    });
+    html += `</optgroup><option value="custom">➕ Diğer / Özel Sembol...</option>`;
+    sel.innerHTML = html;
+
+    const currentVal = (input && input.value) ? input.value.trim() : "BTC/USDT";
+    if (allSymbols.includes(currentVal)) {
+      sel.value = currentVal;
+    } else {
+      sel.value = "custom";
+    }
+  }
+
+  // Hızlı Koin Seçim Çiplerini oluştur
+  const chipsContainer = document.getElementById("analysis-quick-chips");
+  if (chipsContainer) {
+    const quickCoins = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT", "BNB/USDT", "SUI/USDT", "AVAX/USDT", "PEPE/USDT"];
+    const currentVal = (input && input.value) ? input.value.trim() : "BTC/USDT";
+    chipsContainer.innerHTML = quickCoins.map((sym) => {
+      const activeCls = sym === currentVal ? "active" : "";
+      const label = sym.replace("/USDT", "");
+      return `<button type="button" class="quick-chip ${activeCls}" data-sym="${sym}">${label}</button>`;
+    }).join("");
+
+    chipsContainer.querySelectorAll(".quick-chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetSym = btn.dataset.sym;
+        if (input) input.value = targetSym;
+        if (sel) sel.value = targetSym;
+        chipsContainer.querySelectorAll(".quick-chip").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        loadAnalysis();
+      });
+    });
+  }
+}
+
+// Analiz Sembol Dropdown & Input senkronizasyonu
+const analysisSelect = document.getElementById("analysis-symbol-select");
+const analysisInput = document.getElementById("analysis-symbol");
+
+if (analysisSelect && analysisInput) {
+  analysisSelect.addEventListener("change", () => {
+    if (analysisSelect.value === "custom") {
+      analysisInput.focus();
+      analysisInput.select();
+    } else {
+      analysisInput.value = analysisSelect.value;
+      const chips = document.querySelectorAll("#analysis-quick-chips .quick-chip");
+      chips.forEach((c) => {
+        if (c.dataset.sym === analysisSelect.value) c.classList.add("active");
+        else c.classList.remove("active");
+      });
+      loadAnalysis();
+    }
+  });
+
+  analysisInput.addEventListener("focus", () => {
+    analysisInput.select();
+  });
+
+  analysisInput.addEventListener("change", () => {
+    const val = analysisInput.value.trim().toUpperCase();
+    analysisInput.value = val;
+    if (analysisSelect) {
+      const options = Array.from(analysisSelect.options).map((o) => o.value);
+      if (options.includes(val)) {
+        analysisSelect.value = val;
+      } else {
+        analysisSelect.value = "custom";
+      }
+    }
+    const chips = document.querySelectorAll("#analysis-quick-chips .quick-chip");
+    chips.forEach((c) => {
+      if (c.dataset.sym === val) c.classList.add("active");
+      else c.classList.remove("active");
+    });
+  });
 }
 
 // ---- Mini Watchlist Widget + Öneri Kartları ----
@@ -861,6 +971,262 @@ function startPolling() {
 }
 function stopPolling() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// ============================================================================
+// Hata Raporlama ve Sorun Takibi (Issue Tracker)
+// ============================================================================
+let activeIssueFilter = "all";
+
+async function loadIssues(filter = activeIssueFilter) {
+  activeIssueFilter = filter;
+  const url = filter === "all" ? "/issues" : `/issues?status=${encodeURIComponent(filter)}`;
+  const res = await apiGet(url);
+  const container = document.getElementById("issues-list");
+  if (!container) return;
+
+  if (res.success) {
+    const totalEl = document.getElementById("issues-total-count");
+    const openEl = document.getElementById("issues-open-count");
+    const resEl = document.getElementById("issues-resolved-count");
+    if (totalEl) totalEl.textContent = res.total ?? res.data.length;
+    if (openEl) openEl.textContent = res.open_count ?? 0;
+    if (resEl) resEl.textContent = res.resolved_count ?? 0;
+
+    const list = res.data || [];
+    if (list.length === 0) {
+      container.innerHTML = `<div class="card-value" style="font-size:0.9rem; color:var(--text-muted); text-align:center; padding:1.5rem;">Bu filtreye uygun hata kaydı bulunamadı.</div>`;
+      return;
+    }
+
+    const catMap = {
+      analysis: "📈 Analiz Ekranı",
+      orders: "📋 Emirler & Akıllı Paket",
+      account: "👛 Hesap & Bakiye",
+      settings: "⚙️ Ayarlar & Watchlist",
+      chart: "📊 Grafik",
+      api: "🔌 API",
+      general: "🛠️ Genel"
+    };
+
+    const sevMap = {
+      critical: { t: "Kritik", cls: "severity-critical" },
+      high: { t: "Yüksek", cls: "severity-high" },
+      medium: { t: "Orta", cls: "severity-medium" },
+      low: { t: "Düşük", cls: "severity-low" }
+    };
+
+    const statusMap = {
+      open: { t: "Açık", cls: "status-open" },
+      in_progress: { t: "İnceleniyor", cls: "status-in_progress" },
+      resolved: { t: "Çözüldü", cls: "status-resolved" },
+      closed: { t: "Kapatıldı", cls: "status-closed" }
+    };
+
+    container.innerHTML = list.map((item) => {
+      const sev = sevMap[item.severity] || { t: item.severity, cls: "severity-medium" };
+      const stat = statusMap[item.status] || { t: item.status, cls: "status-open" };
+      const cat = catMap[item.category] || item.category;
+
+      return `
+        <div class="issue-card" data-id="${item.id}">
+          <div class="issue-header" data-toggle="${item.id}">
+            <div class="issue-title-wrap">
+              <span class="issue-id-badge">#${item.id}</span>
+              <span class="issue-title-text">${escapeHtml(item.title)}</span>
+            </div>
+            <div class="issue-badges">
+              <span class="badge-severity ${sev.cls}">${sev.t}</span>
+              <span class="badge-status ${stat.cls}">${stat.t}</span>
+              <span class="chevron" id="chevron-${item.id}">▼</span>
+            </div>
+          </div>
+          <div class="issue-details" id="details-${item.id}">
+            <div class="issue-field">
+              <span class="issue-field-label">Kategori</span>
+              <span>${cat}</span>
+            </div>
+            <div class="issue-field">
+              <span class="issue-field-label">Hata Açıklaması</span>
+              <span>${escapeHtml(item.description)}</span>
+            </div>
+            ${item.steps_to_reproduce ? `
+              <div class="issue-field">
+                <span class="issue-field-label">Tekrarlama Adımları</span>
+                <span style="white-space:pre-wrap;">${escapeHtml(item.steps_to_reproduce)}</span>
+              </div>` : ''}
+            ${item.expected_behavior ? `
+              <div class="issue-field">
+                <span class="issue-field-label">Beklenen Davranış</span>
+                <span>${escapeHtml(item.expected_behavior)}</span>
+              </div>` : ''}
+            ${item.actual_behavior ? `
+              <div class="issue-field">
+                <span class="issue-field-label">Gerçekleşen Davranış</span>
+                <span>${escapeHtml(item.actual_behavior)}</span>
+              </div>` : ''}
+            ${item.resolution_note ? `
+              <div class="issue-resolution-box">
+                <b>💡 Çözüm Açıklaması:</b><br/>${escapeHtml(item.resolution_note)}
+              </div>` : ''}
+            ${item.system_info ? `
+              <div class="issue-field">
+                <span class="issue-field-label">Sistem / Ortam</span>
+                <span style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(item.system_info)}</span>
+              </div>` : ''}
+            <div class="issue-actions">
+              ${item.status !== "resolved" ? `
+                <button type="button" class="btn btn-sm btn-buy btn-issue-action" data-action="resolved" data-id="${item.id}">✅ Çözüldü Olarak İşaretle</button>` : ''}
+              ${item.status === "open" ? `
+                <button type="button" class="btn btn-sm btn-accent btn-issue-action" data-action="in_progress" data-id="${item.id}">🔍 İnceleniyor Yap</button>` : ''}
+              ${item.status === "resolved" ? `
+                <button type="button" class="btn btn-sm btn-issue-action" data-action="open" data-id="${item.id}">🔄 Yeniden Aç</button>` : ''}
+              <button type="button" class="btn btn-sm btn-sell btn-issue-delete" data-id="${item.id}">🗑️ Sil</button>
+            </div>
+          </div>
+        </div>`;
+    }).join("");
+
+    // Akordeon aç/kapa
+    container.querySelectorAll(".issue-header").forEach((hdr) => {
+      hdr.addEventListener("click", () => {
+        const id = hdr.dataset.toggle;
+        const det = document.getElementById("details-" + id);
+        const chev = document.getElementById("chevron-" + id);
+        if (det) {
+          const isHidden = det.style.display === "none";
+          det.style.display = isHidden ? "flex" : "none";
+          if (chev) chev.textContent = isHidden ? "▲" : "▼";
+        }
+      });
+    });
+
+    // Durum güncelleme butonları
+    container.querySelectorAll(".btn-issue-action").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const nextStatus = btn.dataset.action;
+        let note = null;
+        if (nextStatus === "resolved") {
+          note = prompt("Çözüm açıklaması eklemek ister misiniz?", "Gerekli düzeltmeler yapıldı ve doğrulandı.");
+        }
+        const patchRes = await apiSend(`/issues/${id}`, "PATCH", { status: nextStatus, resolution_note: note });
+        if (patchRes.success) {
+          toast(`Hata #${id} durumu '${nextStatus}' olarak güncellendi.`, "success");
+          loadIssues();
+          loadDiagnostics();
+        } else {
+          toast("Güncelleme başarısız: " + (patchRes.error || ""), "error");
+        }
+      });
+    });
+
+    // Silme butonları
+    container.querySelectorAll(".btn-issue-delete").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        if (!confirm(`Hata #${id} kaydını silmek istediğinize emin misiniz?`)) return;
+        const delRes = await apiSend(`/issues/${id}`, "DELETE");
+        if (delRes.success) {
+          toast(`Hata #${id} silindi.`, "success");
+          loadIssues();
+          loadDiagnostics();
+        } else {
+          toast("Silme başarısız: " + (delRes.error || ""), "error");
+        }
+      });
+    });
+
+  } else {
+    container.innerHTML = `<div class="card-value" style="color:var(--danger)">Hatalar yüklenemedi: ${res.error || ""}</div>`;
+  }
+}
+
+// Filtre butonları
+document.querySelectorAll(".issue-filter-bar button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".issue-filter-bar button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    loadIssues(btn.dataset.filter);
+  });
+});
+
+// Yeni Hata Bildir Formu
+const issueForm = document.getElementById("issue-form");
+if (issueForm) {
+  issueForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("issue-title").value.trim();
+    const category = document.getElementById("issue-category").value;
+    const severity = document.getElementById("issue-severity").value;
+    const description = document.getElementById("issue-description").value.trim();
+    const steps = document.getElementById("issue-steps").value.trim() || null;
+    const expected = document.getElementById("issue-expected").value.trim() || null;
+    const actual = document.getElementById("issue-actual").value.trim() || null;
+    const autoEnv = document.getElementById("issue-auto-env").checked;
+
+    let sysInfo = null;
+    if (autoEnv) {
+      const modeText = document.getElementById("mode-badge") ? document.getElementById("mode-badge").textContent.trim() : "sim";
+      sysInfo = `Tarayıcı: ${navigator.userAgent.slice(0, 80)}... | Ekran: ${window.innerWidth}x${window.innerHeight} | Mod: ${modeText}`;
+    }
+
+    const payload = {
+      title,
+      category,
+      severity,
+      description,
+      steps_to_reproduce: steps,
+      expected_behavior: expected,
+      actual_behavior: actual,
+      system_info: sysInfo
+    };
+
+    const res = await apiSend("/issues", "POST", payload);
+    if (res.success) {
+      toast(`Hata #${res.data.id} kaydedildi! Teşekkürler.`, "success");
+      issueForm.reset();
+      document.getElementById("issue-auto-env").checked = true;
+      loadIssues();
+      loadDiagnostics();
+    } else {
+      toast("Hata kaydedilemedi: " + (res.error || ""), "error");
+    }
+  });
+}
+
+// Sistem Teşhis & Canlı Log
+async function loadDiagnostics() {
+  const diagRes = await apiGet("/system/diagnostics");
+  const summaryEl = document.getElementById("diagnostics-summary");
+  if (diagRes.success && summaryEl) {
+    const d = diagRes.data;
+    summaryEl.innerHTML = `
+      <div class="diag-item"><div class="diag-label">İşletim Sistemi / Platform</div><div class="diag-val">${escapeHtml(d.platform || "--")}</div></div>
+      <div class="diag-item"><div class="diag-label">Python Sürümü</div><div class="diag-val">${escapeHtml(d.python_version || "--")}</div></div>
+      <div class="diag-item"><div class="diag-label">İşlem Modu</div><div class="diag-val">${d.orders_mode === "live" ? "⚡ LIVE" : "🧪 SIMULATION"}</div></div>
+      <div class="diag-item"><div class="diag-label">Borsa Bağlantısı</div><div class="diag-val">${d.exchange_connected ? "🟢 Bağlı" : "🟡 Simülasyon / Test"}</div></div>
+      <div class="diag-item"><div class="diag-label">İzleme Listesi (Watchlist)</div><div class="diag-val">${d.watchlist_count ?? 0} Adet Koin</div></div>
+      <div class="diag-item"><div class="diag-label">Toplam Bildirim / Açık</div><div class="diag-val">${d.total_issues} / ${d.open_issues}</div></div>
+    `;
+  }
+}
+
+// Teşhis bilgilerini panoya kopyalama
+const btnCopyDiag = document.getElementById("btn-copy-diagnostics");
+if (btnCopyDiag) {
+  btnCopyDiag.addEventListener("click", async () => {
+    const diagRes = await apiGet("/system/diagnostics");
+    const info = {
+      diagnostics: diagRes.data,
+      recent_logs: systemLogs,
+      client_timestamp: new Date().toISOString()
+    };
+    navigator.clipboard.writeText(JSON.stringify(info, null, 2));
+    toast("Teşhis ve log bilgileri panoya kopyalandı.", "success");
+  });
 }
 
 // İlk yükleme

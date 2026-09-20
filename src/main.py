@@ -15,6 +15,8 @@ from src.modules.module3_orders import KuCoinOrders
 from src.modules.settings import SettingsManager
 from src.modules.recommendations import RecommendationEngine
 from src.modules.market_regime import MarketRegime
+from src.modules.bug_reports import BugTracker
+from src.models.issues import IssueCreate, IssueUpdate
 from src.config import Config
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
@@ -41,6 +43,7 @@ orders = KuCoinOrders(market=market)
 settings_mgr = SettingsManager(market=market)
 recommender = RecommendationEngine(orders=orders, market=market)
 market_regime = MarketRegime()
+bug_tracker = BugTracker()
 
 
 @app.on_event("startup")
@@ -49,6 +52,7 @@ async def startup_event():
     Uygulama açılırken canlı bakiye WebSocket akışını başlat.
     MODULE_1_SPEC 3.3: REST bakiye çekimi sonrası WebSocket aboneliği.
     """
+    await bug_tracker.init_db()
     if account.config.validate_credentials():
         # İlk REST bakiye çekimi (state'i hazırlar)
         await account.get_balances()
@@ -389,6 +393,109 @@ async def add_watchlist(req: WatchlistItemRequest):
 async def remove_watchlist(symbol: str):
     """İzleme listesinden sembol çıkarır."""
     return await settings_mgr.remove_from_watchlist(symbol)
+
+
+# ============================================================================
+# Hata Raporlama & Sorun Takibi (Issue Tracker)
+# ============================================================================
+@app.get("/api/v1/issues")
+async def list_issues(status: str | None = None, category: str | None = None):
+    """Kayıtlı hata bildirimlerini listeler."""
+    try:
+        issues = await bug_tracker.list_issues(status=status, category=category)
+        open_count = sum(1 for i in issues if i["status"] in ("open", "in_progress"))
+        resolved_count = sum(1 for i in issues if i["status"] in ("resolved", "closed"))
+        return {
+            "success": True,
+            "data": issues,
+            "total": len(issues),
+            "open_count": open_count,
+            "resolved_count": resolved_count,
+            "error": None,
+            "timestamp": timestamp(),
+        }
+    except Exception as e:
+        logger.error(f"Hata listeleme başarısız: {e}")
+        return {"success": False, "data": [], "total": 0, "open_count": 0, "resolved_count": 0, "error": str(e), "timestamp": timestamp()}
+
+
+@app.post("/api/v1/issues")
+async def create_issue(req: IssueCreate):
+    """Yeni bir hata bildirimi kaydeder."""
+    try:
+        issue = await bug_tracker.create_issue(
+            title=req.title,
+            category=req.category,
+            severity=req.severity,
+            description=req.description,
+            steps_to_reproduce=req.steps_to_reproduce,
+            expected_behavior=req.expected_behavior,
+            actual_behavior=req.actual_behavior,
+            system_info=req.system_info,
+        )
+        return {"success": True, "data": issue, "error": None, "timestamp": timestamp()}
+    except Exception as e:
+        logger.error(f"Hata kaydı oluşturma başarısız: {e}")
+        return {"success": False, "data": None, "error": str(e), "timestamp": timestamp()}
+
+
+@app.get("/api/v1/issues/{issue_id}")
+async def get_issue(issue_id: int):
+    """Belirli bir hata bildiriminin detayını getirir."""
+    try:
+        issue = await bug_tracker.get_issue(issue_id)
+        if not issue:
+            return {"success": False, "data": None, "error": f"Hata #{issue_id} bulunamadı", "timestamp": timestamp()}
+        return {"success": True, "data": issue, "error": None, "timestamp": timestamp()}
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e), "timestamp": timestamp()}
+
+
+@app.patch("/api/v1/issues/{issue_id}")
+async def update_issue(issue_id: int, req: IssueUpdate):
+    """Hata durumunu veya çözüm notunu günceller."""
+    try:
+        updated = await bug_tracker.update_issue(
+            issue_id=issue_id,
+            status=req.status,
+            resolution_note=req.resolution_note,
+            severity=req.severity,
+            title=req.title,
+            description=req.description,
+        )
+        if not updated:
+            return {"success": False, "data": None, "error": f"Hata #{issue_id} bulunamadı", "timestamp": timestamp()}
+        return {"success": True, "data": updated, "error": None, "timestamp": timestamp()}
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e), "timestamp": timestamp()}
+
+
+@app.delete("/api/v1/issues/{issue_id}")
+async def delete_issue(issue_id: int):
+    """Hata kaydını siler."""
+    try:
+        deleted = await bug_tracker.delete_issue(issue_id)
+        if not deleted:
+            return {"success": False, "error": f"Hata #{issue_id} bulunamadı", "timestamp": timestamp()}
+        return {"success": True, "data": {"deleted_id": issue_id}, "error": None, "timestamp": timestamp()}
+    except Exception as e:
+        return {"success": False, "error": str(e), "timestamp": timestamp()}
+
+
+@app.get("/api/v1/system/diagnostics")
+async def get_diagnostics():
+    """Sistem teşhis ve durum bilgilerini getirir."""
+    try:
+        diag = await bug_tracker.get_diagnostics()
+        diag["orders_mode"] = orders.mode
+        diag["bot_active"] = orders.bot_active
+        diag["exchange_connected"] = bool(account.is_connected)
+        settings_res = await settings_mgr.get_settings()
+        watchlist = settings_res.get("data", {}).get("watchlist", []) if isinstance(settings_res, dict) else []
+        diag["watchlist_count"] = len(watchlist)
+        return {"success": True, "data": diag, "error": None, "timestamp": timestamp()}
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e), "timestamp": timestamp()}
 
 
 # ============================================================================

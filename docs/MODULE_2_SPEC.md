@@ -1,6 +1,6 @@
 # Modül 2 Spesifikasyonu: Piyasa Verileri, Çok Katmanlı İndikatörler ve Analiz Motoru
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (10 Analiz Katmanının Tamamı, Sub-15m, Spot/Margin/Futures Analizi, Eğitici Tablo & Seviyeli Grafik Dahil, Toplam 174/174 Test %100 Yeşil ✅, Coverage %81) | **Son Güncelleme:** 2026-09-20 17:15:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (10 Analiz Katmanının Tamamı, Sub-15m, Spot/Margin/Futures Analizi, Eğitici Tablo & Seviyeli Grafik Dahil, Toplam 180/180 Test %100 Yeşil ✅, Coverage %81) | **Son Güncelleme:** 2026-09-20 17:35:00 (+03:00)
 
 ---
 
@@ -563,6 +563,7 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **M2-C20** | **Faz 2c** | Analiz Ekranı Al/Sat Seviyeleri & Seviyeli Mum Grafiği | `static/index.html` / `app.js` | `tests/test_frontend.py` | ✅ Tamamlandı (1 yeni test, UI aktif) |
 | **M2-C21** | **Faz 2c** | Sade Dil Piyasa Özeti & Yan Yana 4-Boyutlu Eğitici Gerekçe Tablosu (İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur) | `src/modules/analysis/scoring_engine.py` / `static/` | `tests/test_module_2_analysis.py` | ✅ Tamamlandı (Tablo/Row UI aktif, 174/174 test %100 yeşil) |
 | **M2-C22** | **Faz 2c** | Katman 9: Piyasa Geneli Rejim Göstergeleri (BTC.D, Total MCap, Stablecoin.D - CoinGecko) | `src/modules/market_regime.py` / `main.py` | `tests/test_market_types.py` | ✅ Tamamlandı (2 test geçiyor, dashboard widget aktif) |
+| **M2-C23** | **Faz 2c** | Zenginleştirilmiş Koin Seçici (Gerçek Combo Dropdown `<select>`, Watchlist + 20 Popüler KuCoin Paritesi & Hızlı Çipler) | `static/index.html` / `app.js` | `tests/test_bug_reports.py` | ✅ Tamamlandı (6 test geçiyor, Hata #1 çözüldü) |
 
 ---
 
@@ -581,7 +582,9 @@ Bu bölüm, **Coding AI** tarafından kodlama aşamasında eksiksiz takip edilec
 | **2026-09-19 23:48:00** | v1.5 | Hacim ve Destek/Direnç Seviyeleri Katmanları %100 Tamamlandı: `indicators/volume.py` ve `indicators/levels.py` yazıldı. | Tamamlandı |
 | **2026-09-20 16:35:00** | v1.6 | Sub-15m Timeframe (`1m`, `3m`, `5m`), Spot/Margin/Futures Analizi & Seviyeli Mum Grafiği Eklendi. | Onaylandı & Genişletildi (%100) ✅ |
 | **2026-09-20 16:45:00** | v1.7 | Sade Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme & Risk Motoru eklendi. | Onaylandı & Genişletildi (%100) ✅ |
-| **2026-09-20 17:15:00** | **v1.8** | **Yan Yana Eğitici Gerekçe Tablosu & Katman 9 (Piyasa Rejimi) %100 Tamamlandı**: Gerekçeler "İndikatör & Sinyal", "Neden Oldu? (Koşul)", "İndikatör Neyi Gösterir?", "Neye Sebep Olur?" başlıklarıyla 4 sütunlu yan yana tablo düzenine kavuşturuldu; `why`, `shows`, `causes` tam eşleşmesi sağlandı; Katman 9 CoinGecko BTC.D/Total MCap/Stablecoin.D motoru ve dashboard widget'ı devreye alındı. (Toplam 174 test %100 yeşil, coverage %81). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 17:15:00** | v1.8 | Yan Yana Eğitici Gerekçe Tablosu & Katman 9 (Piyasa Rejimi) %100 Tamamlandı. | Onaylandı & Tamamlandı (%100) ✅ |
+| **2026-09-20 17:35:00** | **v1.9** | **Analiz Ekranı Koin Seçici Zenginleştirildi & Hata #1 Çözüldü**: Analiz ekranındaki koin seçimi tekil ve kısıtlayıcı datalist yerine gerçek açılır kutu (`<select id="analysis-symbol-select">`), İzleme Listesi + 20 popüler KuCoin çifti optgroup'ları ve tek tıkla analiz başlatan hızlı koin çipleri (`quick-chips`) ile donatıldı; serbest özel koin girişi korundu (toplam 180 test %100 yeşil, coverage %81). | **Onaylandı & Tamamlandı (%100) ✅** |
+
 
 
 
