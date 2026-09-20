@@ -106,6 +106,21 @@ def test_market_regime_widget(client):
     assert 'data-info="regime"' in r.text
 
 
+def test_api_helpers_are_resilient(client):
+    """
+    Hata #9 regresyon testi: apiGet/apiSend fetch veya JSON hatasında
+    throw etmemeli, envelope {success:false} döndürmeli; böylece tek bir
+    başarısız çağrı tüm dashboard'ı 'Yükleniyor'da kilitlemez.
+    """
+    js = client.get("/static/js/app.js").text
+    # apiGet ve apiSend try/catch ile sarılı olmalı ve hata envelope'u döndürmeli
+    assert js.count("success: false, data: {}, error:") >= 2
+    # refreshDashboard widget'ları izole (allSettled) çalıştırmalı
+    assert "Promise.allSettled" in js
+    # mini-watchlist başarısızlıkta açık mesaj göstermeli (Yükleniyor'da kalmamalı)
+    assert "İzleme listesi yüklenemedi" in js
+
+
 def test_analysis_view_chart_and_levels(client):
     """Analiz görünümünde piyasa türü seçici, grafik alanı, trade-setup seviyeleri ve sub-15m olmalı."""
     r = client.get("/")

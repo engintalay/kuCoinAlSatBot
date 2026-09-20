@@ -6,16 +6,34 @@ let activeSymbol = "BTC/USDT";
 
 // ---- Yardımcılar ----
 async function apiGet(path) {
-  const r = await fetch(API + path);
-  return r.json();
+  try {
+    const r = await fetch(API + path);
+    if (!r.ok) {
+      let msg = `HTTP ${r.status}`;
+      try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (_) {}
+      return { success: false, data: {}, error: msg, timestamp: Date.now() };
+    }
+    return await r.json();
+  } catch (e) {
+    return { success: false, data: {}, error: String(e && e.message || e), timestamp: Date.now() };
+  }
 }
 async function apiSend(path, method, body) {
-  const r = await fetch(API + path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return r.json();
+  try {
+    const r = await fetch(API + path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!r.ok) {
+      let msg = `HTTP ${r.status}`;
+      try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (_) {}
+      return { success: false, data: {}, error: msg, timestamp: Date.now() };
+    }
+    return await r.json();
+  } catch (e) {
+    return { success: false, data: {}, error: String(e && e.message || e), timestamp: Date.now() };
+  }
 }
 
 function fmtUsdt(v) {
@@ -860,9 +878,11 @@ if (analysisSelect && analysisInput) {
 // ---- Mini Watchlist Widget + Öneri Kartları ----
 async function loadMiniWatchlist() {
   const box = document.getElementById("mini-watchlist");
+  if (!box) return;
   const setRes = await apiGet("/settings");
-  if (!setRes.success) return;
+  if (!setRes.success) { box.textContent = "İzleme listesi yüklenemedi: " + (setRes.error || ""); return; }
   const list = setRes.data.watchlist || [];
+  if (!list.length) { box.textContent = "İzleme listesi boş."; return; }
   const cells = await Promise.all(list.map(async (sym) => {
     const t = await apiGet("/market/ticker?symbol=" + encodeURIComponent(sym));
     if (!t.success) return `<div class="mini-coin"><span>${sym}</span><span>--</span></div>`;
@@ -1011,12 +1031,15 @@ function connectWebSocket() {
 // ---- Başlangıç + periyodik yenileme (WS yoksa fallback) ----
 let pollTimer = null;
 async function refreshDashboard() {
-  await loadStatus();
-  await loadSummary();
-  await loadTicker(activeSymbol);
-  await loadMiniWatchlist();
-  await loadMarketRegime();
-  await loadRecommendations();
+  // Her widget bağımsız yüklenir; biri başarısız olursa diğerleri etkilenmez.
+  await Promise.allSettled([
+    loadStatus(),
+    loadSummary(),
+    loadTicker(activeSymbol),
+    loadMiniWatchlist(),
+    loadMarketRegime(),
+    loadRecommendations(),
+  ]);
 }
 function startPolling() {
   if (pollTimer) return;
