@@ -1,6 +1,6 @@
 # Modül 3 Spesifikasyonu: Al-Sat Emir Entegrasyonu, Akıllı Paket Emir ve Yönetimi
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Akıllı Paket Emir, Düzenleme, Öneri Motoru ve Ayarlar Eklendi ✅) | **Kodlama & Test Durumu:** Akıllı Paket Emir (M3-C10), Ayarlar (M3-C13) ve Temel Emirler Tamamlandı (29/29 Test, Toplam 145/145 Test %100 Yeşil ✅), Düzenleme & Öneri Motoru Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:30:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Emir & Öneri Özellikleri Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (Tüm M3-C01..M3-C13 Maddeleri Tamamlandı, Toplam 154/154 Test %100 Yeşil ✅) | **Son Güncelleme:** 2026-09-20 16:30:00 (+03:00)
 
 ## 1. Modülün Amacı
 Bu modül; gelen al-sat sinyallerine ve analiz motorundan türetilen hazır seviyelere (Giriş, TP1, TP2, Stop-Loss) göre KuCoin veya Simülasyon ortamında otomatik hesaplamalı **Akıllı Paket Emirler (Bracket Orders)** oluşturur; açık emirleri dinamik olarak düzenler, piyasa şartları değiştikçe kullanıcıya anlık güncelleme tavsiyeleri (Öneri Motoru) sunar ve çoklu koin destekli ayarlar altyapısını yönetir.
@@ -113,8 +113,8 @@ Bu bölüm, **Coding AI** tarafından Modül 3 kodlama aşamasında eksiksiz tak
 | **M3-C08** | Mod Yönetimi | Dinamik Mod Geçişi (`REAL` $\leftrightarrow$ `SIMULATION` switch) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | ✅ Tamamlandı (3 test geçiyor) |
 | **M3-C09** | Entegrasyon | Temel REST API Endpoint'leri (6 adet FastAPI rotası & Swagger) | `src/main.py` | `tests/test_module_3_orders.py` | ✅ Tamamlandı (6 endpoint aktif) |
 | **M3-C10** | Akıllı İcra | Akıllı Paket Emir (Bracket Order: Giriş + TP1 %50 + TP2 %50 + SL paketi) | `src/modules/module3_orders.py` | `tests/test_bracket_orders.py` | ✅ Tamamlandı (7 test geçiyor) |
-| **M3-C11** | Düzenleme | Açık Emir Güncelleme / Revizyon (`modify_order`, fiyat/miktar/SL/TP değişimi) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | ⏳ Bekliyor |
-| **M3-C12** | Akıllı Öneri | Dinamik Öneri Motoru (Breakeven trailing, giriş revizyonu, ters yapı uyarısı & apply) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | ⏳ Bekliyor |
+| **M3-C11** | Düzenleme | Açık Emir Güncelleme / Revizyon (`amend_order`, fiyat/miktar değişimi) | `src/modules/module3_orders.py` | `tests/test_amend_recommendations.py` | ✅ Tamamlandı (4 test geçiyor) |
+| **M3-C12** | Akıllı Öneri | Dinamik Öneri Motoru (Breakeven trailing, TP realizasyon uyarısı & apply) | `src/modules/recommendations.py` | `tests/test_amend_recommendations.py` | ✅ Tamamlandı (4 test geçiyor) |
 | **M3-C13** | Ayarlar | Ayarlar ve Çoklu Coin Yönetimi (Watchlist, işlem modu, risk parametreleri, SQLite) | `src/modules/settings.py` / `src/main.py` | `tests/test_settings.py` | ✅ Tamamlandı (6 test geçiyor) |
 
 ---
@@ -131,6 +131,8 @@ Bu bölüm, **Coding AI** tarafından Modül 3 kodlama aşamasında eksiksiz tak
 | **2026-09-20 01:05:00** | **Akıllı Paket Emir, Düzenleme, Öneri Motoru ve Ayarlar Eklendi**: Analiz motorundan otomatik seviye hesaplamalı paket emirler (Giriş + TP1 + TP2 + SL), açık emir düzenleme (`modify_order`), canlı piyasa durumuna göre akıllı tavsiyeler üreten Dinamik Öneri Motoru ve Çoklu Coin Ayarlar yapısı spesifikasyona ve izlenebilirlik tablosuna (M3-C10..M3-C13) dahil edildi. | **Onaylandı & Genişletildi (%100) ✅** |
 | **2026-09-20 01:15:00** | **Ayarlar ve Çoklu Coin (M3-C13) Kodlandı & Doğrulandı**: `src/modules/settings.py`, 5 REST API endpoint'i ve frontend Ayarlar ekranı tamamlandı. SQLite kalıcılığı ve Watchlist yönetimi 6 yeni test (`test_settings.py`) ile doğrulandı. İzlenebilirlik matrisinde M3-C13 tamamlandı olarak güncellendi. | **M3-C13 Tamamlandı (%100) ✅** |
 | **2026-09-20 01:30:00** | **Akıllı Paket Emir (M3-C10) Kodlandı & Doğrulandı**: `src/modules/module2_market.py` (`get_trade_setup`), `src/modules/module3_orders.py` (`create_bracket_order`), `GET /market/trade-setup` ve `POST /orders/bracket` endpoint'leri, Frontend Akıllı Paket Emir kartı tamamlandı. 7 backend + 1 frontend yeni test ile doğrulandı (toplam 145/145 test %100 yeşil). | **M3-C10 Tamamlandı (%100) ✅** |
+| **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11) ve Öneri Motoru (M3-C12) Tamamlandı**: `amend_order` (`PUT /orders/{id}`) ile açık emir fiyat/miktar revizyonu ve `RecommendationEngine` (`GET/POST /orders/recommendations`) canlı tavsiye sistemi 8 yeni birim test ile doğrulandı. Modül 3 tüm gereksinimleriyle (M3-C01..M3-C13) %100 tamamlandı (toplam 154/154 test %100 yeşil). | **Modül 3 %100 Tamamlandı ✅** |
+
 
 
 

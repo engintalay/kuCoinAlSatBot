@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu - Proje Analiz ve Tasarım Dokümanı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Ayarlar, Çoklu Coin, Akıllı Paket Emir & Öneri Motoru Eklendi ✅) | **Kodlama & Test Durumu:** Ayarlar, Watchlist, Kılavuz, Info & Akıllı Paket Emir Tamamlandı ✅ (145/145 Test, %78 Coverage ✅), Emir Düzenleme & Öneri Bekleniyor ⏳ | **Son Güncelleme:** 2026-09-20 01:30:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket & Öneri Motoru Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (154/154 Test %100 Yeşil, %78 Coverage ✅), Yalnızca Harici Katman 9 Opsiyonel ⏳ | **Son Güncelleme:** 2026-09-20 16:30:00 (+03:00)
 
 ## 1. Proje Genel Bakışı
 Bu doküman, KuCoin kripto para borsasında çalışacak modüler **Al-Sat Botu** uygulamasının mimarisini, veri akışını ve modül detaylarını içerir. 
@@ -215,6 +215,7 @@ Proje; hesap doğrulama ve bakiye takibinden, canlı piyasa analizi ve gösterge
 | **2026-09-20 01:05:00** | **Ayarlar Ekranı, Çoklu Coin, Akıllı Paket Emir & Dinamik Öneri Motoru Eklendi**: Ayarlar sekmesi (`⚙️ Ayarlar`), dinamik çoklu coin izleme/işlem listesi (Watchlist & KuCoin symbols), analiz motorundan otomatik Entry/TP1/TP2/SL seviye hesaplamalı akıllı paket emir iletimi ("🚀 Akıllı Emri İlet"), açık emir düzenleme (Edit/Amend) ve canlı piyasa durumuna göre akıllı güncelleme tavsiyeleri üreten Dinamik Öneri Motoru gereksinimleri analiz dokümanına eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
 | **2026-09-20 01:15:00** | **Kullanım Kılavuzu, Info Düğmeleri ve Ayarlar Paneli Kodlandı & Doğrulandı**: `view-guide` görünümü, 7 noktada bağlamsal `ℹ️` info butonu ve glass popover'lar, `view-settings` paneli, çoklu coin watchlist yönetimi ve SQLite kalıcılığı (`src/modules/settings.py`, 5 REST endpoint'i) kodlanıp 8 yeni test ile doğrulandı (toplam 137/137 test %100 yeşil, coverage %78). | **Onaylandı & Uygulandı (%100) ✅** |
 | **2026-09-20 01:30:00** | **Akıllı Paket Emir (Bracket Order) Kodlandı & Doğrulandı**: Analiz motoru seviye hesaplayıcısı (`get_trade_setup`: Entry, SL, TP1 %50, TP2 %50, R:R), `POST /orders/bracket` tek tıkla paket icra motoru ve UI formu 8 yeni test ile tamamlandı (toplam 145/145 test %100 yeşil). | **Onaylandı & Uygulandı (%100) ✅** |
+| **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11), Öneri Motoru (M3-C12) & İzleme Listesi Entegrasyonu Tamamlandı**: `amend_order` açık emir güncelleme, `RecommendationEngine` dinamik öneri sistemi ve Watchlist'in Analiz/Emir/Bracket formları ile tam iki yönlü etkileşimi (mini widget, datalist) 9 yeni birim test ile doğrulanarak tamamlandı (toplam 154/154 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
 
 
 
