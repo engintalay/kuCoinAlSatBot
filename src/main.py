@@ -2,12 +2,14 @@
 KuCoin Al-Sat Botu — FastAPI Uygulama Giriş Noktası
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import asyncio
 import os
+
+from src.utils.logger import logger, log_api_request
 
 from src.modules.module1_account import KuCoinAccount
 from src.modules.module2_market import KuCoinMarket
@@ -80,6 +82,39 @@ async def shutdown_event():
 
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+
+
+# Middleware: Hata durumunda istekleri logla
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+
+@app.middleware("http")
+async def log_errors(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        # Hata durumları HTTPException veya Exception raised
+        return response
+    except Exception as e:
+        # Hata oluştu, isteği logla
+        query_params = dict(request.query_params)
+        body = None
+        try:
+            body = await request.json()
+            # Güvenlik: API key/secret çıkart
+            for key in ["apiKey", "secret", "password", "api_key", "api_secret"]:
+                body.pop(key, None)
+        except Exception:
+            pass
+        log_api_request(
+            logger,
+            request.method,
+            request.url.path,
+            params=query_params if query_params else None,
+            body=body,
+            error=str(e),
+        )
+        raise  # Hatayı yukarı fırlat
 
 
 @app.get("/")
@@ -271,11 +306,15 @@ class SwitchModeRequest(BaseModel):
 @app.post("/api/v1/orders/create")
 async def create_order(req: OrderCreateRequest):
     """Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal). Spot/Margin/Futures."""
-    result = await orders.create_order(
-        req.symbol, req.side, req.order_type, req.amount, req.price, req.market_type,
-        req.margin_mode, req.leverage,
-    )
-    return result
+    try:
+        result = await orders.create_order(
+            req.symbol, req.side, req.order_type, req.amount, req.price, req.market_type,
+            req.margin_mode, req.leverage,
+        )
+        return result
+    except Exception as e:
+        log_api_request(logger, "POST", "/api/v1/orders/create", body=req.dict(exclude_unset=True), error=str(e))
+        raise
 
 
 class BracketOrderRequest(BaseModel):
