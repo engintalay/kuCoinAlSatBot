@@ -163,7 +163,7 @@ class TestKuCoinAccount:
 
     @pytest.mark.asyncio
     async def test_get_summary_success(self):
-        """Bakiye başarılı olduğunda özet dönmeli."""
+        """Bakiye başarılı olduğunda özet dönmeli (hesap-bazlı kırılımla)."""
         from src.modules.module1_account import KuCoinAccount
         from src.models.account import AccountBalancesResponse, PortfolioSummaryResponse
         mock_balances_response = AccountBalancesResponse(
@@ -179,6 +179,15 @@ class TestKuCoinAccount:
                         "usdt_value": 25000.0,
                         "portfolio_share_percent": 0.0
                     }
+                ],
+                "accounts": [
+                    {
+                        "account": "spot",
+                        "total_usdt": 25000.0,
+                        "assets": [
+                            {"symbol": "BTC", "free": 0.3, "used": 0.2, "total": 0.5, "price_usdt": 50000.0, "usdt_value": 25000.0}
+                        ]
+                    }
                 ]
             },
             error=None,
@@ -191,6 +200,9 @@ class TestKuCoinAccount:
         assert result.success is True
         assert result.data is not None
         assert result.data["total_portfolio_usdt"] > 0
+        # hesap-bazlı kırılım da gelmeli
+        assert "total_by_account" in result.data
+        assert result.data["total_by_account"]["spot"] == 25000.0
 
 
 class TestAccountBalancesResponse:

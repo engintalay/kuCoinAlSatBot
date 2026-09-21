@@ -146,16 +146,25 @@ class KuCoinAccount:
 
             # Etiket eşlemesi: ccxt type -> okunabilir hesap adı
             spot_accounts = {"trade": "spot", "main": "funding", "margin": "margin"}
+            per_account: dict[str, dict] = {}
 
             def _accumulate(bal: dict, label: str):
-                for sym, amount in bal.get("total", {}).items():
+                totals = bal.get("total", {}) or {}
+                frees = bal.get("free", {}) or {}
+                useds = bal.get("used", {}) or {}
+                acc = per_account.setdefault(label, {})
+                for sym, amount in totals.items():
                     amt = float(amount or 0.0)
                     combined_total[sym] = combined_total.get(sym, 0.0) + amt
                     if amt > 0:
                         asset_accounts.setdefault(sym, set()).add(label)
-                for sym, amount in bal.get("free", {}).items():
+                        acc.setdefault(sym, {"free": 0.0, "used": 0.0, "total": 0.0})
+                        acc[sym]["total"] += amt
+                        acc[sym]["free"] += float(frees.get(sym, 0.0) or 0.0)
+                        acc[sym]["used"] += float(useds.get(sym, 0.0) or 0.0)
+                for sym, amount in frees.items():
                     combined_free[sym] = combined_free.get(sym, 0.0) + float(amount or 0.0)
-                for sym, amount in bal.get("used", {}).items():
+                for sym, amount in useds.items():
                     combined_used[sym] = combined_used.get(sym, 0.0) + float(amount or 0.0)
 
             # Spot / funding / margin (aynı kucoin spot uç noktası)
@@ -194,6 +203,10 @@ class KuCoinAccount:
                         price = float(ticker["last"])
                     except Exception:
                         price = 0.0
+                # Hesap-bazlı kırılım için price_cache
+                if "price_cache" not in locals():
+                    price_cache = {}
+                price_cache[symbol] = price
 
                 asset_value = round(total_amount * price, 2)
                 asset_list.append({
@@ -207,6 +220,37 @@ class KuCoinAccount:
                     "portfolio_share_percent": 0.0  # Sonraki adımda hesaplanacak
                 })
 
+            # Hesap-bazlı kırılım oluştur
+            account_breakdown = []
+            for label in ("spot", "funding", "margin", "futures"):
+                assets = per_account.get(label)
+                if not assets:
+                    continue
+                acc_assets = []
+                acc_total_usdt = 0.0
+                for sym, amt in assets.items():
+                    if amt["total"] <= 0:
+                        continue
+                    # price_cache'dan fiyat al
+                    price = price_cache.get(sym, 1.0 if sym == "USDT" else 0.0)
+                    val = round(amt["total"] * price, 2)
+                    acc_total_usdt += val
+                    acc_assets.append({
+                        "symbol": sym,
+                        "free": amt["free"],
+                        "used": amt["used"],
+                        "total": amt["total"],
+                        "price_usdt": price,
+                        "usdt_value": val,
+                    })
+                if acc_assets:
+                    acc_assets.sort(key=lambda x: x["usdt_value"], reverse=True)
+                    account_breakdown.append({
+                        "account": label,
+                        "total_usdt": round(acc_total_usdt, 2),
+                        "assets": acc_assets,
+                    })
+
             # Portföy payı yüzdesini hesapla
             grand_total = sum(a["usdt_value"] for a in asset_list)
             if grand_total > 0:
@@ -215,7 +259,7 @@ class KuCoinAccount:
 
             return AccountBalancesResponse(
                 success=True,
-                data={"balances": asset_list},
+                data={"balances": asset_list, "accounts": account_breakdown},
                 error=None,
                 timestamp=timestamp()
             )
@@ -260,6 +304,7 @@ class KuCoinAccount:
             return PortfolioSummaryResponse(
                 success=True,
                 data={
+                    "total_by_account": {a["account"]: a["total_usdt"] for a in balances.data.get("accounts", [])},
                     "total_portfolio_usdt": total_usdt,
                     "free_usdt": free_usdt,
                     "in_orders_usdt": 0.0
