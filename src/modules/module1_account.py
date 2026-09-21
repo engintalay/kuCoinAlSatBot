@@ -185,6 +185,7 @@ class KuCoinAccount:
                     logger.error(f"Futures hesabı bakiye hatası: {e}")
 
             asset_list = []
+            price_cache: dict[str, float] = {}  # Fiyatları bir kez hesapla
             for symbol, total_amount in combined_total.items():
                 # Sıfır bakiyeli varlıkları atla
                 if total_amount <= 0:
@@ -203,9 +204,6 @@ class KuCoinAccount:
                         price = float(ticker["last"])
                     except Exception:
                         price = 0.0
-                # Hesap-bazlı kırılım için price_cache
-                if "price_cache" not in locals():
-                    price_cache = {}
                 price_cache[symbol] = price
 
                 asset_value = round(total_amount * price, 2)
