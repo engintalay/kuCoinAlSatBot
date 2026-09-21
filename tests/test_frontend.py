@@ -157,3 +157,23 @@ def test_analysis_view_chart_and_levels(client):
     assert '<option value="1m">1m</option>' in r.text
     assert '<option value="5m">5m</option>' in r.text
 
+
+def test_open_orders_current_price_ui(client):
+    """Açık emirler tablosu Anlık Fiyat ve Fark kolonları ile yenileme butonu içermeli."""
+    r = client.get("/")
+    assert "<th>Emir Fiyatı</th>" in r.text
+    assert "<th>Anlık Fiyat</th>" in r.text
+    assert "<th>Fark (%)</th>" in r.text
+    assert 'id="btn-refresh-orders"' in r.text
+
+    js = client.get("/static/js/app.js").text
+    assert "fmtOrderPrice" in js
+    assert "current_price" in js
+    assert "diff-badge" in js
+    assert "btn-refresh-orders" in js
+
+    css = client.get("/static/css/style.css").text
+    assert ".diff-badge" in css
+    assert ".side-badge" in css
+
+

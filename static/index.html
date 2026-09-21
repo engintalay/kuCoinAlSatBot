@@ -247,10 +247,13 @@
         </div>
 
         <div class="card glass">
-          <div class="card-title">Açık Emirler</div>
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Açık Emirler</span>
+            <button id="btn-refresh-orders" class="btn-mini" style="font-weight:normal;" title="Açık emirleri ve anlık piyasa fiyatlarını yenile">🔄 Anlık Yenile</button>
+          </div>
           <table class="data-table" id="open-orders-table">
-            <thead><tr><th>ID</th><th>Sembol</th><th>Piyasa</th><th>Yön</th><th>Tür</th><th>Miktar</th><th>Fiyat</th><th>Durum</th><th></th></tr></thead>
-            <tbody><tr><td colspan="8">Yükleniyor...</td></tr></tbody>
+            <thead><tr><th>ID</th><th>Sembol</th><th>Piyasa</th><th>Yön</th><th>Tür</th><th>Miktar</th><th>Emir Fiyatı</th><th>Anlık Fiyat</th><th>Fark (%)</th><th>Durum</th><th>İşlem</th></tr></thead>
+            <tbody><tr><td colspan="11">Yükleniyor...</td></tr></tbody>
           </table>
         </div>
       </section>

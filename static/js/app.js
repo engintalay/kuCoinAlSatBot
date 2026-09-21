@@ -593,19 +593,60 @@ document.getElementById("order-submit").addEventListener("click", async () => {
   }
 });
 
+function fmtOrderPrice(p) {
+  if (p === null || p === undefined || isNaN(p)) return "--";
+  const num = Number(p);
+  const abs = Math.abs(num);
+  if (abs === 0) return "0.00";
+  if (abs >= 1000) return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (abs >= 1) return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  if (abs >= 0.01) return num.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+  return num.toLocaleString("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 8 });
+}
+
 async function loadOpenOrders() {
   const res = await apiGet("/orders/open");
   const tbody = document.querySelector("#open-orders-table tbody");
+  if (!tbody) return;
   if (res.success && res.data.count) {
     tbody.innerHTML = res.data.orders.map((o) => {
       const mt = (o.market_type || "spot").toLowerCase();
       const mtLabel = { spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt;
+      const side = (o.side || "").toLowerCase();
+      const sideLabel = side === "buy" ? "ALIŞ" : (side === "sell" ? "SATIŞ" : side.toUpperCase());
+      const sideCls = side === "buy" ? "side-buy" : (side === "sell" ? "side-sell" : "");
+
+      // Emir fiyatı
+      const orderPrice = o.price !== null && o.price !== undefined ? Number(o.price) : null;
+      const orderPriceStr = orderPrice !== null ? fmtOrderPrice(orderPrice) : "-";
+
+      // Anlık piyasa fiyatı
+      const currPrice = o.current_price !== null && o.current_price !== undefined ? Number(o.current_price) : null;
+      const currPriceStr = currPrice !== null ? `<strong>${fmtOrderPrice(currPrice)}</strong>` : `<span class="text-dim">--</span>`;
+
+      // Fiyat farkı & Mesafe (%)
+      let diffHtml = `<span class="text-dim">--</span>`;
+      if (currPrice !== null && orderPrice !== null && orderPrice > 0) {
+        const diff = currPrice - orderPrice;
+        const diffPct = (diff / orderPrice) * 100;
+        const sign = diffPct > 0 ? "+" : "";
+        const diffCls = diffPct > 0 ? "diff-up" : (diffPct < 0 ? "diff-down" : "diff-flat");
+        const titleText = `Piyasa: ${fmtOrderPrice(currPrice)} | Emir: ${fmtOrderPrice(orderPrice)} | Fark: ${sign}${fmtOrderPrice(diff)} (${sign}${diffPct.toFixed(2)}%)`;
+        diffHtml = `<span class="diff-badge ${diffCls}" title="${titleText}">${sign}${diffPct.toFixed(2)}%</span>`;
+      }
+
       return `
       <tr>
-        <td>${o.id}</td><td>${o.symbol}</td>
+        <td>${o.id}</td>
+        <td><strong>${o.symbol}</strong></td>
         <td><span class="market-badge market-${mt}">${mtLabel}</span></td>
-        <td>${o.side}</td><td>${o.type}</td>
-        <td>${o.amount}</td><td>${o.price}</td><td>${o.status}</td>
+        <td><span class="side-badge ${sideCls}">${sideLabel}</span></td>
+        <td>${o.type}</td>
+        <td>${o.amount}</td>
+        <td>${orderPriceStr}</td>
+        <td>${currPriceStr}</td>
+        <td>${diffHtml}</td>
+        <td><span class="order-status-badge">${o.status}</span></td>
         <td>
           <button class="btn-mini btn-edit" data-id="${o.id}" data-price="${o.price}" data-amount="${o.amount}">Düzenle</button>
           <button class="btn-mini" data-id="${o.id}">İptal</button>
@@ -617,9 +658,21 @@ async function loadOpenOrders() {
     tbody.querySelectorAll(".btn-edit").forEach((b) =>
       b.addEventListener("click", () => openEditModal(b.dataset.id, b.dataset.price, b.dataset.amount)));
   } else {
-    tbody.innerHTML = `<tr><td colspan="9">Açık emir yok.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11">Açık emir yok.</td></tr>`;
   }
 }
+
+// Açık emirler kartındaki "🔄 Anlık Yenile" butonu
+const btnRefreshOrders = document.getElementById("btn-refresh-orders");
+if (btnRefreshOrders) {
+  btnRefreshOrders.addEventListener("click", async () => {
+    btnRefreshOrders.textContent = "⏳ Yenileniyor...";
+    await loadOpenOrders();
+    btnRefreshOrders.textContent = "🔄 Anlık Yenile";
+    toast("Açık emirler ve anlık fiyatlar güncellendi", "success");
+  });
+}
+
 
 // ---- Emir Düzenleme Modalı (Amend) ----
 function openEditModal(id, price, amount) {
@@ -1066,14 +1119,19 @@ function connectWebSocket() {
 let pollTimer = null;
 async function refreshDashboard() {
   // Her widget bağımsız yüklenir; biri başarısız olursa diğerleri etkilenmez.
-  await Promise.allSettled([
+  const tasks = [
     loadStatus(),
     loadSummary(),
     loadTicker(activeSymbol),
     loadMiniWatchlist(),
     loadMarketRegime(),
     loadRecommendations(),
-  ]);
+  ];
+  const ordersView = document.getElementById("view-orders");
+  if (ordersView && ordersView.classList.contains("active")) {
+    tasks.push(loadOpenOrders());
+  }
+  await Promise.allSettled(tasks);
 }
 function startPolling() {
   if (pollTimer) return;

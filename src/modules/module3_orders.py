@@ -290,6 +290,7 @@ class KuCoinOrders:
                 # market_type alanı garanti altına al (eski kayıtlar için)
                 for o in orders:
                     o.setdefault("market_type", "spot")
+                await self._attach_current_prices(orders)
                 return OpenOrdersResponse(
                     success=True, data={"count": len(orders), "orders": orders},
                     error=None, timestamp=timestamp())
@@ -319,6 +320,8 @@ class KuCoinOrders:
             except Exception as e:
                 logger.error(f"Futures açık emir çekme hatası: {e}")
 
+            await self._attach_current_prices(merged)
+
             return OpenOrdersResponse(
                 success=True, data={"count": len(merged), "orders": merged},
                 error=None, timestamp=timestamp())
@@ -326,6 +329,51 @@ class KuCoinOrders:
             logger.error(f"Açık emir listeleme hatası: {e}")
             return OpenOrdersResponse(
                 success=False, data={}, error=f"Açık emirler alınamadı: {e}", timestamp=timestamp())
+
+    async def _attach_current_prices(self, orders: list[dict]) -> None:
+        """Açık emir listesindeki her bir emre anlık piyasa fiyatını ve fiyat farkını iliştirir."""
+        if not orders:
+            return
+
+        price_cache: dict[tuple[str, str], float | None] = {}
+        for o in orders:
+            sym = o.get("symbol")
+            mt = (o.get("market_type") or "spot").lower()
+            clean_sym = sym.split(":")[0] if (mt != "futures" and sym and ":" in sym) else sym
+            key = (clean_sym, mt)
+
+            if key not in price_cache and clean_sym:
+                curr_price = None
+                try:
+                    if self.market:
+                        tk = await self.market.get_ticker(clean_sym, market_type=mt)
+                        if tk and getattr(tk, "success", False) and tk.data:
+                            lp = tk.data.get("last_price")
+                            if lp is not None:
+                                curr_price = float(lp)
+                except Exception as e:
+                    logger.debug(f"Açık emir için anlık fiyat alınamadı ({clean_sym} {mt}): {e}")
+                price_cache[key] = curr_price
+
+            curr_price = price_cache.get(key)
+            o["current_price"] = curr_price
+
+            # Fiyat farkı ve yüzdesi hesabı
+            order_price = o.get("price")
+            try:
+                order_p = float(order_price) if order_price is not None else 0.0
+            except (ValueError, TypeError):
+                order_p = 0.0
+
+            if curr_price is not None and order_p > 0:
+                diff = curr_price - order_p
+                diff_pct = (diff / order_p) * 100.0
+                o["price_diff"] = round(diff, 6)
+                o["price_diff_percent"] = round(diff_pct, 4)
+            else:
+                o["price_diff"] = None
+                o["price_diff_percent"] = None
+
 
     # ------------------------------------------------------------------ #
     # İşlem geçmişi

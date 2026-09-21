@@ -266,3 +266,75 @@ class TestHistory:
         h = await o.get_history()
         assert h.success is True
         assert h.data["count"] == 1
+
+
+class TestOpenOrdersCurrentPrice:
+    """Açık emirlerde anlık fiyat ve fark hesaplama testleri."""
+
+    @pytest.mark.asyncio
+    async def test_open_orders_with_market_ticker(self):
+        from unittest.mock import MagicMock
+        from src.modules.module3_orders import KuCoinOrders
+        from src.models.market import TickerResponse
+
+        mock_market = MagicMock()
+        mock_market.get_ticker = AsyncMock(return_value=TickerResponse(
+            success=True,
+            data={"symbol": "BTC/USDT", "last_price": 60000.0},
+            error=None,
+            timestamp="2026-09-21T00:00:00Z"
+        ))
+
+        orders = KuCoinOrders(market=mock_market)
+        orders.mode = "paper"
+
+        # Limit emir: 50,000 USDT (Piyasa 60,000 USDT)
+        await orders.create_order("BTC/USDT", "buy", "limit", 0.01, 50000.0)
+        res = await orders.get_open_orders()
+        assert res.success is True
+        assert res.data["count"] == 1
+
+        ord0 = res.data["orders"][0]
+        assert ord0["current_price"] == 60000.0
+        assert ord0["price_diff"] == 10000.0
+        assert ord0["price_diff_percent"] == 20.0
+
+    @pytest.mark.asyncio
+    async def test_open_orders_negative_diff(self):
+        from unittest.mock import MagicMock
+        from src.modules.module3_orders import KuCoinOrders
+        from src.models.market import TickerResponse
+
+        mock_market = MagicMock()
+        mock_market.get_ticker = AsyncMock(return_value=TickerResponse(
+            success=True,
+            data={"symbol": "ETH/USDT", "last_price": 2500.0},
+            error=None,
+            timestamp="2026-09-21T00:00:00Z"
+        ))
+
+        orders = KuCoinOrders(market=mock_market)
+        orders.mode = "paper"
+
+        # Satış emri: 3,000 USDT (Piyasa 2,500 USDT -> fark: -500 USDT, %-16.6667)
+        await orders.create_order("ETH/USDT", "sell", "limit", 1.0, 3000.0)
+        res = await orders.get_open_orders()
+        ord0 = res.data["orders"][0]
+        assert ord0["current_price"] == 2500.0
+        assert ord0["price_diff"] == -500.0
+        assert round(ord0["price_diff_percent"], 2) == -16.67
+
+    @pytest.mark.asyncio
+    async def test_open_orders_no_market_graceful(self):
+        from src.modules.module3_orders import KuCoinOrders
+
+        orders = KuCoinOrders(market=None)
+        orders.mode = "paper"
+        await orders.create_order("BTC/USDT", "buy", "limit", 0.01, 50000.0)
+        res = await orders.get_open_orders()
+        assert res.success is True
+        ord0 = res.data["orders"][0]
+        assert ord0["current_price"] is None
+        assert ord0["price_diff"] is None
+        assert ord0["price_diff_percent"] is None
+
