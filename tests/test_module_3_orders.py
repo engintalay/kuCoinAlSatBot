@@ -338,3 +338,88 @@ class TestOpenOrdersCurrentPrice:
         assert ord0["price_diff"] is None
         assert ord0["price_diff_percent"] is None
 
+
+class TestPositionsAndEntryStopPrices:
+    """Giriş fiyatları, stop fiyatları ve açık pozisyonlar testleri."""
+
+    @pytest.mark.asyncio
+    async def test_bracket_order_tracks_position_and_entry_stop_prices(self):
+        from unittest.mock import MagicMock
+        from src.modules.module3_orders import KuCoinOrders
+        from src.models.market import TickerResponse
+
+        mock_market = MagicMock()
+        mock_market.get_ticker = AsyncMock(return_value=TickerResponse(
+            success=True,
+            data={"symbol": "BTC/USDT", "last_price": 62000.0},
+            error=None,
+            timestamp="2026-09-21T00:00:00Z"
+        ))
+
+        orders = KuCoinOrders(market=mock_market)
+        orders.mode = "paper"
+        orders._current_price = AsyncMock(return_value=60000.0)
+
+        # 100 USDT bracket order: Giriş 60,000, SL 58,000, TP1 63,000, TP2 65,000
+        res = await orders.create_bracket_order(
+            symbol="BTC/USDT", side="buy", usdt_amount=100.0,
+            entry_price=60000.0, stop_loss_price=58000.0,
+            tp1_price=63000.0, tp2_price=65000.0, market_type="spot"
+        )
+        assert res.success is True
+
+        # 1. Pozisyonları sorgula
+        pos_res = await orders.get_positions()
+        assert pos_res["success"] is True
+        assert pos_res["data"]["count"] == 1
+        pos = pos_res["data"]["positions"][0]
+        assert pos["symbol"] == "BTC/USDT"
+        assert pos["entry_price"] == 60000.0
+        assert pos["stop_loss_price"] == 58000.0
+        assert pos["current_price"] == 62000.0
+        assert pos["tp1_price"] == 63000.0
+        assert pos["tp2_price"] == 65000.0
+        assert pos["unrealized_pnl"] > 0
+        assert round(pos["pnl_percent"], 2) == 3.33
+
+        # 2. Açık emirlerde giriş ve stop fiyatlarını kontrol et
+        oo_res = await orders.get_open_orders()
+        assert oo_res.success is True
+        assert oo_res.data["count"] == 3  # TP1, TP2, SL
+        for o in oo_res.data["orders"]:
+            assert o["entry_price"] == 60000.0
+            assert o["stop_loss_price"] == 58000.0
+            assert "bracket_leg" in o
+            assert o["bracket_leg"] in ("tp1", "tp2", "sl")
+            assert o["current_price"] == 62000.0
+
+    @pytest.mark.asyncio
+    async def test_panic_stop_clears_positions(self):
+        from unittest.mock import MagicMock
+        from src.modules.module3_orders import KuCoinOrders
+        from src.models.market import TickerResponse
+
+        mock_market = MagicMock()
+        mock_market.get_ticker = AsyncMock(return_value=TickerResponse(
+            success=True,
+            data={"symbol": "BTC/USDT", "last_price": 60000.0},
+            error=None,
+            timestamp="2026-09-21T00:00:00Z"
+        ))
+
+        orders = KuCoinOrders(market=mock_market)
+        orders.mode = "paper"
+        orders._current_price = AsyncMock(return_value=60000.0)
+
+        await orders.create_bracket_order(
+            symbol="BTC/USDT", side="buy", usdt_amount=100.0,
+            entry_price=60000.0, stop_loss_price=58000.0,
+            tp1_price=63000.0, tp2_price=65000.0, market_type="spot"
+        )
+        assert len(orders.paper_positions) == 1
+
+        p = await orders.panic_stop()
+        assert p.success is True
+        assert len(orders.paper_positions) == 0
+
+

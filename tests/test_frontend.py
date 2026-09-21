@@ -177,3 +177,32 @@ def test_open_orders_current_price_ui(client):
     assert ".side-badge" in css
 
 
+def test_positions_and_entry_stop_prices_ui(client):
+    """Açık pozisyonlar kartı ve tablolarda Giriş/Stop fiyatları bulunmalı."""
+    r = client.get("/")
+    assert 'id="card-positions"' in r.text
+    assert 'id="positions-table"' in r.text
+    assert "<th>Giriş Fiyatı</th>" in r.text
+    assert "<th>Stop Fiyatı</th>" in r.text
+    assert "<th>Stop Fiyatı (SL)</th>" in r.text
+    assert "<th>Kâr / Zarar (PnL)</th>" in r.text
+
+    # Endpoint
+    r_pos = client.get("/api/v1/orders/positions")
+    assert r_pos.status_code == 200
+    assert r_pos.json()["success"] is True
+
+    # JS
+    js = client.get("/static/js/app.js").text
+    assert "loadPositions" in js
+    assert "/orders/positions" in js
+    assert "leg-badge" in js
+    assert "pnl-badge" in js
+
+    # CSS
+    css = client.get("/static/css/style.css").text
+    assert ".leg-badge" in css
+    assert ".pnl-badge" in css
+
+
+

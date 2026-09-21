@@ -822,6 +822,57 @@ body {
   border: 1px solid rgba(41, 121, 255, 0.3);
 }
 
+/* Bracket bacak rozetleri (TP1, TP2, SL, Giriş) */
+.leg-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.leg-badge.leg-tp1, .leg-badge.leg-tp2 {
+  background: rgba(0, 230, 118, 0.15);
+  color: var(--green);
+  border: 1px solid rgba(0, 230, 118, 0.35);
+}
+.leg-badge.leg-sl {
+  background: rgba(255, 82, 82, 0.15);
+  color: var(--red);
+  border: 1px solid rgba(255, 82, 82, 0.35);
+}
+.leg-badge.leg-entry {
+  background: rgba(56, 139, 253, 0.15);
+  color: #58a6ff;
+  border: 1px solid rgba(56, 139, 253, 0.35);
+}
+
+/* Pozisyon Kâr / Zarar rozetleri */
+.pnl-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: monospace;
+}
+.pnl-badge.pnl-positive {
+  background: rgba(0, 230, 118, 0.15);
+  color: var(--green);
+  border: 1px solid rgba(0, 230, 118, 0.35);
+}
+.pnl-badge.pnl-negative {
+  background: rgba(255, 82, 82, 0.15);
+  color: var(--red);
+  border: 1px solid rgba(255, 82, 82, 0.35);
+}
+.pnl-badge.pnl-zero {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+
 
 /* Hesap bazlı kırılım kartları */
 .account-breakdown {

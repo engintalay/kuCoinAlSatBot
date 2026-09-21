@@ -348,6 +348,14 @@ async def get_open_orders(symbol: str | None = None):
     return result
 
 
+@app.get("/api/v1/orders/positions")
+async def get_positions(symbol: str | None = None):
+    """Açık pozisyonları, giriş ve stop fiyatlarını, anlık PnL ile döner."""
+    result = await orders.get_positions(symbol)
+    return result
+
+
+
 @app.get("/api/v1/orders/history")
 async def get_order_history(symbol: str | None = None, limit: int = 50):
     """Geçmişte dolan veya kapanan emir geçmişini döner."""

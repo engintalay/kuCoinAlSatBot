@@ -58,6 +58,8 @@ class KuCoinOrders:
         self.paper_balance_usdt = float(self.config.SIMULATION_INITIAL_BALANCE_USDT or 10000.0)
         self.paper_open_orders: dict[str, dict] = {}
         self.paper_history: list[dict] = []
+        self.paper_positions: dict[str, dict] = {}
+
 
     # ------------------------------------------------------------------ #
     # Bağlantı
@@ -156,7 +158,9 @@ class KuCoinOrders:
     async def create_order(self, symbol: str, side: str, order_type: str,
                            amount: float, price: float | None = None,
                            market_type: str = "spot",
-                           margin_mode: str = "cross", leverage: float | None = None) -> OrderCreateResponse:
+                           margin_mode: str = "cross", leverage: float | None = None,
+                           entry_price: float | None = None,
+                           stop_loss_price: float | None = None) -> OrderCreateResponse:
         side = (side or "").lower()
         order_type = (order_type or "").lower()
         market_type = (market_type or "spot").lower()
@@ -166,11 +170,15 @@ class KuCoinOrders:
             return OrderCreateResponse(success=False, data={}, error=err, timestamp=timestamp())
 
         if self.mode == "paper":
-            return await self._create_paper_order(symbol, side, order_type, amount, price, market_type)
+            return await self._create_paper_order(
+                symbol, side, order_type, amount, price, market_type,
+                entry_price=entry_price, stop_loss_price=stop_loss_price,
+            )
         return await self._create_live_order(symbol, side, order_type, amount, price,
                                              market_type, margin_mode, leverage)
 
-    async def _create_paper_order(self, symbol, side, order_type, amount, price, market_type="spot"):
+    async def _create_paper_order(self, symbol, side, order_type, amount, price, market_type="spot",
+                                  entry_price=None, stop_loss_price=None):
         """Paper trading emir motoru (M3-C07)."""
         last_price = await self._current_price(symbol)
         if last_price is None:
@@ -204,7 +212,10 @@ class KuCoinOrders:
                 "id": order_id, "symbol": symbol, "side": side, "type": order_type,
                 "amount": amount, "price": fill_price, "status": "filled",
                 "filled_price": fill_price, "notional_usdt": round(notional, 2),
-                "mode": "paper", "market_type": market_type, "created_at": timestamp(),
+                "mode": "paper", "market_type": market_type,
+                "entry_price": fill_price,
+                "stop_loss_price": float(stop_loss_price) if stop_loss_price is not None else None,
+                "created_at": timestamp(),
             }
             self.paper_history.append(record)
             return OrderCreateResponse(success=True, data=record, error=None, timestamp=timestamp())
@@ -214,7 +225,10 @@ class KuCoinOrders:
             "id": order_id, "symbol": symbol, "side": side, "type": order_type,
             "amount": amount, "price": float(price), "status": "open",
             "filled": 0.0, "notional_usdt": round(notional, 2),
-            "mode": "paper", "market_type": market_type, "created_at": timestamp(),
+            "mode": "paper", "market_type": market_type,
+            "entry_price": float(entry_price) if entry_price is not None else (float(price) if side == "buy" else None),
+            "stop_loss_price": float(stop_loss_price) if stop_loss_price is not None else None,
+            "created_at": timestamp(),
         }
         self.paper_open_orders[order_id] = record
         return OrderCreateResponse(success=True, data=record, error=None, timestamp=timestamp())
@@ -374,6 +388,128 @@ class KuCoinOrders:
                 o["price_diff"] = None
                 o["price_diff_percent"] = None
 
+            # Giriş Fiyatı (entry_price):
+            if o.get("entry_price") is None:
+                if o.get("side") == "buy" and o.get("type") == "limit":
+                    o["entry_price"] = o.get("price")
+                pos_key = f"{sym}-{mt}"
+                if pos_key in self.paper_positions:
+                    o["entry_price"] = self.paper_positions[pos_key].get("entry_price")
+                    if o.get("stop_loss_price") is None:
+                        o["stop_loss_price"] = self.paper_positions[pos_key].get("stop_loss_price")
+
+            # Stop Fiyatı (stop_loss_price):
+            if o.get("stop_loss_price") is None:
+                if o.get("bracket_leg") == "sl":
+                    o["stop_loss_price"] = o.get("price")
+                elif o.get("stopPrice"):
+                    try:
+                        o["stop_loss_price"] = float(o.get("stopPrice"))
+                    except (ValueError, TypeError):
+                        pass
+
+            # Stop mesafesi (%):
+            sl = o.get("stop_loss_price")
+            if curr_price is not None and sl is not None and curr_price > 0:
+                try:
+                    sl_p = float(sl)
+                    if sl_p > 0:
+                        o["stop_distance_percent"] = round(((sl_p - curr_price) / curr_price) * 100.0, 2)
+                    else:
+                        o["stop_distance_percent"] = None
+                except (ValueError, TypeError):
+                    o["stop_distance_percent"] = None
+            else:
+                o["stop_distance_percent"] = None
+
+    async def get_positions(self, symbol: str | None = None) -> dict:
+        """Açık pozisyonları, giriş ve stop fiyatlarını, anlık PnL ile döner."""
+        try:
+            positions: list[dict] = []
+            if self.mode == "paper":
+                raw_pos = list(self.paper_positions.values())
+                if symbol:
+                    raw_pos = [p for p in raw_pos if p.get("symbol") == symbol]
+                for p in raw_pos:
+                    pos = dict(p)
+                    sym = pos.get("symbol")
+                    mt = pos.get("market_type", "spot")
+                    curr_price = None
+                    try:
+                        if self.market:
+                            tk = await self.market.get_ticker(sym, market_type=mt)
+                            if tk and getattr(tk, "success", False) and tk.data:
+                                curr_price = float(tk.data.get("last_price") or 0)
+                    except Exception as e:
+                        logger.debug(f"Pozisyon anlık fiyat hatası: {e}")
+                    pos["current_price"] = curr_price
+
+                    entry_p = float(pos.get("entry_price") or 0)
+                    amt = float(pos.get("amount") or 0)
+                    side = pos.get("side", "long").lower()
+
+                    if curr_price and entry_p > 0 and amt > 0:
+                        if side in ("long", "buy"):
+                            pnl = (curr_price - entry_p) * amt
+                            pnl_pct = ((curr_price - entry_p) / entry_p) * 100
+                        else:
+                            pnl = (entry_p - curr_price) * amt
+                            pnl_pct = ((entry_p - curr_price) / entry_p) * 100
+                        pos["unrealized_pnl"] = round(pnl, 2)
+                        pos["pnl_percent"] = round(pnl_pct, 2)
+                    else:
+                        pos["unrealized_pnl"] = 0.0
+                        pos["pnl_percent"] = 0.0
+
+                    sl = pos.get("stop_loss_price")
+                    if sl and curr_price:
+                        try:
+                            pos["stop_distance_percent"] = round(((float(sl) - curr_price) / curr_price) * 100, 2)
+                        except (ValueError, TypeError):
+                            pos["stop_distance_percent"] = None
+                    else:
+                        pos["stop_distance_percent"] = None
+                    positions.append(pos)
+            else:
+                # Live kucoinfutures positions
+                if not self.futures_exchange:
+                    self.connect()
+                try:
+                    raw_pos = await self.futures_exchange.fetch_positions()
+                    for p in raw_pos:
+                        amt = float(p.get("contracts") or p.get("currentQty") or 0)
+                        if abs(amt) <= 0:
+                            continue
+                        entry_p = float(p.get("entryPrice") or 0)
+                        mark_p = float(p.get("markPrice") or p.get("last") or 0)
+                        pos_obj = {
+                            "id": p.get("id") or f"live-pos-{p.get('symbol')}",
+                            "symbol": p.get("symbol"),
+                            "side": "long" if str(p.get("side", "")).lower() == "long" or amt > 0 else "short",
+                            "market_type": "futures",
+                            "amount": abs(amt),
+                            "entry_price": entry_p,
+                            "current_price": mark_p,
+                            "liquidation_price": float(p.get("liquidationPrice") or 0),
+                            "unrealized_pnl": round(float(p.get("unrealizedPnl") or 0), 2),
+                            "pnl_percent": round(float(p.get("percentage") or 0), 2),
+                            "leverage": p.get("leverage"),
+                            "stop_loss_price": float(p.get("stopPrice") or 0) or None,
+                            "created_at": timestamp(),
+                        }
+                        if symbol and pos_obj["symbol"] != symbol:
+                            continue
+                        positions.append(pos_obj)
+                except Exception as e:
+                    logger.error(f"Live pozisyon çekme hatası: {e}")
+
+            return {"success": True, "data": {"count": len(positions), "positions": positions},
+                    "error": None, "timestamp": timestamp()}
+        except Exception as e:
+            logger.error(f"Pozisyon listeleme hatası: {e}")
+            return {"success": False, "data": {"count": 0, "positions": []}, "error": str(e),
+                    "timestamp": timestamp()}
+
 
     # ------------------------------------------------------------------ #
     # İşlem geçmişi
@@ -436,6 +572,7 @@ class KuCoinOrders:
             if self.mode == "paper":
                 cancelled_count = len(self.paper_open_orders)
                 self.paper_open_orders.clear()
+                self.paper_positions.clear()
             else:
                 if not self.exchange:
                     self.connect()
@@ -523,11 +660,30 @@ class KuCoinOrders:
 
         # Giriş emri (market)
         entry_res = await self.create_order(symbol, side, "market", amount, None, market_type,
-                                            margin_mode=margin_mode, leverage=leverage)
+                                            margin_mode=margin_mode, leverage=leverage,
+                                            entry_price=entry_price, stop_loss_price=stop_loss_price)
         if not entry_res.success:
             return OrderCreateResponse(success=False, data={},
                                        error=f"Giriş emri başarısız: {entry_res.error}",
                                        timestamp=timestamp())
+
+        # Açık pozisyon kaydı (Paper)
+        pos_key = f"{symbol}-{market_type}"
+        self.paper_positions[pos_key] = {
+            "id": bracket_id,
+            "bracket_id": bracket_id,
+            "symbol": symbol,
+            "side": "long" if side == "buy" else "short",
+            "market_type": market_type,
+            "amount": amount,
+            "notional_usdt": usdt_amount,
+            "entry_price": entry_price,
+            "stop_loss_price": stop_loss_price,
+            "tp1_price": tp1_price,
+            "tp2_price": tp2_price,
+            "status": "open",
+            "created_at": timestamp(),
+        }
 
         legs = {"entry": entry_res.data}
         # TP1 (%50), TP2 (%50), SL (%100) — çıkış limit emirleri
@@ -537,10 +693,24 @@ class KuCoinOrders:
             ("sl", stop_loss_price, amount),
         ]:
             leg = await self.create_order(symbol, exit_side, "limit", qty, price, market_type,
-                                          margin_mode=margin_mode, leverage=leverage)
+                                          margin_mode=margin_mode, leverage=leverage,
+                                          entry_price=entry_price, stop_loss_price=stop_loss_price)
             if leg.success:
                 leg.data["bracket_leg"] = name
                 leg.data["bracket_id"] = bracket_id
+                leg.data["entry_price"] = entry_price
+                leg.data["stop_loss_price"] = stop_loss_price
+                leg.data["tp1_price"] = tp1_price
+                leg.data["tp2_price"] = tp2_price
+                if self.mode == "paper" and leg.data.get("id") in self.paper_open_orders:
+                    self.paper_open_orders[leg.data["id"]].update({
+                        "bracket_leg": name,
+                        "bracket_id": bracket_id,
+                        "entry_price": entry_price,
+                        "stop_loss_price": stop_loss_price,
+                        "tp1_price": tp1_price,
+                        "tp2_price": tp2_price,
+                    })
             legs[name] = leg.data if leg.success else {"error": leg.error}
 
         return OrderCreateResponse(

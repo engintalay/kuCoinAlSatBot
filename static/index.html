@@ -246,14 +246,38 @@
           </div>
         </div>
 
+        <!-- Açık Pozisyonlar & Aktif İşlemler -->
+        <div class="card glass" id="card-positions" style="margin-bottom: 20px;">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>🏷️ Açık Pozisyonlar (Aktif İşlemler)</span>
+            <span id="pos-summary-badge" class="badge" style="font-size:0.75rem; background:rgba(41,121,255,0.15); color:#58a6ff;">0 Aktif</span>
+          </div>
+          <table class="data-table" id="positions-table">
+            <thead>
+              <tr>
+                <th>Sembol</th>
+                <th>Piyasa</th>
+                <th>Yön</th>
+                <th>Miktar</th>
+                <th>Giriş Fiyatı</th>
+                <th>Anlık Fiyat</th>
+                <th>Stop Fiyatı (SL)</th>
+                <th>Hedef (TP1 / TP2)</th>
+                <th>Kâr / Zarar (PnL)</th>
+              </tr>
+            </thead>
+            <tbody><tr><td colspan="9">Açık pozisyon bulunmuyor.</td></tr></tbody>
+          </table>
+        </div>
+
         <div class="card glass">
           <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
             <span>Açık Emirler</span>
             <button id="btn-refresh-orders" class="btn-mini" style="font-weight:normal;" title="Açık emirleri ve anlık piyasa fiyatlarını yenile">🔄 Anlık Yenile</button>
           </div>
           <table class="data-table" id="open-orders-table">
-            <thead><tr><th>ID</th><th>Sembol</th><th>Piyasa</th><th>Yön</th><th>Tür</th><th>Miktar</th><th>Emir Fiyatı</th><th>Anlık Fiyat</th><th>Fark (%)</th><th>Durum</th><th>İşlem</th></tr></thead>
-            <tbody><tr><td colspan="11">Yükleniyor...</td></tr></tbody>
+            <thead><tr><th>ID</th><th>Sembol</th><th>Piyasa</th><th>Rol</th><th>Yön</th><th>Miktar</th><th>Giriş Fiyatı</th><th>Stop Fiyatı</th><th>Emir Fiyatı</th><th>Anlık Fiyat</th><th>Fark (%)</th><th>Durum</th><th>İşlem</th></tr></thead>
+            <tbody><tr><td colspan="13">Yükleniyor...</td></tr></tbody>
           </table>
         </div>
       </section>

@@ -604,7 +604,68 @@ function fmtOrderPrice(p) {
   return num.toLocaleString("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 8 });
 }
 
+async function loadPositions() {
+  const res = await apiGet("/orders/positions");
+  const tbody = document.querySelector("#positions-table tbody");
+  const badge = document.getElementById("pos-summary-badge");
+  if (!tbody) return;
+  if (res.success && res.data.count) {
+    if (badge) badge.textContent = `${res.data.count} Aktif Pozisyon`;
+    tbody.innerHTML = res.data.positions.map((p) => {
+      const mt = (p.market_type || "spot").toLowerCase();
+      const mtLabel = { spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt;
+      const side = (p.side || "long").toLowerCase();
+      const sideLabel = side === "long" ? "LONG" : "SHORT";
+      const sideCls = side === "long" ? "side-buy" : "side-sell";
+
+      const entryPrice = p.entry_price ? fmtOrderPrice(p.entry_price) : "-";
+      const currPrice = p.current_price ? fmtOrderPrice(p.current_price) : "-";
+
+      // Stop Loss
+      let slHtml = `<span class="text-dim">Belirlenmedi</span>`;
+      if (p.stop_loss_price) {
+        const slStr = fmtOrderPrice(p.stop_loss_price);
+        const dist = p.stop_distance_percent !== null && p.stop_distance_percent !== undefined
+          ? ` <small class="text-dim">(${p.stop_distance_percent > 0 ? '+' : ''}${p.stop_distance_percent}%)</small>` : "";
+        slHtml = `<span style="color:var(--red); font-weight:600;">${slStr}</span>${dist}`;
+      }
+
+      // TP Targets
+      let tpHtml = `<span class="text-dim">-</span>`;
+      if (p.tp1_price || p.tp2_price) {
+        const tp1Str = p.tp1_price ? `TP1: ${fmtOrderPrice(p.tp1_price)}` : "";
+        const tp2Str = p.tp2_price ? `TP2: ${fmtOrderPrice(p.tp2_price)}` : "";
+        tpHtml = `<span style="color:var(--green); font-size:0.82rem;">${[tp1Str, tp2Str].filter(Boolean).join("<br>")}</span>`;
+      }
+
+      // PnL
+      const pnlUsdt = p.unrealized_pnl ?? 0;
+      const pnlPct = p.pnl_percent ?? 0;
+      const pnlSign = pnlPct > 0 ? "+" : "";
+      const pnlCls = pnlPct > 0 ? "pnl-positive" : (pnlPct < 0 ? "pnl-negative" : "pnl-zero");
+      const pnlHtml = `<span class="pnl-badge ${pnlCls}">${pnlSign}${pnlUsdt.toFixed(2)} USDT (${pnlSign}${pnlPct.toFixed(2)}%)</span>`;
+
+      return `
+      <tr>
+        <td><strong>${p.symbol}</strong></td>
+        <td><span class="market-badge market-${mt}">${mtLabel}</span></td>
+        <td><span class="side-badge ${sideCls}">${sideLabel}</span></td>
+        <td>${p.amount}</td>
+        <td><strong>${entryPrice}</strong></td>
+        <td><strong>${currPrice}</strong></td>
+        <td>${slHtml}</td>
+        <td>${tpHtml}</td>
+        <td>${pnlHtml}</td>
+      </tr>`;
+    }).join("");
+  } else {
+    if (badge) badge.textContent = "0 Aktif";
+    tbody.innerHTML = `<tr><td colspan="9">Şu anda açık pozisyonunuz bulunmuyor.</td></tr>`;
+  }
+}
+
 async function loadOpenOrders() {
+  loadPositions();
   const res = await apiGet("/orders/open");
   const tbody = document.querySelector("#open-orders-table tbody");
   if (!tbody) return;
@@ -615,6 +676,26 @@ async function loadOpenOrders() {
       const side = (o.side || "").toLowerCase();
       const sideLabel = side === "buy" ? "ALIŞ" : (side === "sell" ? "SATIŞ" : side.toUpperCase());
       const sideCls = side === "buy" ? "side-buy" : (side === "sell" ? "side-sell" : "");
+
+      // Rol / Bacak
+      let legHtml = `<span class="text-dim">${o.type || 'limit'}</span>`;
+      if (o.bracket_leg === "tp1") legHtml = `<span class="leg-badge leg-tp1">🎯 TP1</span>`;
+      else if (o.bracket_leg === "tp2") legHtml = `<span class="leg-badge leg-tp2">🎯 TP2</span>`;
+      else if (o.bracket_leg === "sl") legHtml = `<span class="leg-badge leg-sl">🛑 STOP LOSS</span>`;
+      else if (o.bracket_leg === "entry") legHtml = `<span class="leg-badge leg-entry">🚀 GİRİŞ</span>`;
+
+      // Giriş Fiyatı
+      const entryPrice = o.entry_price !== null && o.entry_price !== undefined ? Number(o.entry_price) : null;
+      const entryPriceStr = entryPrice !== null ? `<strong>${fmtOrderPrice(entryPrice)}</strong>` : `<span class="text-dim">-</span>`;
+
+      // Stop Fiyatı
+      const stopPrice = o.stop_loss_price !== null && o.stop_loss_price !== undefined ? Number(o.stop_loss_price) : null;
+      let stopPriceStr = `<span class="text-dim">-</span>`;
+      if (stopPrice !== null) {
+        const stopDist = o.stop_distance_percent !== null && o.stop_distance_percent !== undefined
+          ? ` <small class="text-dim">(${o.stop_distance_percent > 0 ? '+' : ''}${o.stop_distance_percent}%)</small>` : "";
+        stopPriceStr = `<span style="color:var(--red); font-weight:600;">${fmtOrderPrice(stopPrice)}</span>${stopDist}`;
+      }
 
       // Emir fiyatı
       const orderPrice = o.price !== null && o.price !== undefined ? Number(o.price) : null;
@@ -640,9 +721,11 @@ async function loadOpenOrders() {
         <td>${o.id}</td>
         <td><strong>${o.symbol}</strong></td>
         <td><span class="market-badge market-${mt}">${mtLabel}</span></td>
+        <td>${legHtml}</td>
         <td><span class="side-badge ${sideCls}">${sideLabel}</span></td>
-        <td>${o.type}</td>
         <td>${o.amount}</td>
+        <td>${entryPriceStr}</td>
+        <td>${stopPriceStr}</td>
         <td>${orderPriceStr}</td>
         <td>${currPriceStr}</td>
         <td>${diffHtml}</td>
@@ -658,7 +741,7 @@ async function loadOpenOrders() {
     tbody.querySelectorAll(".btn-edit").forEach((b) =>
       b.addEventListener("click", () => openEditModal(b.dataset.id, b.dataset.price, b.dataset.amount)));
   } else {
-    tbody.innerHTML = `<tr><td colspan="11">Açık emir yok.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13">Açık emir yok.</td></tr>`;
   }
 }
 
@@ -669,7 +752,7 @@ if (btnRefreshOrders) {
     btnRefreshOrders.textContent = "⏳ Yenileniyor...";
     await loadOpenOrders();
     btnRefreshOrders.textContent = "🔄 Anlık Yenile";
-    toast("Açık emirler ve anlık fiyatlar güncellendi", "success");
+    toast("Açık emirler, pozisyonlar ve anlık fiyatlar güncellendi", "success");
   });
 }
 
