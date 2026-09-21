@@ -766,3 +766,45 @@ body {
 .market-badge.market-margin { background: rgba(219, 171, 10, 0.15); color: #e3b341; border: 1px solid rgba(219, 171, 10, 0.4); }
 .market-badge.market-futures { background: rgba(163, 113, 247, 0.15); color: #bc8cff; border: 1px solid rgba(163, 113, 247, 0.4); }
 .market-badge.market-funding { background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); }
+
+/* Hesap bazlı kırılım kartları */
+.account-breakdown {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.account-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.account-card strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #a0a0a0;
+  font-size: 13px;
+}
+.account-total {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3fb950;
+  margin-bottom: 8px;
+}
+.account-card ul.account-assets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+}
+.account-card li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.account-card li:last-child { border-bottom: none; }
+.account-card li span:first-child { color: #ccc; }
+.account-card li span:nth-child(2) { color: #a0a0a0; text-align: right; }
+.account-card li span:nth-child(3) { color: #3fb950; text-align: right; }

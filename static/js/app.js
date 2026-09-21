@@ -185,6 +185,9 @@ async function loadTicker(symbol = "BTC/USDT") {
 async function loadBalances() {
   const res = await apiGet("/account/balances");
   const tbody = document.querySelector("#balances-table tbody");
+  const container = document.querySelector("#account-breakdown");
+  if (!container) return;
+  
   if (res.success && res.data.balances.length) {
     const accLabel = { spot: "Spot", funding: "Funding", margin: "Margin", futures: "Futures" };
     tbody.innerHTML = res.data.balances.map((a) => {
@@ -196,8 +199,25 @@ async function loadBalances() {
         <td>${a.price_usdt}</td><td>${a.usdt_value}</td><td>${a.portfolio_share_percent}%</td>
       </tr>`;
     }).join("");
+    
+    // Hesap bazlı kırılım (detail view)
+    const breakdown = res.data.accounts || [];
+    if (breakdown.length) {
+      container.innerHTML = breakdown.map((acc) => {
+        const total = Number(acc.total_usdt).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const assetsHtml = acc.assets.map(as => {
+          const val = Number(as.usdt_value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          return `<li><span>${as.symbol}</span><span>${as.total}</span><span>${val} USDT</span></li>`;
+        }).join("");
+        return `<div class="account-card"><strong>${accLabel[acc.account] || acc.account}</strong>
+          <div class="account-total">Toplam: ${total} USDT</div>
+          <ul class="account-assets">${assetsHtml}</ul>
+        </div>`;
+      }).join("");
+    }
   } else {
     tbody.innerHTML = `<tr><td colspan="8">Varlık bulunamadı.</td></tr>`;
+    container.innerHTML = "";
   }
 }
 
