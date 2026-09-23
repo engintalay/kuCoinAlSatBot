@@ -151,8 +151,22 @@ body {
 .guide-link:hover { background: rgba(41,121,255,0.15); }
 .guide-body h3 { color: var(--accent); margin: 16px 0 6px; font-size: 1rem; }
 .guide-body p { margin-bottom: 8px; color: var(--text); line-height: 1.6; font-size: 0.9rem; }
-.guide-body code { background: var(--bg-0); padding: 2px 6px; border-radius: 4px; color: var(--green); font-size: 0.85rem; }
+.guide-body code { background: var(--bg-0); padding: 2px 6px; border-radius: 4px; color: var(--green); font-size: 0.85rem; font-family: monospace; }
 .warn-text { color: var(--red); }
+
+/* GUIDE CONTAINER & CHAPTERS */
+.guide-container { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
+.guide-chapter { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 16px 20px; transition: border-color 0.2s; }
+.guide-chapter:hover { border-color: rgba(41, 121, 255, 0.35); }
+.guide-chapter-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 8px; }
+.guide-chapter-title { color: var(--accent); font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 8px; margin: 0; }
+.guide-chip { font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; background: rgba(41, 121, 255, 0.15); color: #58a6ff; border: 1px solid rgba(41, 121, 255, 0.3); font-weight: 600; text-transform: uppercase; }
+.guide-chapter-content p { margin-bottom: 10px; color: var(--text); line-height: 1.6; font-size: 0.9rem; }
+.guide-chapter-content ul { margin: 8px 0 12px 20px; color: var(--text-dim); font-size: 0.88rem; line-height: 1.6; }
+.guide-chapter-content li { margin-bottom: 6px; }
+.guide-alert-box { background: rgba(255, 82, 82, 0.08); border-left: 4px solid var(--red); padding: 10px 14px; border-radius: 6px; margin: 10px 0; font-size: 0.88rem; color: #ff8a80; line-height: 1.5; }
+.guide-tip-box { background: rgba(0, 230, 118, 0.08); border-left: 4px solid var(--green); padding: 10px 14px; border-radius: 6px; margin: 10px 0; font-size: 0.88rem; color: #b9f6ca; line-height: 1.5; }
+
 
 /* SETTINGS */
 .settings-form { display: flex; flex-direction: column; gap: 12px; max-width: 400px; }

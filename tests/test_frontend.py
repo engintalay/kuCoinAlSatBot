@@ -60,6 +60,14 @@ def test_guide_view_present(client):
     # Kılavuz içeriği kritik başlıkları içermeli
     assert "SIMULATION" in r.text
     assert "Withdraw" in r.text
+    # Genişletilmiş modern kılavuz bileşenleri ve katmanları
+    assert "guide-container" in r.text
+    assert "guide-chapter" in r.text
+    assert "Çoklu Piyasa" in r.text
+    assert "Futures" in r.text
+    assert "Bracket" in r.text
+    assert "Açık Pozisyonlar" in r.text
+    assert "PANIC STOP" in r.text
 
 
 def test_contextual_info_buttons(client):

@@ -304,33 +304,191 @@
         <div class="card glass">
           <div class="card-title">📖 Kullanım Kılavuzu</div>
           <div class="guide-body">
-            <h3>1. Başlangıç & API Kurulumu</h3>
-            <p>KuCoin API anahtarlarınızı proje kök dizinindeki <code>.env</code> dosyasına girin
-              (<code>KUCOIN_API_KEY</code>, <code>KUCOIN_API_SECRET</code>, <code>KUCOIN_API_PASSPHRASE</code>).
-              <b class="warn-text">Güvenlik: API anahtarında kesinlikle "Para Çekme (Withdraw)" yetkisi vermeyin.</b>
-              Yalnızca "General" (okuma) ve "Spot/Trade" (işlem) yetkileri yeterlidir.</p>
+            <p style="color: var(--text-dim); margin-bottom: 16px; font-size: 0.92rem;">
+              KuCoin Al-Sat Botu; çoklu piyasa desteği (Spot, Margin, Futures), 10 katmanlı teknik analiz ve SMC motoru, dinamik mum grafiği, akıllı bracket emirleri ve açık pozisyon takip sistemiyle donatılmış profesyonel bir algoritmik ticaret ve analiz platformudur.
+            </p>
 
-            <h3>2. İşlem Modları</h3>
-            <p><b>🧪 SIMULATION (Paper Trading):</b> Canlı tahta fiyatıyla eşleşen, $10,000 sanal USDT ile
-              çalışan, bakiye düşümünü gerçekçi simüle eden <b>sıfır riskli</b> test ortamı. Varsayılan moddur.</p>
-            <p><b>⚡ LIVE KUCOIN:</b> Gerçek hesabınızdan gerçek emir iletir. Sadece stratejinizi
-              simülasyonda test ettikten sonra kullanın.</p>
+            <div class="guide-container">
 
-            <h3>3. Analiz Göstergeleri</h3>
-            <p><b>Bileşik Skor (0-100):</b> Trend, momentum, güç, hacim ve yapı katmanlarından ağırlıklı
-              boğa/ayı puanı. ≥80 güçlü sinyal, 60-80 normal sinyal, altı nötr.</p>
-            <p><b>MTF (Multi-Timeframe):</b> 4H rejim → 1H kurulum → 15m tetikleyici hiyerarşisi. Üç zaman
-              dilimi uyumlu olmadan işlem önerilmez.</p>
-            <p><b>SMC (Market Structure):</b> BOS (yapı kırılımı), CHoCH (karakter değişimi), FVG (fiyat
-              boşluğu) gibi kurumsal fiyat hareketi kavramları.</p>
+              <!-- Bölüm 1: API Kurulumu & Güvenlik -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">🔐 1. Başlangıç, API Kurulumu ve Güvenlik</div>
+                  <span class="guide-chip">Güvenlik</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>KuCoin API kimlik bilgilerinizi projenin kök dizininde bulunan <code>.env</code> dosyasına girerek sistemi başlatın:</p>
+                  <ul>
+                    <li><code>KUCOIN_API_KEY</code>: KuCoin API anahtarınız.</li>
+                    <li><code>KUCOIN_API_SECRET</code>: KuCoin API gizli anahtarınız.</li>
+                    <li><code>KUCOIN_API_PASSPHRASE</code>: API oluştururken belirlediğiniz şifreniz.</li>
+                  </ul>
+                  <div class="guide-alert-box">
+                    <strong>🛑 Kritik Güvenlik Kuralı:</strong> KuCoin API anahtarı oluştururken <strong>kesinlikle "Para Çekme (Withdraw)" yetkisi VERMEYİNİZ!</strong> Bot yalnızca "General" (hesap/bakiye okuma) ve "Spot/Futures Trade" (işlem açma/kapama) yetkilerine ihtiyaç duyar. Ayrıca borsa arayüzünden sabit IP kısıtlaması (IP Whitelist) tanımlamanız önerilir.
+                  </div>
+                </div>
+              </div>
 
-            <h3>4. Emir Verme</h3>
-            <p><b>Market:</b> Anlık fiyattan hızlı al/sat. <b>Limit:</b> Belirlediğiniz hedef fiyattan.
-              Bakiyenizden fazla emir engellenir (pre-trade risk kontrolü).</p>
+              <!-- Bölüm 2: İşlem Modları -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">🧪 2. İşlem Modları ve Güvenli Geçiş</div>
+                  <span class="guide-chip">Risk Yönetimi</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>Bot iki temel operasyonel modda çalışır:</p>
+                  <ul>
+                    <li><strong>🧪 SIMULATION (Paper Trading):</strong> Canlı KuCoin L1/L2 emir tahtası ve anlık fiyatlarıyla çalışan, <b>$10.000 sanal USDT</b> başlangıç bakiyesine sahip, cüzdan düşümünü ve komisyonları birebir simüle eden <b>sıfır riskli</b> test ortamıdır. Varsayılan güvenli moddur.</li>
+                    <li><strong>⚡ LIVE KUCOIN:</strong> KuCoin borsasındaki gerçek hesabınızla emir ileten canlı ticaret modudur. Gerçek sermaye riski içerir.</li>
+                  </ul>
+                  <div class="guide-tip-box">
+                    <strong>💡 Güvenli Mod Değişimi:</strong> Canlı moda geçişler kazara tıklamaları engellemek için çift aşamalı onay (onay penceresi) mekanizmasına bağlanmıştır. Header'daki mod rozetine tıklayarak veya Ayarlar sekmesinden modu değiştirebilirsiniz.
+                  </div>
+                </div>
+              </div>
 
-            <h3>5. Panic Stop 🛑</h3>
-            <p>Acil durumda tek tıkla <b>tüm açık emirleri iptal eder ve botu durdurur</b>. Bot durunca
-              yeni emir kabul edilmez; tekrar başlatmak için mod değiştirin.</p>
+              <!-- Bölüm 3: Çoklu Piyasa Desteği -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">🌐 3. Çoklu Piyasa Desteği (Spot, Margin, Futures)</div>
+                  <span class="guide-chip">Piyasalar</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>Bot tek bir ekrandan üç farklı piyasa türünde analiz ve işlem imkanı sağlar:</p>
+                  <ul>
+                    <li><strong>Spot:</strong> Standart kripto varlık alım-satımı. Varlığa doğrudan sahip olunur, borçlanma veya kaldıraç riski yoktur.</li>
+                    <li><strong>Margin (Çapraz / İzole):</strong> Teminat göstererek borçlanma usulü kaldıraçlı spot işlem. Düşüşlerde short veya yükselişlerde borçlu long imkanı.</li>
+                    <li><strong>Futures (USDT-M Vadeli İşlemler):</strong> KuCoin USDT marjinli sürekli vadeli sözleşmeler (örn. <code>BTC/USDT:USDT</code> formatı). Kaldıraç, fonlama oranı (Funding Rate), Açık Pozisyon (Open Interest) ve Tasfiye (Liquidation) fiyatı hesaplamaları tam entegredir.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Bölüm 4: Çoklu Hesap & Bakiye Kırılımı -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">💼 4. Çoklu Hesap & Bakiye Kırılımı</div>
+                  <span class="guide-chip">Cüzdan</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>KuCoin borsası varlıkları farklı cüzdan hesaplarında tutar. Bot bu hesapların tümünü anlık sorgulayarak şeffaf bir şekilde listeler:</p>
+                  <ul>
+                    <li><strong>Ana Hesap (Funding):</strong> Para yatırma ve çekme transferlerinin toplandığı ana cüzdan.</li>
+                    <li><strong>İşlem Hesabı (Spot / Trade):</strong> Spot emirlerde kullanılan serbest ve kilitli bakiyeler.</li>
+                    <li><strong>Marjin Hesabı (Margin):</strong> Borç ve teminat bakiyeleri.</li>
+                    <li><strong>Vadeli İşlem Hesabı (Futures):</strong> Vadeli sözleşmelerdeki serbest teminat ve kilitli marjin.</li>
+                  </ul>
+                  <p>Portföy kartının altındaki <em>"Detaylı Hesap Kırılımı"</em> panelinden varlıklarınızın hangi cüzdanlar arasında dağıldığını inceleyebilirsiniz.</p>
+                </div>
+              </div>
+
+              <!-- Bölüm 5: Çoklu Zaman Dilimi & Sub-15m Analiz -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">⏱️ 5. Çoklu Zaman Dilimi & Sub-15m Analiz</div>
+                  <span class="guide-chip">MTF Motoru</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>Analiz motoru 8 farklı zaman dilimini (<code>1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d</code>) destekler ve hiyerarşik <strong>MTF (Multi-Timeframe)</strong> prensibine göre çalışır:</p>
+                  <ul>
+                    <li><strong>Sub-15m (1m, 3m, 5m):</strong> Scalp işlemler, mikro kırılımlar ve milisaniyelik giriş/çıkış tetikleyicileri (Trigger Layer).</li>
+                    <li><strong>Orta Vade (15m, 30m):</strong> İntraday setup ve likidite arayışı (Setup Layer).</li>
+                    <li><strong>Makro Trend (1h, 4h, 1d):</strong> Hakim piyasa yönü, ana destek/dirençler ve piyasa rejimi (Regime Layer).</li>
+                  </ul>
+                  <div class="guide-tip-box">
+                    <strong>💡 Başarı Kuralı:</strong> 4 saatlik trend ile 15 dakikalık tetikleyici zıt yönlerdeyken işlem açılması önerilmez. Sistem MTF uyumu sağlandığında en yüksek güvenilirlik puanını üretir.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bölüm 6: Eğitici 4 Kolonlu Analiz Tablosu -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">📊 6. Eğitici 4 Kolonlu Analiz Tablosu & İndikatör Mantığı</div>
+                  <span class="guide-chip">Teknik & SMC</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>Karmaşık teknik değerleri anlaşılır kılmak için analiz ekranında eğitici 4 boyutlu bir karar tablosu sunulur:</p>
+                  <ul>
+                    <li><strong>İndikatör & Sinyal:</strong> RSI, MACD, EMA (20/50/200), Bollinger, Supertrend, ATR ve Kurumsal Piyasa Yapısı (BOS, CHoCH, FVG, Order Block).</li>
+                    <li><strong>Neden Oldu?:</strong> Göstergeyi tetikleyen fiyat ve hacim hareketinin kök nedeni (örn. "Son 14 mumda alıcı baskısı tükenerek tepe satışı gerçekleşti").</li>
+                    <li><strong>İndikatör Neyi Gösterir?:</strong> Göstergenin kuramsal ve mantıksal açıklaması (örn. "RSI, alıcıların ve satıcıların göreceli güç dengesini 0-100 arasında ölçer").</li>
+                    <li><strong>Neye Sebep Olur?:</strong> Piyasanın vermesi muhtemel tepkiler ve olası fiyat senaryosu (örn. "Aşırı alım sonrası düzeltme veya kâr satışı dalgası").</li>
+                    <li><strong>Korunma Tavsiyesi:</strong> Sermayenizi korumak için alınması gereken somut önlem (Stop daraltma, kâr alma vb.).</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Bölüm 7: Dinamik Mum Grafiği & Seviyeler -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">📈 7. Dinamik Mum Grafiği & Trade Setup Seviyeleri</div>
+                  <span class="guide-chip">Grafik & Seviyeler</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>Analiz görünümündeki interaktif SVG mum grafiği, piyasanın son fiyat mumlarını çizerken otomatik hesaplanan kritik seviyeleri görselleştirir:</p>
+                  <ul>
+                    <li><strong style="color:#58a6ff;">🔵 Giriş Seviyesi (Entry):</strong> Piyasa yapısı ve destek/direnç kırılımına göre ideal pozisyona giriş fiyatı.</li>
+                    <li><strong style="color:var(--green);">🟢 Kâr Al 1 (TP1 - %50):</strong> İlk likidite havuzunda sermayeyi garantiye almak için %50 kâr realizasyonu seviyesi.</li>
+                    <li><strong style="color:var(--green);">🟢 Kâr Al 2 (TP2 - %50):</strong> Trendin ana hedef noktası için kalan %50 pozisyonun kapatılacağı seviye.</li>
+                    <li><strong style="color:var(--red);">🔴 Zarar Durdur (Stop Loss - %100):</strong> Pozisyon tezinin çürüdüğü ve sermayeyi korumak için tüm pozisyonun kesileceği seviye.</li>
+                    <li><strong style="color:#d2a8ff;">🟣 Tasfiye Seviyesi (Liq Price):</strong> Vadeli işlemlerde teminatın sıfırlanacağı risk sınırı.</li>
+                  </ul>
+                  <p>Grafiğin altındaki <strong>"🚀 Akıllı Pakete Aktar"</strong> butonu, tespit edilen bu seviyeleri doğrudan Akıllı Paket Emir formuna yükler.</p>
+                </div>
+              </div>
+
+              <!-- Bölüm 8: Akıllı Paket Emir (Bracket Order) -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">🎯 8. Akıllı Paket Emir (Bracket Order) & Risk Yönetimi</div>
+                  <span class="guide-chip">Otomasyon</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>Profesyonel risk yönetiminin temeli olan <strong>Bracket (Paket) Emir</strong>, tek tıkla 4 emri koordineli olarak kurar:</p>
+                  <ul>
+                    <li>1 Ana Giriş Emri (Limit veya Market)</li>
+                    <li>1. Kâr Alma Emri (%50 Miktar @ TP1)</li>
+                    <li>2. Kâr Alma Emri (%50 Miktar @ TP2)</li>
+                    <li>1 Zarar Durdurma Emri (%100 Miktar @ Stop Loss)</li>
+                  </ul>
+                  <p>Sistem, Risk/Kazanç (R:R) oranını anlık hesaplar. Sermaye yönetimi gereği <strong>R:R oranı 1:2'nin altında olan</strong> (yani 1 birim risk için en az 2 birim kazanç vadetmeyen) işlemler önerilmez.</p>
+                </div>
+              </div>
+
+              <!-- Bölüm 9: Açık Pozisyonlar ve Emir Takibi -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">📋 9. Açık Pozisyonlar ve Emirler Takip Ekranı</div>
+                  <span class="guide-chip">Portföy Takibi</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>Aktif pozisyonlarınız ve bekleyen emirleriniz gerçek zamanlı olarak izlenir:</p>
+                  <ul>
+                    <li><strong>Açık Pozisyonlar Kartı:</strong> Giriş Fiyatı, Güncel Canlı Fiyat, Stop Seviyesi ve Stop Mesafesi (%), TP Hedefleri ile anlık gerçekleşmemiş Kâr/Zarar (PnL hem USDT hem yüzde rozeti olarak) gösterilir.</li>
+                    <li><strong>Açık Emirler Tablosu:</strong> Emir Fiyatı, Anlık Fiyat, Fiyata olan yüzde uzaklık rozeti (<code>diff-badge</code>), Bacak Türü rozetleri (<code>🎯 TP1</code>, <code>🎯 TP2</code>, <code>🛑 SL</code>, <code>🔵 Giriş</code>) ve Piyasa Türü rozeti gösterilir.</li>
+                    <li><strong>🔄 Anlık Yenile Düğmesi:</strong> Tahta fiyatı ve emir durumlarını milisaniyeler içinde tazelemek için kullanılabilir.</li>
+                    <li><strong>İptal & Düzenleme (Amend):</strong> Bekleyen limit emirleri tek tıkla iptal edilebilir veya fiyatı değiştirilebilir.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Bölüm 10: Acil Durum & Hata Teşhis -->
+              <div class="guide-chapter">
+                <div class="guide-chapter-header">
+                  <div class="guide-chapter-title">🛑 10. Acil Durum (Panic Stop) ve Hata Teşhis Sistemi</div>
+                  <span class="guide-chip">Teşhis & Güvenlik</span>
+                </div>
+                <div class="guide-chapter-content">
+                  <p>Beklenmedik piyasa hareketleri veya teknik aksaklıklar için güvenlik kalkanları:</p>
+                  <ul>
+                    <li><strong>🛑 PANIC STOP:</strong> Arayüzün sağ üst köşesindeki kırmızı butona basıldığında borsadaki <b>tüm açık emirler anında iptal edilir</b>, bot motoru dondurulur ve yeni emir kabulü durdurulur. Tekrar başlatmak için mod onayı gereklidir.</li>
+                    <li><strong>📋 Teşhis Bilgisi Kopyala (Copy Diagnostics):</strong> Yaşanan bağlantı, WebSocket veya API gecikmelerinde tüm sistem loglarını, ortam durumunu ve ağ teşhisini tek tıkla panoya kopyalayarak teknik incelemeye hazır hale getirir.</li>
+                    <li><strong>🐞 Hata Raporlama (Issue Tracker):</strong> Tespit ettiğiniz aksaklıkları kategori, öncelik ve açıklama ile SQLite veritabanına kaydedebilir; durumunu (Açık, İnceleniyor, Çözüldü) takip edebilirsiniz.</li>
+                  </ul>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       </section>
