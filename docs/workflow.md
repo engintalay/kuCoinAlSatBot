@@ -8,7 +8,7 @@
 
 | Öğe | Durum |
 |-----|-------|
-| Tasarım Dokümantasyonu | ✅ Tamamlandı (`docs/`) |
+| Tasarım Dokümantasyonu | ✅ Tamamlandı (`docs/`, `docs/USER_GUIDE.md`) |
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
 | `requirements.txt` | ✅ Güncellendi (`aiosqlite`, `requests` dahil) & Sanal ortama kuruldu |
@@ -22,9 +22,9 @@
 | Modül 2 — Test Dağılımı | ✅ 79 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 12`, `phase2c: 10`, `market_types: 12` |
 | Modül 3 (Emir Yönetimi, Bracket & Öneriler) | ✅ **%100 Tamamlandı** (Market/Limit, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k, mod geçişi, pre-trade risk, Bracket orders, Amend, RecommendationEngine) — 31 test |
 | Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, sembol arama; 5 REST endpoint'i) — 6 test |
-| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Kılavuz, 7 Info butonu, Ayarlar paneli, Seviyeli mum grafiği, Sade özet kartı & 4-boyutlu eğitici gerekçe gridleri; `static/` mount) — 11 servis testi |
+| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Modern 10 Bölümlü Kılavuz, 7 Info butonu, Ayarlar paneli, Seviyeli mum grafiği, Sade özet kartı & 4-boyutlu eğitici gerekçe gridleri; `static/` mount) — 11 servis testi |
 | Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **174/174 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil) |
+| Toplam Birim Test Durumu | ✅ **210/210 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %80 coverage) |
 
 
 
