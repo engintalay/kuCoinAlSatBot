@@ -612,9 +612,9 @@ class KuCoinOrders:
             total_fee = 0.0
             total_volume = 0.0
             for sym, stats in per_symbol_pnl.items():
-                stats["realized_pnl"] = round(stats["realized_pnl"], 2)
+                stats["realized_pnl"] = round(stats["realized_pnl"], 4)
                 stats["total_fee"] = round(stats["total_fee"], 4)
-                stats["volume_usdt"] = round(stats["volume_usdt"], 2)
+                stats["volume_usdt"] = round(stats["volume_usdt"], 4)
                 # Açık kalan pozisyon miktarı
                 stats["open_qty"] = round(positions.get(sym, {}).get("qty", 0.0), 8)
                 total_realized += stats["realized_pnl"]
@@ -627,9 +627,9 @@ class KuCoinOrders:
             return PnLReportResponse(
                 success=True,
                 data={
-                    "total_realized_pnl": round(total_realized, 2),
+                    "total_realized_pnl": round(total_realized, 4),
                     "total_fee": round(total_fee, 4),
-                    "total_volume_usdt": round(total_volume, 2),
+                    "total_volume_usdt": round(total_volume, 4),
                     "symbol_count": len(symbols_report),
                     "symbols": symbols_report,
                 },

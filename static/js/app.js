@@ -681,24 +681,24 @@ async function loadPnL() {
     summary.innerHTML = `
       <div class="pnl-stat ${totalCls}">
         <span class="pnl-label">Toplam Realize K/Z</span>
-        <span class="pnl-value">${sign}${d.total_realized_pnl.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})} USDT</span>
+        <span class="pnl-value">${sign}${d.total_realized_pnl.toLocaleString("en-US", {minimumFractionDigits:4, maximumFractionDigits:4})} USDT</span>
       </div>
       <div class="pnl-stat">
         <span class="pnl-label">Toplam Komisyon</span>
-        <span class="pnl-value">${d.total_fee} USDT</span>
+        <span class="pnl-value">${Number(d.total_fee).toFixed(4)} USDT</span>
       </div>
       <div class="pnl-stat">
         <span class="pnl-label">Toplam Hacim</span>
-        <span class="pnl-value">${d.total_volume_usdt.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})} USDT</span>
+        <span class="pnl-value">${d.total_volume_usdt.toLocaleString("en-US", {minimumFractionDigits:4, maximumFractionDigits:4})} USDT</span>
       </div>`;
     tbody.innerHTML = d.symbols.map((s) => {
       const cls = s.realized_pnl >= 0 ? "up" : "down";
       const sgn = s.realized_pnl >= 0 ? "+" : "";
       return `<tr>
         <td>${s.symbol}</td>
-        <td class="${cls}">${sgn}${s.realized_pnl}</td>
+        <td class="${cls}">${sgn}${Number(s.realized_pnl).toFixed(4)}</td>
         <td>${s.buy_count}</td><td>${s.sell_count}</td>
-        <td>${s.total_fee}</td><td>${s.volume_usdt}</td><td>${s.open_qty}</td>
+        <td>${Number(s.total_fee).toFixed(4)}</td><td>${Number(s.volume_usdt).toFixed(4)}</td><td>${s.open_qty}</td>
       </tr>`;
     }).join("");
   } else if (res.success) {
