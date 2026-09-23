@@ -38,6 +38,7 @@
       <a class="nav-item" data-view="account">👛 Hesap</a>
       <a class="nav-item" data-view="analysis">📈 Analiz</a>
       <a class="nav-item" data-view="orders">📋 Emirler</a>
+      <a class="nav-item" data-view="pnl">💰 Kar / Zarar</a>
       <a class="nav-item" data-view="guide">📖 Kullanım Kılavuzu</a>
       <a class="nav-item" data-view="settings">⚙️ Ayarlar</a>
       <a class="nav-item" data-view="issues">🐛 Hata Raporlama</a>
@@ -278,6 +279,23 @@
           <table class="data-table" id="open-orders-table">
             <thead><tr><th>ID</th><th>Sembol</th><th>Piyasa</th><th>Rol</th><th>Yön</th><th>Miktar</th><th>Giriş Fiyatı</th><th>Stop Fiyatı</th><th>Emir Fiyatı</th><th>Anlık Fiyat</th><th>Fark (%)</th><th>Durum</th><th>İşlem</th></tr></thead>
             <tbody><tr><td colspan="13">Yükleniyor...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+      <!-- Kar / Zarar görünümü -->
+      <section id="view-pnl" class="view">
+        <div class="card glass">
+          <div class="card-title">💰 Kar / Zarar Raporu <button class="info-btn" data-info="pnl">ℹ️</button></div>
+          <div class="toolbar">
+            <input id="pnl-symbol" class="input" list="symbol-choices" placeholder="Sembol (boş = tümü)" />
+            <button id="pnl-refresh" class="btn btn-accent">Raporu Getir</button>
+          </div>
+          <div id="pnl-summary" class="pnl-summary"></div>
+          <table class="data-table" id="pnl-table">
+            <thead>
+              <tr><th>Sembol</th><th>Realize K/Z (USDT)</th><th>Alış</th><th>Satış</th><th>Komisyon</th><th>Hacim (USDT)</th><th>Açık Miktar</th></tr>
+            </thead>
+            <tbody><tr><td colspan="7">Rapor için "Raporu Getir" düğmesine basın.</td></tr></tbody>
           </table>
         </div>
       </section>

@@ -86,6 +86,7 @@ function switchView(view) {
   if (sec) sec.classList.add("active");
   if (view === "account") loadBalances();
   if (view === "orders") loadOpenOrders();
+  if (view === "pnl") loadPnL();
   if (view === "settings") loadSettings();
   if (view === "analysis") loadAnalysis();
   if (view === "issues") { loadIssues(); loadDiagnostics(); }
@@ -108,6 +109,7 @@ const INFO_TEXT = {
   smc: { t: "Smart Money Concepts", d: "BOS (yapı kırılımı), CHoCH (karakter değişimi), FVG (fiyat boşluğu) gibi kurumsal fiyat hareketi sinyalleri." },
   orders: { t: "Emir Verme", d: "Market: anlık fiyattan. Limit: hedef fiyattan. Bakiyenizden fazla emir pre-trade risk kontrolüyle engellenir." },
   bracket: { t: "Akıllı Paket Emir", d: "Analiz motorunun ATR/seviye hesabından otomatik Giriş + TP1 (%50) + TP2 (%50) + Stop-Loss üretir. Sadece USDT tutarı girin, tek tıkla tüm paket iletilir." },
+  pnl: { t: "Kar / Zarar Raporu", d: "Emir geçmişindeki dolan emirlerden ortalama maliyet yöntemiyle gerçekleşen (realize) kar/zarar hesaplanır. Komisyonlar düşülür. Açık miktar, henüz satılmamış pozisyonu gösterir." },
   regime: { t: "Piyasa Geneli Rejim", d: "BTC Dominance, toplam piyasa değeri ve stablecoin dominansından risk-on/risk-off ortamını ve altseason ipucunu üretir (CoinGecko verisi)." },
   "bug-report": { t: "Hata & Sorun Bildirimi", d: "Sistemde karşılaştığınız hataları buradan doğrudan kaydedebilirsiniz. Bildirimler sistem teşhis günlüğüne işlenir ve çözümleriyle birlikte takip edilir." },
 };
@@ -663,6 +665,53 @@ async function loadPositions() {
     tbody.innerHTML = `<tr><td colspan="9">Şu anda açık pozisyonunuz bulunmuyor.</td></tr>`;
   }
 }
+
+async function loadPnL() {
+  const symbol = (document.getElementById("pnl-symbol")?.value || "").trim();
+  const q = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
+  const res = await apiGet("/orders/pnl" + q);
+  const tbody = document.querySelector("#pnl-table tbody");
+  const summary = document.getElementById("pnl-summary");
+  if (!tbody || !summary) return;
+
+  if (res.success && res.data.symbol_count) {
+    const d = res.data;
+    const totalCls = d.total_realized_pnl >= 0 ? "up" : "down";
+    const sign = d.total_realized_pnl >= 0 ? "+" : "";
+    summary.innerHTML = `
+      <div class="pnl-stat ${totalCls}">
+        <span class="pnl-label">Toplam Realize K/Z</span>
+        <span class="pnl-value">${sign}${d.total_realized_pnl.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})} USDT</span>
+      </div>
+      <div class="pnl-stat">
+        <span class="pnl-label">Toplam Komisyon</span>
+        <span class="pnl-value">${d.total_fee} USDT</span>
+      </div>
+      <div class="pnl-stat">
+        <span class="pnl-label">Toplam Hacim</span>
+        <span class="pnl-value">${d.total_volume_usdt.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})} USDT</span>
+      </div>`;
+    tbody.innerHTML = d.symbols.map((s) => {
+      const cls = s.realized_pnl >= 0 ? "up" : "down";
+      const sgn = s.realized_pnl >= 0 ? "+" : "";
+      return `<tr>
+        <td>${s.symbol}</td>
+        <td class="${cls}">${sgn}${s.realized_pnl}</td>
+        <td>${s.buy_count}</td><td>${s.sell_count}</td>
+        <td>${s.total_fee}</td><td>${s.volume_usdt}</td><td>${s.open_qty}</td>
+      </tr>`;
+    }).join("");
+  } else if (res.success) {
+    summary.innerHTML = "";
+    tbody.innerHTML = `<tr><td colspan="7">Kapanmış (dolan) emir bulunamadı.</td></tr>`;
+  } else {
+    summary.innerHTML = "";
+    tbody.innerHTML = `<tr><td colspan="7">Kar/zarar raporu alınamadı: ${res.error || ""}</td></tr>`;
+  }
+}
+
+const _pnlBtn = document.getElementById("pnl-refresh");
+if (_pnlBtn) _pnlBtn.addEventListener("click", loadPnL);
 
 async function loadOpenOrders() {
   loadPositions();

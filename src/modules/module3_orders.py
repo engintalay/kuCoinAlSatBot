@@ -28,6 +28,7 @@ from src.models.orders import (
     OrderCancelResponse,
     PanicStopResponse,
     SwitchModeResponse,
+    PnLReportResponse,
 )
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
@@ -534,6 +535,109 @@ class KuCoinOrders:
             logger.error(f"Emir geçmişi hatası: {e}")
             return OrderHistoryResponse(
                 success=False, data={}, error=f"Emir geçmişi alınamadı: {e}", timestamp=timestamp())
+
+    # ------------------------------------------------------------------ #
+    # Kar/Zarar (P&L) Raporu — emir geçmişinden hesaplanır
+    # ------------------------------------------------------------------ #
+    async def get_pnl_report(self, symbol: str | None = None, limit: int = 200) -> PnLReportResponse:
+        """
+        Emir geçmişini (dolan emirler) çekip sembol bazında gerçekleşen kar/zararı
+        (realized P&L) hesaplar. Ortalama maliyet (average cost) yöntemi kullanılır:
+        alışlar pozisyon maliyetini artırır, satışlar o anki ortalama maliyete göre
+        realize P&L üretir.
+        """
+        try:
+            hist_res = await self.get_history(symbol, limit=limit)
+            if not hist_res.success:
+                return PnLReportResponse(
+                    success=False, data={}, error=hist_res.error, timestamp=timestamp())
+
+            orders = hist_res.data.get("orders", [])
+
+            # Sembol bazında pozisyon: {symbol: {"qty": float, "cost": float}}
+            positions: dict[str, dict] = {}
+            per_symbol_pnl: dict[str, dict] = {}
+
+            # Zaman sırasına göre işле (eski -> yeni)
+            def _ts(o):
+                return o.get("timestamp") or o.get("created_at") or 0
+            for o in sorted(orders, key=_ts):
+                # Yalnızca dolan (filled/closed) emirler P&L üretir
+                status = str(o.get("status", "")).lower()
+                if status not in ("filled", "closed", "done"):
+                    continue
+                sym = o.get("symbol")
+                side = str(o.get("side", "")).lower()
+                # Miktar: ccxt 'filled' veya paper 'amount'
+                qty = float(o.get("filled") or o.get("amount") or 0.0)
+                # Fiyat: ccxt 'average'/'price' veya paper 'filled_price'/'price'
+                price = float(o.get("average") or o.get("filled_price") or o.get("price") or 0.0)
+                if qty <= 0 or price <= 0 or not sym:
+                    continue
+                fee = 0.0
+                fee_obj = o.get("fee") or {}
+                if isinstance(fee_obj, dict):
+                    fee = float(fee_obj.get("cost") or 0.0)
+
+                pos = positions.setdefault(sym, {"qty": 0.0, "cost": 0.0})
+                stats = per_symbol_pnl.setdefault(sym, {
+                    "symbol": sym, "realized_pnl": 0.0, "buy_count": 0,
+                    "sell_count": 0, "total_fee": 0.0, "volume_usdt": 0.0,
+                })
+                stats["total_fee"] += fee
+                stats["volume_usdt"] += qty * price
+
+                if side == "buy":
+                    # Pozisyona ekle (ortalama maliyet)
+                    pos["qty"] += qty
+                    pos["cost"] += qty * price
+                    stats["buy_count"] += 1
+                elif side == "sell":
+                    stats["sell_count"] += 1
+                    # Ortalama maliyet
+                    avg_cost = (pos["cost"] / pos["qty"]) if pos["qty"] > 0 else price
+                    sell_qty = min(qty, pos["qty"]) if pos["qty"] > 0 else qty
+                    realized = (price - avg_cost) * sell_qty - fee
+                    stats["realized_pnl"] += realized
+                    # Pozisyondan düş
+                    pos["qty"] -= sell_qty
+                    pos["cost"] -= avg_cost * sell_qty
+                    if pos["qty"] < 1e-12:
+                        pos["qty"] = 0.0
+                        pos["cost"] = 0.0
+
+            # Özet
+            symbols_report = []
+            total_realized = 0.0
+            total_fee = 0.0
+            total_volume = 0.0
+            for sym, stats in per_symbol_pnl.items():
+                stats["realized_pnl"] = round(stats["realized_pnl"], 2)
+                stats["total_fee"] = round(stats["total_fee"], 4)
+                stats["volume_usdt"] = round(stats["volume_usdt"], 2)
+                # Açık kalan pozisyon miktarı
+                stats["open_qty"] = round(positions.get(sym, {}).get("qty", 0.0), 8)
+                total_realized += stats["realized_pnl"]
+                total_fee += stats["total_fee"]
+                total_volume += stats["volume_usdt"]
+                symbols_report.append(stats)
+
+            symbols_report.sort(key=lambda x: x["realized_pnl"], reverse=True)
+
+            return PnLReportResponse(
+                success=True,
+                data={
+                    "total_realized_pnl": round(total_realized, 2),
+                    "total_fee": round(total_fee, 4),
+                    "total_volume_usdt": round(total_volume, 2),
+                    "symbol_count": len(symbols_report),
+                    "symbols": symbols_report,
+                },
+                error=None, timestamp=timestamp())
+        except Exception as e:
+            logger.error(f"P&L raporu hatası: {e}")
+            return PnLReportResponse(
+                success=False, data={}, error=f"Kar/zarar raporu alınamadı: {e}", timestamp=timestamp())
 
     # ------------------------------------------------------------------ #
     # M3-C05: İptal

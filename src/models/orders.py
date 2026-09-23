@@ -52,3 +52,11 @@ class SwitchModeResponse(BaseModel):
     data: dict = Field(description="Mod geçiş bilgileri")
     error: str | None = None
     timestamp: str
+
+
+class PnLReportResponse(BaseModel):
+    """Emir geçmişinden hesaplanan kar/zarar (P&L) raporu."""
+    success: bool
+    data: dict = Field(description="Kar/zarar raporu")
+    error: str | None = None
+    timestamp: str

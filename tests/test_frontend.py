@@ -96,8 +96,20 @@ def test_symbol_datalist_integration(client):
     """Sembol girişleri watchlist datalist'ine bağlı olmalı."""
     r = client.get("/")
     assert 'id="symbol-choices"' in r.text
-    assert r.text.count('list="symbol-choices"') == 3  # analiz + emir + bracket
+    assert r.text.count('list="symbol-choices"') == 4  # analiz + emir + bracket + pnl
 
+
+
+def test_pnl_view(client):
+    """Kar/Zarar görünümü, navigasyon ve JS fonksiyonu bulunmalı."""
+    r = client.get("/")
+    assert 'data-view="pnl"' in r.text
+    assert 'id="view-pnl"' in r.text
+    assert 'id="pnl-table"' in r.text
+    assert 'data-info="pnl"' in r.text
+    js = client.get("/static/js/app.js").text
+    assert "loadPnL" in js
+    assert "/orders/pnl" in js
 
 def test_market_regime_widget(client):
     """Katman 9 piyasa geneli rejim göstergesi ve info düğmesi bulunmalı."""

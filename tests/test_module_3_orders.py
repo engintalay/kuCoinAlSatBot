@@ -423,3 +423,59 @@ class TestPositionsAndEntryStopPrices:
         assert len(orders.paper_positions) == 0
 
 
+
+
+class TestPnLReport:
+    """Kar/Zarar (P&L) raporu — ortalama maliyet yöntemi."""
+
+    @pytest.mark.asyncio
+    async def test_realized_pnl_average_cost(self):
+        """Al 1@100, al 1@200 (ort 150), sat 1@300 => realized (300-150)*1 = 150."""
+        o = _paper_orders()
+        o.paper_history = [
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 1, "filled_price": 100.0, "status": "filled", "created_at": "t1"},
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 1, "filled_price": 200.0, "status": "filled", "created_at": "t2"},
+            {"symbol": "BTC/USDT", "side": "sell", "amount": 1, "filled_price": 300.0, "status": "filled", "created_at": "t3"},
+        ]
+        r = await o.get_pnl_report()
+        assert r.success is True
+        assert r.data["total_realized_pnl"] == 150.0
+        sym = r.data["symbols"][0]
+        assert sym["symbol"] == "BTC/USDT"
+        assert sym["realized_pnl"] == 150.0
+        assert sym["open_qty"] == 1.0  # 2 alım - 1 satım
+
+    @pytest.mark.asyncio
+    async def test_pnl_loss(self):
+        """Al 1@200, sat 1@100 => realized -100."""
+        o = _paper_orders()
+        o.paper_history = [
+            {"symbol": "ETH/USDT", "side": "buy", "amount": 1, "filled_price": 200.0, "status": "filled", "created_at": "t1"},
+            {"symbol": "ETH/USDT", "side": "sell", "amount": 1, "filled_price": 100.0, "status": "filled", "created_at": "t2"},
+        ]
+        r = await o.get_pnl_report()
+        assert r.data["total_realized_pnl"] == -100.0
+
+    @pytest.mark.asyncio
+    async def test_pnl_ignores_open_orders(self):
+        """Dolmayan (open) emirler P&L'e dahil edilmemeli."""
+        o = _paper_orders()
+        o.paper_history = [
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 1, "price": 100.0, "status": "open", "created_at": "t1"},
+        ]
+        r = await o.get_pnl_report()
+        assert r.success is True
+        assert r.data["total_realized_pnl"] == 0.0
+        assert r.data["symbol_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_pnl_fee_deducted(self):
+        """Komisyon (fee) realized P&L'den düşülmeli."""
+        o = _paper_orders()
+        o.paper_history = [
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 1, "filled_price": 100.0, "status": "filled", "created_at": "t1"},
+            {"symbol": "BTC/USDT", "side": "sell", "amount": 1, "filled_price": 200.0, "status": "filled", "created_at": "t2", "fee": {"cost": 5.0}},
+        ]
+        r = await o.get_pnl_report()
+        # (200-100)*1 - 5 fee = 95
+        assert r.data["total_realized_pnl"] == 95.0

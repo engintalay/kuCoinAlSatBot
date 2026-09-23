@@ -363,6 +363,13 @@ async def get_order_history(symbol: str | None = None, limit: int = 50):
     return result
 
 
+@app.get("/api/v1/orders/pnl")
+async def get_pnl_report(symbol: str | None = None, limit: int = 200):
+    """Emir geçmişinden hesaplanan kar/zarar (P&L) raporunu döner."""
+    result = await orders.get_pnl_report(symbol, limit)
+    return result
+
+
 @app.delete("/api/v1/orders/{order_id}")
 async def cancel_order(order_id: str, symbol: str | None = None):
     """Belirtilen açık emri iptal eder."""
