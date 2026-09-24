@@ -123,6 +123,39 @@ def _score_volume(volume: dict) -> tuple[float, float, list]:
     return bull, bear, reasons
 
 
+def _score_volatility(vol: dict | None) -> tuple[float, float, list]:
+    """
+    Volatilite/Bollinger puanlaması (Katman 5).
+    Bollinger %B ile aşırı satım (alt band → yukarı tepki potansiyeli, boğa) veya
+    aşırı alım (üst band → aşağı tepki potansiyeli, ayı) sinyali üretir.
+    """
+    bull = bear = 0.0
+    reasons = []
+    if not vol:
+        return bull, bear, reasons
+
+    bk = vol.get("bollinger_keltner") or {}
+    bb = bk.get("bollinger") or {}
+    pb = bb.get("percent_b")
+    if pb is None:
+        return bull, bear, reasons
+
+    if pb <= 0:
+        bull += 8
+        reasons.append("Fiyat Bollinger alt bandının altında (%B≤0): aşırı satım, yukarı tepki potansiyeli")
+    elif pb < 0.2:
+        bull += 4
+        reasons.append("Fiyat Bollinger alt bandına yakın (%B<0.2): olası dip toparlanması")
+    elif pb >= 1:
+        bear += 8
+        reasons.append("Fiyat Bollinger üst bandının üstünde (%B≥1): aşırı alım, aşağı tepki potansiyeli")
+    elif pb > 0.8:
+        bear += 4
+        reasons.append("Fiyat Bollinger üst bandına yakın (%B>0.8): olası tepe zayıflaması")
+
+    return bull, bear, reasons
+
+
 def _score_derivatives(derivatives: dict | None) -> tuple[float, float, list]:
     """Türev piyasa puanlaması (Katman 8: funding rate & open interest)."""
     bull = bear = 0.0
@@ -180,6 +213,23 @@ def _risk_filters(indicators: dict, market_type: str = "spot") -> list:
 
 
 REASON_EXPLANATIONS = {
+    # Volatilite (Bollinger)
+    "Bollinger alt band": {
+        "indicator": "Bollinger Bantları %B (Volatilite / Aşırılık)",
+        "condition": "Fiyat, 20 periyotluk Bollinger alt bandına değdi veya altına sarktı (%B ≤ 0.2).",
+        "meaning": "Fiyatın istatistiksel olarak ucuzladığını ve satıcıların kısa vadede tükenmekte olduğunu gösterir.",
+        "impact": "Alt banttan bir toparlanma (mean reversion) ve orta banda (20 EMA) doğru yukarı tepki hareketine sebep olabilir.",
+        "advice": "Trend zayıfken (düşük ADX) bant dokunuşları güçlü tepki verir; trend güçlüyken bandın dışında kalıcı seyir sürebilir, teyit bekleyin.",
+        "type": "bullish",
+    },
+    "Bollinger üst band": {
+        "indicator": "Bollinger Bantları %B (Volatilite / Aşırılık)",
+        "condition": "Fiyat, 20 periyotluk Bollinger üst bandına değdi veya üstüne çıktı (%B ≥ 0.8).",
+        "meaning": "Fiyatın istatistiksel olarak pahalılaştığını ve alıcıların kısa vadede tükenmekte olduğunu gösterir.",
+        "impact": "Üst banttan bir geri çekilme (mean reversion) ve orta banda doğru aşağı tepki hareketine sebep olabilir.",
+        "advice": "Güçlü yükseliş trendinde fiyat üst bant boyunca yürüyebilir (band-walking); tek başına satış sinyali sayılmamalı, momentum zayıflaması ile teyit edin.",
+        "type": "bearish",
+    },
     # Trend
     "Golden Cross": {
         "indicator": "EMA 50 / 200 Hareketli Ortalama (Trend Yönü)",
@@ -549,6 +599,7 @@ def compute_score(indicators: dict, market_type: str = "spot") -> dict:
         _score_strength(indicators.get("strength")),
         _score_volume(indicators.get("volume")),
         _score_structure(indicators.get("structure")),
+        _score_volatility(indicators.get("volatility")),
     ]
     if market_type == "futures" or indicators.get("derivatives"):
         layers.append(_score_derivatives(indicators.get("derivatives")))
@@ -558,7 +609,7 @@ def compute_score(indicators: dict, market_type: str = "spot") -> dict:
     reasons = [r for l in layers for r in l[2]]
     warnings = _risk_filters(indicators, market_type=market_type)
 
-    max_points = 90.0 if (market_type == "futures" or indicators.get("derivatives")) else 80.0
+    max_points = 98.0 if (market_type == "futures" or indicators.get("derivatives")) else 88.0
     bull_score = round(min(bull / max_points * 100, 100), 1)
     bear_score = round(min(bear / max_points * 100, 100), 1)
     net = round(bull_score - bear_score, 1)

@@ -168,3 +168,45 @@ class TestScoreIntegration:
         result = await m.get_score("BTC/USDT", "1h", 300)
         assert result.success is False
         assert result.data["data_quality"] == "UNAVAILABLE"
+
+
+class TestBollingerScoring:
+    """Katman 5: Bollinger %B puanlaması (analize dahil)."""
+
+    def test_oversold_adds_bull(self):
+        from src.modules.analysis.scoring_engine import _score_volatility
+        bull, bear, reasons = _score_volatility(
+            {"bollinger_keltner": {"bollinger": {"percent_b": -0.1}}})
+        assert bull == 8.0 and bear == 0.0
+        assert any("alt band" in r for r in reasons)
+
+    def test_overbought_adds_bear(self):
+        from src.modules.analysis.scoring_engine import _score_volatility
+        bull, bear, reasons = _score_volatility(
+            {"bollinger_keltner": {"bollinger": {"percent_b": 1.2}}})
+        assert bear == 8.0 and bull == 0.0
+        assert any("üst band" in r for r in reasons)
+
+    def test_near_lower_band_light_bull(self):
+        from src.modules.analysis.scoring_engine import _score_volatility
+        bull, bear, _ = _score_volatility(
+            {"bollinger_keltner": {"bollinger": {"percent_b": 0.15}}})
+        assert bull == 4.0 and bear == 0.0
+
+    def test_midband_neutral(self):
+        from src.modules.analysis.scoring_engine import _score_volatility
+        bull, bear, reasons = _score_volatility(
+            {"bollinger_keltner": {"bollinger": {"percent_b": 0.5}}})
+        assert bull == 0.0 and bear == 0.0 and reasons == []
+
+    def test_missing_data_safe(self):
+        from src.modules.analysis.scoring_engine import _score_volatility
+        assert _score_volatility(None) == (0.0, 0.0, [])
+        assert _score_volatility({}) == (0.0, 0.0, [])
+
+    def test_compute_score_includes_bollinger(self):
+        """compute_score Bollinger gerekçesini ve eğitici detayını üretmeli."""
+        from src.modules.analysis.scoring_engine import compute_score
+        res = compute_score({"volatility": {"bollinger_keltner": {"bollinger": {"percent_b": -0.05}}}})
+        assert any("Bollinger" in r for r in res["reasons"])
+        assert any("Bollinger" in d.get("indicator", "") for d in res["reasons_detail"])
