@@ -23,6 +23,10 @@ class AssetBalance(BaseModel):
     price_usdt: float = 0.0
     usdt_value: float = 0.0
     portfolio_share_percent: float = 0.0
+    avg_cost: float | None = None
+    total_cost: float | None = None
+    unrealized_pnl: float | None = None
+    pnl_percent: float | None = None
 
 
 class ConnectionStatusData(BaseModel):

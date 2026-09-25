@@ -479,3 +479,101 @@ class TestPnLReport:
         r = await o.get_pnl_report()
         # (200-100)*1 - 5 fee = 95
         assert r.data["total_realized_pnl"] == 95.0
+
+
+class TestHoldingCostsAndHistory:
+    """Gerçekleşen emirler sonrası eldeki coinlerin maliyetleri ve geçmiş tüm emirler."""
+
+    @pytest.mark.asyncio
+    async def test_calculate_holding_costs_weighted_average(self):
+        """Al 1@100, al 1@200 => elde 2@150 ortalama maliyet."""
+        o = _paper_orders()
+        orders = [
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 1.0, "filled_price": 100.0, "status": "filled", "created_at": "t1"},
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 1.0, "filled_price": 200.0, "status": "filled", "created_at": "t2"},
+        ]
+        hc = o.calculate_holding_costs(orders)
+        assert "BTC" in hc
+        assert hc["BTC"]["qty"] == 2.0
+        assert hc["BTC"]["avg_cost"] == 150.0
+        assert hc["BTC"]["cost"] == 300.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_holding_costs_after_partial_sell(self):
+        """Al 2@100, sat 1@150 => elde kalan 1@100 maliyet."""
+        o = _paper_orders()
+        orders = [
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 2.0, "filled_price": 100.0, "status": "filled", "created_at": "t1"},
+            {"symbol": "BTC/USDT", "side": "sell", "amount": 1.0, "filled_price": 150.0, "status": "filled", "created_at": "t2"},
+        ]
+        hc = o.calculate_holding_costs(orders)
+        assert "BTC" in hc
+        assert hc["BTC"]["qty"] == 1.0
+        assert hc["BTC"]["avg_cost"] == 100.0
+        assert hc["BTC"]["cost"] == 100.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_holding_costs_closed_position_omitted(self):
+        """Al 1@100, sat 1@120 => elde coin kalmaz (boş)."""
+        o = _paper_orders()
+        orders = [
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 1.0, "filled_price": 100.0, "status": "filled", "created_at": "t1"},
+            {"symbol": "BTC/USDT", "side": "sell", "amount": 1.0, "filled_price": 120.0, "status": "filled", "created_at": "t2"},
+        ]
+        hc = o.calculate_holding_costs(orders)
+        assert "BTC" not in hc
+
+    @pytest.mark.asyncio
+    async def test_get_history_all_orders_and_limit(self):
+        """limit=0 / None ile tüm geçmiş emirler döner."""
+        o = _paper_orders()
+        o.paper_history = [
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 0.01, "price": 50000.0, "status": "filled", "created_at": "t1"},
+            {"symbol": "ETH/USDT", "side": "buy", "amount": 0.1, "price": 3000.0, "status": "filled", "created_at": "t2"},
+            {"symbol": "SOL/USDT", "side": "buy", "amount": 1.0, "price": 150.0, "status": "filled", "created_at": "t3"},
+        ]
+        # Tümü
+        h_all = await o.get_history(limit=0)
+        assert h_all.success is True
+        assert h_all.data["count"] == 3
+        # Limitli
+        h_lim = await o.get_history(limit=2)
+        assert h_lim.success is True
+        assert h_lim.data["count"] == 2
+        # Sembol filtreli
+        h_sym = await o.get_history(symbol="ETH/USDT")
+        assert h_sym.success is True
+        assert h_sym.data["count"] == 1
+        assert h_sym.data["orders"][0]["symbol"] == "ETH/USDT"
+
+    @pytest.mark.asyncio
+    async def test_positions_includes_spot_holdings_with_costs_and_values(self):
+        """get_positions gerçekleşen emirler sonrası eldeki spot koinleri maliyet ve güncel değerle dönmeli."""
+        from unittest.mock import MagicMock, AsyncMock
+        from src.models.market import TickerResponse
+        from src.modules.module3_orders import KuCoinOrders
+
+        mock_market = MagicMock()
+        mock_market.get_ticker = AsyncMock(return_value=TickerResponse(
+            success=True,
+            data={"symbol": "BTC/USDT", "last_price": 65000.0},
+            error=None,
+            timestamp="2026-09-25T00:00:00Z"
+        ))
+        o = KuCoinOrders(market=mock_market)
+        o.mode = "paper"
+        o.paper_history = [
+            {"symbol": "BTC/USDT", "side": "buy", "amount": 0.1, "filled_price": 60000.0, "status": "filled", "created_at": "t1"},
+        ]
+        res = await o.get_positions()
+        assert res["success"] is True
+        assert res["data"]["count"] == 1
+        pos = res["data"]["positions"][0]
+        assert pos["symbol"] == "BTC/USDT"
+        assert pos["amount"] == 0.1
+        assert pos["entry_price"] == 60000.0  # Kaça mal olduğu
+        assert pos["total_cost"] == 6000.0   # Toplam maliyet
+        assert pos["current_price"] == 65000.0  # Güncel fiyat
+        assert pos["current_value"] == 6500.0   # Güncel değer
+        assert pos["unrealized_pnl"] == 500.0   # Kâr
+        assert round(pos["pnl_percent"], 2) == 8.33

@@ -85,7 +85,7 @@ function switchView(view) {
   const sec = document.getElementById("view-" + view);
   if (sec) sec.classList.add("active");
   if (view === "account") loadBalances();
-  if (view === "orders") loadOpenOrders();
+  if (view === "orders") { loadOpenOrders(); loadOrderHistory(); }
   if (view === "pnl") loadPnL();
   if (view === "settings") loadSettings();
   if (view === "analysis") loadAnalysis();
@@ -188,17 +188,42 @@ async function loadBalances() {
   const res = await apiGet("/account/balances");
   const tbody = document.querySelector("#balances-table tbody");
   const container = document.querySelector("#account-breakdown");
-  if (!container) return;
+  if (!container || !tbody) return;
   
-  if (res.success && res.data.balances.length) {
+  if (res.success && res.data.balances && res.data.balances.length) {
     const accLabel = { spot: "Spot", funding: "Funding", margin: "Margin", futures: "Futures" };
     tbody.innerHTML = res.data.balances.map((a) => {
       const accs = (a.accounts || []).map((x) =>
         `<span class="market-badge market-${x}">${accLabel[x] || x}</span>`).join(" ") || "-";
+
+      const avgCostStr = (a.avg_cost != null && a.symbol !== "USDT")
+        ? `$${Number(a.avg_cost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: a.avg_cost < 1 ? 6 : 2 })}`
+        : (a.symbol === "USDT" ? "1.00 USDT" : "-");
+
+      const totalCostStr = (a.total_cost != null && a.symbol !== "USDT")
+        ? `$${Number(a.total_cost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : (a.symbol === "USDT" ? `$${Number(a.usdt_value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-");
+
+      let pnlBadge = "-";
+      if (a.unrealized_pnl != null && a.symbol !== "USDT" && a.avg_cost != null) {
+        const pnlUsdt = Number(a.unrealized_pnl || 0);
+        const pnlPct = Number(a.pnl_percent || 0);
+        const pnlSign = pnlPct > 0 ? "+" : "";
+        const pnlCls = pnlPct > 0 ? "pnl-positive" : (pnlPct < 0 ? "pnl-negative" : "pnl-zero");
+        pnlBadge = `<span class="pnl-badge ${pnlCls}">${pnlSign}${pnlUsdt.toFixed(2)} USDT (${pnlSign}${pnlPct.toFixed(2)}%)</span>`;
+      }
+
       return `
       <tr>
-        <td>${a.symbol}</td><td>${accs}</td><td>${a.free}</td><td>${a.used}</td><td>${a.total}</td>
-        <td>${a.price_usdt}</td><td>${a.usdt_value}</td><td>${a.portfolio_share_percent}%</td>
+        <td><strong>${a.symbol}</strong></td>
+        <td>${accs}</td>
+        <td>${a.total}</td>
+        <td><strong>${avgCostStr}</strong></td>
+        <td>${totalCostStr}</td>
+        <td>${a.price_usdt}</td>
+        <td><strong>${a.usdt_value}</strong></td>
+        <td>${pnlBadge}</td>
+        <td>${a.portfolio_share_percent}%</td>
       </tr>`;
     }).join("");
     
@@ -218,7 +243,7 @@ async function loadBalances() {
       }).join("");
     }
   } else {
-    tbody.innerHTML = `<tr><td colspan="8">Varlık bulunamadı.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9">Varlık bulunamadı.</td></tr>`;
     container.innerHTML = "";
   }
 }
@@ -621,7 +646,13 @@ async function loadPositions() {
       const sideCls = side === "long" ? "side-buy" : "side-sell";
 
       const entryPrice = p.entry_price ? fmtOrderPrice(p.entry_price) : "-";
+      const totalCost = p.total_cost != null && p.total_cost > 0
+        ? `$${Number(p.total_cost).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : (p.amount && p.entry_price ? `$${(p.amount * p.entry_price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-");
       const currPrice = p.current_price ? fmtOrderPrice(p.current_price) : "-";
+      const currVal = p.current_value != null && p.current_value > 0
+        ? `$${Number(p.current_value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : (p.amount && p.current_price ? `$${(p.amount * p.current_price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-");
 
       // Stop Loss
       let slHtml = `<span class="text-dim">Belirlenmedi</span>`;
@@ -654,7 +685,9 @@ async function loadPositions() {
         <td><span class="side-badge ${sideCls}">${sideLabel}</span></td>
         <td>${p.amount}</td>
         <td><strong>${entryPrice}</strong></td>
+        <td>${totalCost}</td>
         <td><strong>${currPrice}</strong></td>
+        <td><strong>${currVal}</strong></td>
         <td>${slHtml}</td>
         <td>${tpHtml}</td>
         <td>${pnlHtml}</td>
@@ -662,7 +695,7 @@ async function loadPositions() {
     }).join("");
   } else {
     if (badge) badge.textContent = "0 Aktif";
-    tbody.innerHTML = `<tr><td colspan="9">Şu anda açık pozisyonunuz bulunmuyor.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11">Şu anda açık pozisyonunuz bulunmuyor.</td></tr>`;
   }
 }
 
@@ -803,6 +836,71 @@ if (btnRefreshOrders) {
     btnRefreshOrders.textContent = "🔄 Anlık Yenile";
     toast("Açık emirler, pozisyonlar ve anlık fiyatlar güncellendi", "success");
   });
+}
+
+// ---- Geçmiş Emirler ----
+async function loadOrderHistory() {
+  const symInput = document.getElementById("history-symbol");
+  const sym = symInput ? symInput.value.trim() : "";
+  const q = sym ? `?symbol=${encodeURIComponent(sym)}&limit=500` : `?limit=500`;
+  const res = await apiGet("/orders/history" + q);
+  const tbody = document.querySelector("#order-history-table tbody");
+  if (!tbody) return;
+
+  if (res.success && res.data.orders && res.data.orders.length) {
+    tbody.innerHTML = res.data.orders.map((o) => {
+      const id = o.id || "-";
+      const shortId = id.length > 14 ? id.substring(0, 12) + "..." : id;
+      const ts = o.timestamp || o.created_at || o.info?.createdAt || o.info?.orderTime;
+      const dateStr = ts ? new Date(typeof ts === "number" && ts < 1e12 ? ts * 1000 : ts).toLocaleString("tr-TR") : "-";
+      const sym = o.symbol || "-";
+      const mt = (o.market_type || "spot").toLowerCase();
+      const mtLabel = { spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt;
+      const side = (o.side || "").toLowerCase();
+      const sideBadge = side === "buy"
+        ? `<span class="side-badge side-buy">AL</span>`
+        : `<span class="side-badge side-sell">SAT</span>`;
+      const type = (o.type || "market").toUpperCase();
+      const amt = Number(o.filled || o.amount || 0);
+      const price = Number(o.average || o.filled_price || o.price || 0);
+      const notional = Number(o.notional_usdt || (amt && price ? amt * price : 0));
+      const status = (o.status || "").toLowerCase();
+      const isFilled = (status === "filled" || status === "closed" || status === "done");
+      const statusBadge = isFilled
+        ? `<span class="badge" style="background:rgba(0,230,118,0.15); color:var(--green); font-weight:600;">Dolan</span>`
+        : `<span class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-dim);">${status || "-"}</span>`;
+
+      return `<tr>
+        <td title="${id}">${shortId}</td>
+        <td style="font-size:0.8rem; color:var(--text-dim); white-space:nowrap;">${dateStr}</td>
+        <td><strong>${sym}</strong></td>
+        <td><span class="market-badge market-${mt}">${mtLabel}</span></td>
+        <td>${sideBadge}</td>
+        <td>${type}</td>
+        <td>${amt}</td>
+        <td>${fmtOrderPrice(price)}</td>
+        <td>$${notional.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td>${statusBadge}</td>
+      </tr>`;
+    }).join("");
+  } else {
+    tbody.innerHTML = `<tr><td colspan="10">Geçmiş emir kaydı bulunamadı.</td></tr>`;
+  }
+}
+
+// Geçmiş emirler kartındaki "🔄 Yenile" butonu
+const btnRefreshHistory = document.getElementById("btn-refresh-history");
+if (btnRefreshHistory) {
+  btnRefreshHistory.addEventListener("click", async () => {
+    btnRefreshHistory.textContent = "⏳...";
+    await loadOrderHistory();
+    btnRefreshHistory.textContent = "🔄 Yenile";
+    toast("Geçmiş emirler güncellendi", "success");
+  });
+}
+const historySymInput = document.getElementById("history-symbol");
+if (historySymInput) {
+  historySymInput.addEventListener("change", () => loadOrderHistory());
 }
 
 

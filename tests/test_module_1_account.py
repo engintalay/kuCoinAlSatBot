@@ -439,3 +439,46 @@ class TestBalanceStream:
         await account.stop_balance_stream()  # hiç başlatılmadı
         assert account._ws_running is False
         assert account.ws_exchange is None
+
+
+class TestHoldingCostsEnrichment:
+    """Bakiye sorgusunda eldeki coinlerin maliyet ve güncel değer zenginleştirmesi."""
+
+    @pytest.mark.asyncio
+    async def test_get_balances_enriches_holding_costs(self):
+        from unittest.mock import MagicMock, AsyncMock, patch
+        from src.modules.module1_account import KuCoinAccount
+
+        mock_orders = MagicMock()
+        mock_orders.get_holding_costs = AsyncMock(return_value={
+            "BTC": {
+                "symbol": "BTC/USDT",
+                "avg_cost": 50000.0,
+                "cost": 25000.0,
+                "qty": 0.5,
+            }
+        })
+
+        account = KuCoinAccount(orders=mock_orders)
+        account.exchange = MagicMock()
+        account.exchange.fetch_balance = AsyncMock(side_effect=[
+            {"total": {"BTC": 0.5, "USDT": 1000.0}, "free": {"BTC": 0.5, "USDT": 1000.0}, "used": {}},
+            {"total": {}, "free": {}, "used": {}},
+            {"total": {}, "free": {}, "used": {}},
+        ])
+        account.exchange.fetch_ticker = AsyncMock(return_value={"last": 60000.0})
+        account.futures_exchange = None
+
+        res = await account.get_balances()
+        assert res.success is True
+        btc = next(b for b in res.data["balances"] if b["symbol"] == "BTC")
+        assert btc["avg_cost"] == 50000.0
+        assert btc["total_cost"] == 25000.0
+        assert btc["usdt_value"] == 30000.0
+        assert btc["unrealized_pnl"] == 5000.0
+        assert btc["pnl_percent"] == 20.0
+
+        usdt = next(b for b in res.data["balances"] if b["symbol"] == "USDT")
+        assert usdt["avg_cost"] == 1.0
+        assert usdt["total_cost"] == 1000.0
+        assert usdt["unrealized_pnl"] == 0.0

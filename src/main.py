@@ -38,10 +38,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# KuCoin API bağlantısı instance
-account = KuCoinAccount()
 market = KuCoinMarket()
 orders = KuCoinOrders(market=market)
+account = KuCoinAccount(orders=orders)
 settings_mgr = SettingsManager(market=market)
 recommender = RecommendationEngine(orders=orders, market=market)
 market_regime = MarketRegime()
@@ -357,7 +356,7 @@ async def get_positions(symbol: str | None = None):
 
 
 @app.get("/api/v1/orders/history")
-async def get_order_history(symbol: str | None = None, limit: int = 50):
+async def get_order_history(symbol: str | None = None, limit: int | None = 200):
     """Geçmişte dolan veya kapanan emir geçmişini döner."""
     result = await orders.get_history(symbol, limit)
     return result

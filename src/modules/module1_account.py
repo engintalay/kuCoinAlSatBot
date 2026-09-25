@@ -24,11 +24,15 @@ from src.utils.logger import logger
 from src.utils.time_sync import timestamp, check_time_sync
 
 
+from typing import Any
+
+
 class KuCoinAccount:
     """KuCoin hesap bağlantısı ve bakiye yönetimi."""
 
-    def __init__(self):
+    def __init__(self, orders: Any = None):
         self.config = Config()
+        self.orders = orders
         self.exchange: ccxt.async_support.kucoin | None = None
         self.futures_exchange: ccxt.async_support.kucoinfutures | None = None
         self.is_connected = False
@@ -184,6 +188,14 @@ class KuCoinAccount:
                 except Exception as e:
                     logger.error(f"Futures hesabı bakiye hatası: {e}")
 
+            # Varlık maliyetlerini hesapla (varsa)
+            holding_costs = {}
+            if self.orders:
+                try:
+                    holding_costs = await self.orders.get_holding_costs()
+                except Exception as e:
+                    logger.debug(f"Bakiye için maliyet hesaplama hatası: {e}")
+
             asset_list = []
             price_cache: dict[str, float] = {}  # Fiyatları bir kez hesapla
             for symbol, total_amount in combined_total.items():
@@ -207,6 +219,25 @@ class KuCoinAccount:
                 price_cache[symbol] = price
 
                 asset_value = round(total_amount * price, 2)
+
+                # Ortalama maliyet, toplam maliyet ve PnL hesabı
+                hc = holding_costs.get(symbol)
+                if symbol == "USDT":
+                    avg_cost = 1.0
+                    total_cost = asset_value
+                    unrealized_pnl = 0.0
+                    pnl_percent = 0.0
+                elif hc and hc.get("avg_cost", 0) > 0:
+                    avg_cost = hc["avg_cost"]
+                    total_cost = round(total_amount * avg_cost, 2)
+                    unrealized_pnl = round(asset_value - total_cost, 2)
+                    pnl_percent = round(((price - avg_cost) / avg_cost) * 100.0, 2)
+                else:
+                    avg_cost = None
+                    total_cost = None
+                    unrealized_pnl = None
+                    pnl_percent = None
+
                 asset_list.append({
                     "symbol": symbol,
                     "free": free_amount,
@@ -214,6 +245,10 @@ class KuCoinAccount:
                     "total": total_amount,
                     "price_usdt": price,
                     "usdt_value": asset_value,
+                    "avg_cost": avg_cost,
+                    "total_cost": total_cost,
+                    "unrealized_pnl": unrealized_pnl,
+                    "pnl_percent": pnl_percent,
                     "accounts": sorted(asset_accounts.get(symbol, set())),
                     "portfolio_share_percent": 0.0  # Sonraki adımda hesaplanacak
                 })

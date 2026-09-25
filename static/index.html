@@ -87,9 +87,9 @@
           <div class="card-title">Varlık Dağılımı</div>
           <table class="data-table" id="balances-table">
             <thead>
-              <tr><th>Varlık</th><th>Hesap</th><th>Serbest</th><th>Kilitli</th><th>Toplam</th><th>Fiyat (USDT)</th><th>Değer (USDT)</th><th>Pay %</th></tr>
+              <tr><th>Varlık</th><th>Hesap</th><th>Toplam</th><th>Ort. Maliyet</th><th>Toplam Maliyet</th><th>Fiyat (USDT)</th><th>Değer (USDT)</th><th>Kâr / Zarar (PnL)</th><th>Pay %</th></tr>
             </thead>
-            <tbody><tr><td colspan="8">Yükleniyor...</td></tr></tbody>
+            <tbody><tr><td colspan="9">Yükleniyor...</td></tr></tbody>
           </table>
           <div id="account-breakdown" class="account-breakdown"></div>
         </div>
@@ -261,13 +261,15 @@
                 <th>Yön</th>
                 <th>Miktar</th>
                 <th>Giriş Fiyatı</th>
+                <th>Toplam Maliyet</th>
                 <th>Anlık Fiyat</th>
+                <th>Güncel Değer</th>
                 <th>Stop Fiyatı (SL)</th>
                 <th>Hedef (TP1 / TP2)</th>
                 <th>Kâr / Zarar (PnL)</th>
               </tr>
             </thead>
-            <tbody><tr><td colspan="9">Açık pozisyon bulunmuyor.</td></tr></tbody>
+            <tbody><tr><td colspan="11">Açık pozisyon bulunmuyor.</td></tr></tbody>
           </table>
         </div>
 
@@ -279,6 +281,34 @@
           <table class="data-table" id="open-orders-table">
             <thead><tr><th>ID</th><th>Sembol</th><th>Piyasa</th><th>Rol</th><th>Yön</th><th>Miktar</th><th>Giriş Fiyatı</th><th>Stop Fiyatı</th><th>Emir Fiyatı</th><th>Anlık Fiyat</th><th>Fark (%)</th><th>Durum</th><th>İşlem</th></tr></thead>
             <tbody><tr><td colspan="13">Yükleniyor...</td></tr></tbody>
+          </table>
+        </div>
+
+        <!-- Geçmiş Tüm Emirler -->
+        <div class="card glass" id="card-order-history" style="margin-top: 20px;">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>📜 Geçmiş Emirler (Tüm İşlemler)</span>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input id="history-symbol" class="input" style="width:140px; padding:4px 8px; font-size:0.82rem;" list="symbol-choices" placeholder="Sembol (Tümü)" />
+              <button id="btn-refresh-history" class="btn-mini" style="font-weight:normal;" title="Geçmiş emirleri yenile">🔄 Yenile</button>
+            </div>
+          </div>
+          <table class="data-table" id="order-history-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tarih / Saat</th>
+                <th>Sembol</th>
+                <th>Piyasa</th>
+                <th>Yön</th>
+                <th>Tip</th>
+                <th>Miktar</th>
+                <th>Gerçekleşen Fiyat</th>
+                <th>Toplam Tutar</th>
+                <th>Durum</th>
+              </tr>
+            </thead>
+            <tbody><tr><td colspan="10">Yükleniyor...</td></tr></tbody>
           </table>
         </div>
       </section>

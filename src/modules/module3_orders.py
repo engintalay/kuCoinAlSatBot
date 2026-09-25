@@ -424,7 +424,7 @@ class KuCoinOrders:
                 o["stop_distance_percent"] = None
 
     async def get_positions(self, symbol: str | None = None) -> dict:
-        """Açık pozisyonları, giriş ve stop fiyatlarını, anlık PnL ile döner."""
+        """Açık pozisyonları ve eldeki varlıkları, maliyet ve anlık değerler ile döner."""
         try:
             positions: list[dict] = []
             if self.mode == "paper":
@@ -449,8 +449,11 @@ class KuCoinOrders:
                     amt = float(pos.get("amount") or 0)
                     side = pos.get("side", "long").lower()
 
+                    pos["total_cost"] = round(entry_p * amt, 2) if entry_p and amt else 0.0
+                    pos["current_value"] = round(curr_price * amt, 2) if curr_price and amt else 0.0
+
                     if curr_price and entry_p > 0 and amt > 0:
-                        if side in ("long", "buy"):
+                        if side in ("long", "buy", "spot"):
                             pnl = (curr_price - entry_p) * amt
                             pnl_pct = ((curr_price - entry_p) / entry_p) * 100
                         else:
@@ -490,7 +493,9 @@ class KuCoinOrders:
                             "market_type": "futures",
                             "amount": abs(amt),
                             "entry_price": entry_p,
+                            "total_cost": round(entry_p * abs(amt), 2),
                             "current_price": mark_p,
+                            "current_value": round(mark_p * abs(amt), 2),
                             "liquidation_price": float(p.get("liquidationPrice") or 0),
                             "unrealized_pnl": round(float(p.get("unrealizedPnl") or 0), 2),
                             "pnl_percent": round(float(p.get("percentage") or 0), 2),
@@ -504,6 +509,54 @@ class KuCoinOrders:
                 except Exception as e:
                     logger.error(f"Live pozisyon çekme hatası: {e}")
 
+            # Gerçekleşen emirler sonrasında elimizdeki coinlerin maliyetleri (holding costs)
+            holding_costs = await self.get_holding_costs()
+            for base_asset, hc in holding_costs.items():
+                sym = hc["symbol"]
+                if symbol and sym != symbol:
+                    continue
+                # Eğer zaten bu sembolde bir bracket veya futures pozisyonu varsa tekrar ekleme
+                if any(p.get("symbol") == sym for p in positions):
+                    continue
+                amt = hc["qty"]
+                entry_p = hc["avg_cost"]
+                curr_price = None
+                try:
+                    if self.market:
+                        tk = await self.market.get_ticker(sym, market_type="spot")
+                        if tk and getattr(tk, "success", False) and tk.data:
+                            curr_price = float(tk.data.get("last_price") or 0)
+                except Exception as e:
+                    logger.debug(f"Spot varlık anlık fiyat hatası ({sym}): {e}")
+
+                total_c = round(amt * entry_p, 2)
+                curr_val = round(amt * curr_price, 2) if curr_price else 0.0
+                if curr_price and entry_p > 0:
+                    pnl = curr_val - total_c
+                    pnl_pct = ((curr_price - entry_p) / entry_p) * 100.0
+                else:
+                    pnl = 0.0
+                    pnl_pct = 0.0
+
+                pos_obj = {
+                    "id": f"holding-{base_asset}",
+                    "symbol": sym,
+                    "market_type": "spot",
+                    "side": "spot",
+                    "amount": amt,
+                    "entry_price": entry_p,
+                    "total_cost": total_c,
+                    "current_price": curr_price,
+                    "current_value": curr_val,
+                    "unrealized_pnl": round(pnl, 2),
+                    "pnl_percent": round(pnl_pct, 2),
+                    "stop_loss_price": None,
+                    "tp1_price": None,
+                    "tp2_price": None,
+                    "created_at": timestamp(),
+                }
+                positions.append(pos_obj)
+
             return {"success": True, "data": {"count": len(positions), "positions": positions},
                     "error": None, "timestamp": timestamp()}
         except Exception as e:
@@ -511,25 +564,136 @@ class KuCoinOrders:
             return {"success": False, "data": {"count": 0, "positions": []}, "error": str(e),
                     "timestamp": timestamp()}
 
+    # ------------------------------------------------------------------ #
+    # Gerçekleşen emirlerden eldeki coinlerin maliyet ve miktar hesaplaması
+    # ------------------------------------------------------------------ #
+    def calculate_holding_costs(self, orders: list[dict]) -> dict[str, dict]:
+        """
+        Emir geçmişindeki dolan işlemleri kronolojik sırayla işleyerek,
+        gerçekleşen emirler sonrasında elimizde kalan kripto paraların
+        ortalama maliyetini (kaça mal olduklarını), toplam maliyetini
+        ve miktarını hesaplar.
+        """
+        positions: dict[str, dict] = {}
+
+        def _ts(o):
+            return o.get("timestamp") or o.get("created_at") or 0
+
+        for o in sorted(orders, key=_ts):
+            status = str(o.get("status", "")).lower()
+            if status not in ("filled", "closed", "done"):
+                continue
+            sym = o.get("symbol")
+            if not sym or "/" not in sym:
+                continue
+            clean_sym = sym.split(":")[0] if ":" in sym else sym
+            base_asset = clean_sym.split("/")[0].upper()
+            quote_asset = clean_sym.split("/")[1].upper() if "/" in clean_sym else "USDT"
+
+            if quote_asset not in ("USDT", "USD", "USDC"):
+                continue
+
+            side = str(o.get("side", "")).lower()
+            qty = float(o.get("filled") or o.get("amount") or 0.0)
+            price = float(o.get("average") or o.get("filled_price") or o.get("price") or 0.0)
+            if qty <= 0 or price <= 0:
+                continue
+
+            pos = positions.setdefault(base_asset, {
+                "symbol": clean_sym,
+                "base_asset": base_asset,
+                "qty": 0.0,
+                "cost": 0.0,
+                "avg_cost": 0.0,
+            })
+
+            if side == "buy":
+                pos["qty"] += qty
+                pos["cost"] += qty * price
+                pos["avg_cost"] = pos["cost"] / pos["qty"] if pos["qty"] > 0 else 0.0
+            elif side == "sell":
+                avg_cost = pos["avg_cost"] if pos["avg_cost"] > 0 else (pos["cost"] / pos["qty"] if pos["qty"] > 0 else price)
+                sell_qty = min(qty, pos["qty"]) if pos["qty"] > 0 else qty
+                pos["qty"] -= sell_qty
+                pos["cost"] -= avg_cost * sell_qty
+                if pos["qty"] < 1e-12:
+                    pos["qty"] = 0.0
+                    pos["cost"] = 0.0
+                    pos["avg_cost"] = 0.0
+                else:
+                    pos["avg_cost"] = pos["cost"] / pos["qty"]
+
+        result = {}
+        for base, data in positions.items():
+            if data["qty"] > 1e-12 and data["avg_cost"] > 0:
+                result[base] = {
+                    "symbol": data["symbol"],
+                    "base_asset": base,
+                    "qty": round(data["qty"], 8),
+                    "cost": round(data["cost"], 4),
+                    "avg_cost": round(data["avg_cost"], 6) if data["avg_cost"] < 1 else round(data["avg_cost"], 4),
+                }
+        return result
+
+    async def get_holding_costs(self) -> dict[str, dict]:
+        """Tüm geçmiş emirlerden eldeki varlıkların maliyetlerini döndürür."""
+        try:
+            h = await self.get_history(limit=0)
+            orders = h.data.get("orders", []) if h.success else []
+            return self.calculate_holding_costs(orders)
+        except Exception as e:
+            logger.error(f"Eldeki varlık maliyetleri hesaplama hatası: {e}")
+            return {}
 
     # ------------------------------------------------------------------ #
-    # İşlem geçmişi
+    # İşlem geçmişi (Tüm geçmiş emirler ve filtreleme)
     # ------------------------------------------------------------------ #
-    async def get_history(self, symbol: str | None = None, limit: int = 50) -> OrderHistoryResponse:
+    async def get_history(self, symbol: str | None = None, limit: int | None = 50) -> OrderHistoryResponse:
         try:
             if self.mode == "paper":
-                hist = self.paper_history
+                hist = list(self.paper_history)
                 if symbol:
-                    hist = [h for h in hist if h["symbol"] == symbol]
+                    clean_sym = symbol.split(":")[0] if ":" in symbol else symbol
+                    hist = [h for h in hist if h.get("symbol") in (symbol, clean_sym)]
+                for h in hist:
+                    h.setdefault("market_type", "spot")
+                orders = hist if (limit is None or limit <= 0) else hist[-limit:]
+                orders_sorted = sorted(orders, key=lambda x: x.get("timestamp") or x.get("created_at") or 0, reverse=True)
                 return OrderHistoryResponse(
-                    success=True, data={"count": len(hist), "orders": hist[-limit:]},
+                    success=True, data={"count": len(orders_sorted), "orders": orders_sorted},
                     error=None, timestamp=timestamp())
 
             if not self.exchange:
                 self.connect()
-            trades = await self.exchange.fetch_closed_orders(symbol, limit=limit)
+
+            merged: list[dict] = []
+            fetch_limit = limit if (limit and limit > 0) else 200
+            try:
+                spot_orders = await self.exchange.fetch_closed_orders(symbol, limit=fetch_limit)
+                for o in spot_orders:
+                    info = o.get("info", {}) or {}
+                    is_margin = str(info.get("tradeType", "")).upper().startswith("MARGIN")
+                    o["market_type"] = "margin" if is_margin else "spot"
+                    merged.append(o)
+            except Exception as e:
+                logger.error(f"Spot geçmiş emir çekme hatası: {e}")
+
+            if self.futures_exchange:
+                try:
+                    fut_symbol = await self._normalize_symbol(symbol, "futures") if symbol else None
+                    fut_orders = await self.futures_exchange.fetch_closed_orders(fut_symbol, limit=fetch_limit)
+                    for o in fut_orders:
+                        o["market_type"] = "futures"
+                        merged.append(o)
+                except Exception as e:
+                    logger.error(f"Futures geçmiş emir çekme hatası: {e}")
+
+            merged.sort(key=lambda x: x.get("timestamp") or x.get("created_at") or 0, reverse=True)
+            if limit and limit > 0:
+                merged = merged[:limit]
+
             return OrderHistoryResponse(
-                success=True, data={"count": len(trades), "orders": trades},
+                success=True, data={"count": len(merged), "orders": merged},
                 error=None, timestamp=timestamp())
         except Exception as e:
             logger.error(f"Emir geçmişi hatası: {e}")

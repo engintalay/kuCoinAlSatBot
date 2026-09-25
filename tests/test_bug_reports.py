@@ -214,5 +214,5 @@ def test_frontend_issues_and_symbol_combo(client):
     assert 'id="analysis-quick-chips"' in text
     assert 'class="quick-symbol-bar"' in text
 
-    # Sembol alanları için datalist entegrasyonu korunmalı (analiz + emir + bracket + pnl)
-    assert text.count('list="symbol-choices"') == 4
+    # Sembol alanları için datalist entegrasyonu korunmalı (analiz + emir + bracket + pnl + history)
+    assert text.count('list="symbol-choices"') == 5

@@ -104,7 +104,32 @@ def test_symbol_datalist_integration(client):
     """Sembol girişleri watchlist datalist'ine bağlı olmalı."""
     r = client.get("/")
     assert 'id="symbol-choices"' in r.text
-    assert r.text.count('list="symbol-choices"') == 4  # analiz + emir + bracket + pnl
+    assert r.text.count('list="symbol-choices"') == 5  # analiz + emir + bracket + pnl + history
+
+
+def test_order_history_ui(client):
+    """Geçmiş emirler kartı, tablosu ve JS fonksiyonu bulunmalı."""
+    r = client.get("/")
+    assert 'id="card-order-history"' in r.text
+    assert 'id="order-history-table"' in r.text
+    assert 'id="btn-refresh-history"' in r.text
+    assert "<th>Gerçekleşen Fiyat</th>" in r.text
+    assert "<th>Toplam Tutar</th>" in r.text
+    js = client.get("/static/js/app.js").text
+    assert "loadOrderHistory" in js
+    assert "/orders/history" in js
+
+
+def test_balances_and_positions_cost_columns(client):
+    """Bakiye ve pozisyon tablolarında maliyet ve güncel değer kolonları bulunmalı."""
+    r = client.get("/")
+    assert "<th>Ort. Maliyet</th>" in r.text
+    assert "<th>Toplam Maliyet</th>" in r.text
+    assert "<th>Güncel Değer</th>" in r.text
+    js = client.get("/static/js/app.js").text
+    assert "avg_cost" in js
+    assert "total_cost" in js
+    assert "current_value" in js
 
 
 
