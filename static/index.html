@@ -127,6 +127,54 @@
           <div id="analysis-quick-chips" class="quick-chips"></div>
         </div>
 
+        <!-- ⚡ Analiz Canlı Fiyat Paneli (WebSocket Canlı Ticker) -->
+        <div id="analysis-live-card" class="card glass analysis-live-card">
+          <div class="analysis-live-header">
+            <div class="analysis-live-title">
+              <span id="analysis-live-symbol" class="analysis-live-symbol">BTC/USDT</span>
+              <span id="analysis-live-market-badge" class="market-badge market-spot">SPOT</span>
+              <span id="analysis-live-ws-status" class="ws-status-badge ws-connected" title="WebSocket Canlı Fiyat Akışı Aktif">
+                <span class="ws-pulse-dot"></span> Canlı WS
+              </span>
+            </div>
+            <div id="analysis-live-updated-at" class="analysis-live-updated-at hint">Canlı veri bekleniyor...</div>
+          </div>
+          <div class="analysis-live-grid">
+            <div class="analysis-live-main-price">
+              <span class="live-price-label">Anlık Fiyat</span>
+              <div class="live-price-container">
+                <span id="analysis-live-price" class="live-price-val">--</span>
+                <span id="analysis-live-change" class="live-change-badge neutral">0.00%</span>
+              </div>
+            </div>
+            <div class="analysis-live-stats">
+              <div class="live-stat-item">
+                <span class="stat-label">24s En Yüksek</span>
+                <span id="analysis-live-high" class="stat-val">--</span>
+              </div>
+              <div class="live-stat-item">
+                <span class="stat-label">24s En Düşük</span>
+                <span id="analysis-live-low" class="stat-val">--</span>
+              </div>
+              <div class="live-stat-item">
+                <span class="stat-label">24s Hacim</span>
+                <span id="analysis-live-volume" class="stat-val">--</span>
+              </div>
+              <div class="live-stat-item">
+                <span class="stat-label">En İyi Alış / Satış</span>
+                <span id="analysis-live-spread" class="stat-val">-- / --</span>
+              </div>
+            </div>
+          </div>
+          <div id="analysis-live-setup-bar" class="analysis-live-setup-bar" style="display: none;">
+            <div class="setup-diff-header">
+              <span class="setup-diff-title">🎯 Anlık Fiyat & Kurulum Mesafeleri:</span>
+              <span id="analysis-live-setup-signal" class="setup-diff-signal"></span>
+            </div>
+            <div id="analysis-live-setup-items" class="setup-diff-items"></div>
+          </div>
+        </div>
+
         <!-- 💡 Sade Piyasa Yorumu ve Eylem Tavsiyesi -->
         <div id="analysis-simple-summary-card" class="card glass plain-summary-card" style="display:none;">
           <div class="plain-summary-header">

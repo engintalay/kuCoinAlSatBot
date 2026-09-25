@@ -250,4 +250,36 @@ def test_positions_and_entry_stop_prices_ui(client):
     assert ".pnl-badge" in css
 
 
+def test_analysis_live_price_card_ui(client):
+    """Analiz ekranında WebSocket canlı fiyat kartı ve göstergeleri bulunmalı."""
+    r = client.get("/")
+    assert 'id="analysis-live-card"' in r.text
+    assert 'id="analysis-live-symbol"' in r.text
+    assert 'id="analysis-live-market-badge"' in r.text
+    assert 'id="analysis-live-ws-status"' in r.text
+    assert 'id="analysis-live-price"' in r.text
+    assert 'id="analysis-live-change"' in r.text
+    assert 'id="analysis-live-high"' in r.text
+    assert 'id="analysis-live-low"' in r.text
+    assert 'id="analysis-live-volume"' in r.text
+    assert 'id="analysis-live-spread"' in r.text
+    assert 'id="analysis-live-setup-bar"' in r.text
+
+    # JS
+    js = client.get("/static/js/app.js").text
+    assert "updateAnalysisLivePrice" in js
+    assert "subscribeWebSocket" in js
+    assert "updateAnalysisLiveSetupDiff" in js
+    assert "getActiveAnalysisSymbol" in js
+
+    # CSS
+    css = client.get("/static/css/style.css").text
+    assert ".analysis-live-card" in css
+    assert ".ws-pulse-dot" in css
+    assert ".price-flash-up" in css
+    assert ".price-flash-down" in css
+    assert ".analysis-live-setup-bar" in css
+
+
+
 

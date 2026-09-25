@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 import asyncio
+import json
 import os
 
 from src.utils.logger import logger, log_api_request
@@ -590,40 +591,113 @@ async def get_diagnostics():
 
 
 # ============================================================================
-# WebSocket: Canlı veri akışı (dashboard için)
+# WebSocket: Canlı veri akışı (dashboard ve analiz ekranı için)
 # ============================================================================
 @app.websocket("/ws/live")
-async def ws_live(websocket: WebSocket, symbol: str = "BTC/USDT"):
+async def ws_live(
+    websocket: WebSocket,
+    symbol: str = "BTC/USDT",
+    market_type: str = "spot",
+):
     """
-    Dashboard'a canlı ticker + portföy özeti + bağlantı durumu push eder.
-    İstemci her ~3 saniyede güncel veri alır.
+    Dashboard ve Analiz ekranlarına canlı ticker + portföy özeti + bağlantı durumu push eder.
+    İstemci 'subscribe' mesajı göndererek sembol ve piyasa türünü (spot, margin, futures) dinamik değiştirebilir.
     """
     await websocket.accept()
+    state = {
+        "symbol": symbol,
+        "market_type": market_type,
+        "running": True,
+    }
+    trigger_tick = asyncio.Event()
+
+    async def receiver():
+        try:
+            while state["running"]:
+                try:
+                    data = await websocket.receive_json()
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(data, dict):
+                    continue
+                action = data.get("action")
+                new_sym = data.get("symbol")
+                new_mkt = data.get("market_type")
+                updated = False
+                if action == "subscribe" or new_sym:
+                    if new_sym and isinstance(new_sym, str):
+                        state["symbol"] = new_sym.strip()
+                        updated = True
+                    if new_mkt and isinstance(new_mkt, str):
+                        state["market_type"] = new_mkt.strip().lower()
+                        updated = True
+                if updated:
+                    trigger_tick.set()
+        except (WebSocketDisconnect, asyncio.CancelledError):
+            pass
+        except Exception as e:
+            logger.debug(f"WS receiver sonlandı: {e}")
+        finally:
+            state["running"] = False
+            trigger_tick.set()
+
+    async def sender():
+        try:
+            while state["running"]:
+                curr_sym = state["symbol"]
+                curr_mkt = state["market_type"]
+                payload = {
+                    "type": "tick",
+                    "timestamp": timestamp(),
+                    "symbol": curr_sym,
+                    "market_type": curr_mkt,
+                }
+                try:
+                    ticker = await market.get_ticker(curr_sym, market_type=curr_mkt)
+                    payload["ticker"] = ticker.data if ticker.success else None
+                except Exception as e:
+                    payload["ticker"] = None
+                    logger.error(f"WS ticker hatası ({curr_sym}): {e}")
+
+                try:
+                    summary = await account.get_summary()
+                    payload["summary"] = summary.data if summary.success else None
+                except Exception:
+                    payload["summary"] = None
+
+                payload["mode"] = orders.mode
+                payload["bot_active"] = orders.bot_active
+
+                await websocket.send_json(payload)
+
+                try:
+                    await asyncio.wait_for(trigger_tick.wait(), timeout=2.0)
+                    trigger_tick.clear()
+                except asyncio.TimeoutError:
+                    pass
+        except (WebSocketDisconnect, asyncio.CancelledError):
+            pass
+        except Exception as e:
+            logger.error(f"WS sender hatası: {e}")
+        finally:
+            state["running"] = False
+
+    recv_task = asyncio.create_task(receiver())
+    send_task = asyncio.create_task(sender())
+
     try:
-        while True:
-            payload = {"type": "tick", "timestamp": timestamp()}
-            try:
-                ticker = await market.get_ticker(symbol)
-                payload["ticker"] = ticker.data if ticker.success else None
-            except Exception as e:
-                payload["ticker"] = None
-                logger.error(f"WS ticker hatası: {e}")
-
-            try:
-                summary = await account.get_summary()
-                payload["summary"] = summary.data if summary.success else None
-            except Exception:
-                payload["summary"] = None
-
-            payload["mode"] = orders.mode
-            payload["bot_active"] = orders.bot_active
-
-            await websocket.send_json(payload)
-            await asyncio.sleep(3)
-    except WebSocketDisconnect:
-        logger.info("WebSocket istemci bağlantısı kapandı.")
+        done, pending = await asyncio.wait(
+            [recv_task, send_task],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in pending:
+            task.cancel()
     except Exception as e:
         logger.error(f"WebSocket hatası: {e}")
+    finally:
+        recv_task.cancel()
+        send_task.cancel()
+        logger.info("WebSocket istemci bağlantısı kapandı.")
 
 
 # Statik dosyaları (CSS/JS) sun — API rotalarından sonra mount edilir.

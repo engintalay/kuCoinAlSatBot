@@ -88,7 +88,13 @@ function switchView(view) {
   if (view === "orders") { loadOpenOrders(); loadOrderHistory(); }
   if (view === "pnl") loadPnL();
   if (view === "settings") loadSettings();
-  if (view === "analysis") loadAnalysis();
+  if (view === "analysis") {
+    loadAnalysis();
+    if (typeof subscribeWebSocket === "function") subscribeWebSocket();
+  }
+  if (view === "dashboard") {
+    if (typeof subscribeWebSocket === "function") subscribeWebSocket(activeSymbol, "spot");
+  }
   if (view === "issues") { loadIssues(); loadDiagnostics(); }
 }
 
@@ -260,6 +266,7 @@ async function loadAnalysis() {
   const sideChoice = (document.getElementById("analysis-side") || {}).value || "auto";
 
   setFooterLog(`Analiz çalıştırılıyor (${symbol} - ${marketType.toUpperCase()} - ${tf})...`);
+  if (typeof subscribeWebSocket === "function") subscribeWebSocket(symbol, marketType);
 
   // 1. Puanlama Analizi
   const res = await apiGet(`/market/analysis/score?symbol=${encodeURIComponent(symbol)}&timeframe=${tf}&market_type=${marketType}`);
@@ -407,7 +414,14 @@ async function loadAnalysis() {
     renderAnalysisSetup(calcSide, tradeSetup, marketType);
     const toBracketBtn = document.getElementById("analysis-to-bracket-btn");
     if (toBracketBtn) toBracketBtn.style.display = "inline-block";
+    const curP = parseFloat(document.getElementById("analysis-live-price")?.dataset?.price || "0");
+    if (curP > 0 && typeof updateAnalysisLiveSetupDiff === "function") {
+      updateAnalysisLiveSetupDiff(curP);
+    }
   } else {
+    lastAnalysisSetup = null;
+    const diffBar = document.getElementById("analysis-live-setup-bar");
+    if (diffBar) diffBar.style.display = "none";
     const sc = document.getElementById("analysis-setup-content");
     if (sc) sc.innerHTML = `<div class="hint">İşlem seviyeleri hesaplanamadı.</div>`;
   }
@@ -1143,6 +1157,7 @@ async function populateSymbolChoices() {
         if (sel) sel.value = targetSym;
         chipsContainer.querySelectorAll(".quick-chip").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
+        if (typeof subscribeWebSocket === "function") subscribeWebSocket(targetSym);
         loadAnalysis();
       });
     });
@@ -1152,6 +1167,7 @@ async function populateSymbolChoices() {
 // Analiz Sembol Dropdown & Input senkronizasyonu
 const analysisSelect = document.getElementById("analysis-symbol-select");
 const analysisInput = document.getElementById("analysis-symbol");
+const analysisMarketTypeEl = document.getElementById("analysis-market-type");
 
 if (analysisSelect && analysisInput) {
   analysisSelect.addEventListener("change", () => {
@@ -1165,6 +1181,7 @@ if (analysisSelect && analysisInput) {
         if (c.dataset.sym === analysisSelect.value) c.classList.add("active");
         else c.classList.remove("active");
       });
+      if (typeof subscribeWebSocket === "function") subscribeWebSocket(analysisSelect.value);
       loadAnalysis();
     }
   });
@@ -1189,6 +1206,22 @@ if (analysisSelect && analysisInput) {
       if (c.dataset.sym === val) c.classList.add("active");
       else c.classList.remove("active");
     });
+    if (typeof subscribeWebSocket === "function") subscribeWebSocket(val);
+  });
+
+  analysisInput.addEventListener("blur", () => {
+    const val = analysisInput.value.trim().toUpperCase();
+    if (val && typeof subscribeWebSocket === "function") {
+      subscribeWebSocket(val);
+    }
+  });
+}
+
+if (analysisMarketTypeEl) {
+  analysisMarketTypeEl.addEventListener("change", () => {
+    if (typeof subscribeWebSocket === "function") {
+      subscribeWebSocket();
+    }
   });
 }
 
@@ -1298,12 +1331,171 @@ async function loadChart(symbol = "BTC/USDT", timeframe = "1h") {
   document.getElementById("chart-symbol").textContent = symbol;
 }
 
+// ---- Analiz Ekranı WebSocket ve Canlı Fiyat Yönetimi ----
+function getActiveAnalysisSymbol() {
+  const inp = document.getElementById("analysis-symbol");
+  return (inp && inp.value ? inp.value.trim().toUpperCase() : "") || "BTC/USDT";
+}
+
+function getActiveAnalysisMarketType() {
+  const sel = document.getElementById("analysis-market-type");
+  return (sel && sel.value ? sel.value.trim().toLowerCase() : "") || "spot";
+}
+
+function subscribeWebSocket(symbol, marketType) {
+  const sym = (symbol || getActiveAnalysisSymbol()).toUpperCase();
+  const mkt = (marketType || getActiveAnalysisMarketType()).toLowerCase();
+
+  const symEl = document.getElementById("analysis-live-symbol");
+  const mBadge = document.getElementById("analysis-live-market-badge");
+  if (symEl) symEl.textContent = sym;
+  if (mBadge) {
+    mBadge.textContent = mkt === "futures" ? "VADELİ" : (mkt === "margin" ? "MARJİN" : "SPOT");
+    mBadge.className = `market-badge market-${mkt}`;
+  }
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try {
+      ws.send(JSON.stringify({ action: "subscribe", symbol: sym, market_type: mkt }));
+    } catch (e) {
+      console.warn("WS subscribe gönderilemedi:", e);
+    }
+  }
+}
+
+function updateAnalysisLivePrice(ticker, symbol, marketType) {
+  if (!ticker) return;
+  const currentSym = getActiveAnalysisSymbol();
+  const tickerSym = (symbol || ticker.symbol || "").trim().toUpperCase();
+
+  if (tickerSym && currentSym && tickerSym !== currentSym) {
+    return;
+  }
+
+  const priceEl = document.getElementById("analysis-live-price");
+  const chgEl = document.getElementById("analysis-live-change");
+  const highEl = document.getElementById("analysis-live-high");
+  const lowEl = document.getElementById("analysis-live-low");
+  const volEl = document.getElementById("analysis-live-volume");
+  const spreadEl = document.getElementById("analysis-live-spread");
+  const symEl = document.getElementById("analysis-live-symbol");
+  const mktBadge = document.getElementById("analysis-live-market-badge");
+  const timeEl = document.getElementById("analysis-live-updated-at");
+
+  if (symEl) symEl.textContent = tickerSym || currentSym;
+  if (mktBadge) {
+    const mkt = (marketType || ticker.market_type || "spot").toLowerCase();
+    mktBadge.textContent = mkt === "futures" ? "VADELİ" : (mkt === "margin" ? "MARJİN" : "SPOT");
+    mktBadge.className = `market-badge market-${mkt}`;
+  }
+
+  if (timeEl) {
+    const now = new Date();
+    timeEl.textContent = "Canlı: " + now.toLocaleTimeString();
+  }
+
+  const newPrice = ticker.last_price;
+  if (priceEl && newPrice != null) {
+    const oldPrice = parseFloat(priceEl.dataset.price || "0");
+    const currentPriceNum = parseFloat(newPrice);
+    priceEl.dataset.price = currentPriceNum;
+    priceEl.textContent = fmtOrderPrice(currentPriceNum);
+
+    if (oldPrice > 0 && currentPriceNum !== oldPrice) {
+      priceEl.classList.remove("price-flash-up", "price-flash-down");
+      void priceEl.offsetWidth; // DOM reflow
+      priceEl.classList.add(currentPriceNum > oldPrice ? "price-flash-up" : "price-flash-down");
+    }
+  }
+
+  if (chgEl && ticker.change_percentage_24h != null) {
+    const chg = parseFloat(ticker.change_percentage_24h);
+    const sign = chg > 0 ? "+" : "";
+    chgEl.textContent = `${sign}${chg.toFixed(2)}%`;
+    chgEl.className = "live-change-badge " + (chg > 0 ? "up" : (chg < 0 ? "down" : "neutral"));
+  }
+
+  if (highEl && ticker.high_24h != null) {
+    highEl.textContent = fmtOrderPrice(ticker.high_24h);
+  }
+  if (lowEl && ticker.low_24h != null) {
+    lowEl.textContent = fmtOrderPrice(ticker.low_24h);
+  }
+  if (volEl && ticker.volume_24h != null) {
+    volEl.textContent = Number(ticker.volume_24h).toLocaleString("en-US", { maximumFractionDigits: 2 });
+  }
+  if (spreadEl) {
+    const bid = ticker.best_bid ? fmtOrderPrice(ticker.best_bid) : "--";
+    const ask = ticker.best_ask ? fmtOrderPrice(ticker.best_ask) : "--";
+    spreadEl.textContent = `${bid} / ${ask}`;
+  }
+
+  if (newPrice != null) {
+    updateAnalysisLiveSetupDiff(parseFloat(newPrice));
+  }
+}
+
+function updateAnalysisLiveSetupDiff(livePrice) {
+  const bar = document.getElementById("analysis-live-setup-bar");
+  const itemsContainer = document.getElementById("analysis-live-setup-items");
+  const signalLabel = document.getElementById("analysis-live-setup-signal");
+  if (!bar || !itemsContainer) return;
+
+  if (!lastAnalysisSetup || !lastAnalysisSetup.entry_price || !livePrice || isNaN(livePrice)) {
+    bar.style.display = "none";
+    return;
+  }
+
+  const currentSym = getActiveAnalysisSymbol();
+  if (lastAnalysisSetup.symbol && lastAnalysisSetup.symbol.toUpperCase() !== currentSym) {
+    bar.style.display = "none";
+    return;
+  }
+
+  bar.style.display = "flex";
+  const { side, entry_price, stop_loss_price, tp1_price, tp2_price } = lastAnalysisSetup;
+  const isBuy = side === "buy";
+
+  if (signalLabel) {
+    signalLabel.textContent = isBuy ? "🟢 LONG Pozisyon Planı" : "🔴 SHORT Pozisyon Planı";
+  }
+
+  const calcDiff = (target) => {
+    if (!target) return null;
+    const diff = ((livePrice - target) / target) * 100;
+    const sign = diff > 0 ? "+" : "";
+    return `${sign}${diff.toFixed(2)}%`;
+  };
+
+  const diffEntry = calcDiff(entry_price);
+  const diffSl = calcDiff(stop_loss_price);
+  const diffTp1 = calcDiff(tp1_price);
+  const diffTp2 = calcDiff(tp2_price);
+
+  itemsContainer.innerHTML = `
+    <span class="setup-diff-chip entry" title="Giriş seviyesine olan anlık fark">🎯 Giriş: ${fmtOrderPrice(entry_price)} (${diffEntry})</span>
+    <span class="setup-diff-chip sl" title="Stop-Loss seviyesine olan anlık fark">🛑 Stop Loss: ${fmtOrderPrice(stop_loss_price)} (${diffSl})</span>
+    <span class="setup-diff-chip tp1" title="Hedef 1 seviyesine olan anlık fark">🏆 TP1 (%50): ${fmtOrderPrice(tp1_price)} (${diffTp1})</span>
+    <span class="setup-diff-chip tp2" title="Hedef 2 seviyesine olan anlık fark">🚀 TP2 (%50): ${fmtOrderPrice(tp2_price)} (${diffTp2})</span>
+  `;
+}
+
 // ---- WebSocket canlı akış (polling'e fallback'li) ----
 let ws = null;
 function connectWebSocket() {
   try {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    ws = new WebSocket(`${proto}://${location.host}/ws/live?symbol=BTC/USDT`);
+    const sym = getActiveAnalysisSymbol();
+    const mkt = getActiveAnalysisMarketType();
+    ws = new WebSocket(`${proto}://${location.host}/ws/live?symbol=${encodeURIComponent(sym)}&market_type=${encodeURIComponent(mkt)}`);
+
+    ws.onopen = () => {
+      const wsBadge = document.getElementById("analysis-live-ws-status");
+      if (wsBadge) {
+        wsBadge.className = "ws-status-badge ws-connected";
+        wsBadge.innerHTML = '<span class="ws-pulse-dot"></span> Canlı WS';
+      }
+    };
 
     ws.onmessage = (evt) => {
       const msg = JSON.parse(evt.data);
@@ -1312,12 +1504,16 @@ function connectWebSocket() {
         const d = msg.ticker;
         const chg = d.change_percentage_24h ?? 0;
         const cls = chg >= 0 ? "up" : "down";
-        document.getElementById("dash-ticker").innerHTML = `
-          <span>Fiyat: <b>${d.last_price}</b></span>
-          <span>24s Yüksek: ${d.high_24h}</span>
-          <span>24s Düşük: ${d.low_24h}</span>
-          <span class="${cls}">Değişim: ${chg}%</span>
-          <span>Hacim: ${Number(d.volume_24h).toFixed(2)}</span>`;
+        const dashTicker = document.getElementById("dash-ticker");
+        if (dashTicker && (!msg.symbol || msg.symbol === activeSymbol)) {
+          dashTicker.innerHTML = `
+            <span>Fiyat: <b>${d.last_price}</b></span>
+            <span>24s Yüksek: ${d.high_24h}</span>
+            <span>24s Düşük: ${d.low_24h}</span>
+            <span class="${cls}">Değişim: ${chg}%</span>
+            <span>Hacim: ${Number(d.volume_24h).toFixed(2)}</span>`;
+        }
+        updateAnalysisLivePrice(d, msg.symbol, msg.market_type);
       }
       if (msg.summary) {
         document.getElementById("dash-total").textContent = fmtUsdt(msg.summary.total_portfolio_usdt);
@@ -1336,6 +1532,11 @@ function connectWebSocket() {
 
     ws.onclose = () => {
       document.getElementById("footer-conn").textContent = "🟡 WS kapandı — polling'e geçildi";
+      const wsBadge = document.getElementById("analysis-live-ws-status");
+      if (wsBadge) {
+        wsBadge.className = "ws-status-badge ws-disconnected";
+        wsBadge.innerHTML = '<span class="ws-pulse-dot"></span> Bağlantı Kesildi';
+      }
       startPolling();  // fallback
       setTimeout(connectWebSocket, 5000);  // GLOBAL_STANDARDS 4.1: yeniden bağlan
     };
