@@ -99,6 +99,28 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
+# --- Request-scoped borsa client fabrikası ---
+from src.exchanges.factory import ExchangeClientFactory
+
+client_factory = ExchangeClientFactory(user_store, shared_market=market)
+
+
+async def get_user_orders(request: Request):
+    """Oturumdaki kullanıcının Orders client'ı. Auth kapalıysa global instance (test)."""
+    user = getattr(request.state, "user", None)
+    if user is None:
+        return orders  # auth_enabled=False (test) veya exempt
+    return await client_factory.get_orders_for_user(user["id"])
+
+
+async def get_user_account(request: Request):
+    """Oturumdaki kullanıcının Account client'ı. Auth kapalıysa global instance (test)."""
+    user = getattr(request.state, "user", None)
+    if user is None:
+        return account
+    return await client_factory.get_account_for_user(user["id"])
+
+
 class LoginRequest(_PydBaseModel):
     username: str
     password: str
@@ -275,21 +297,21 @@ async def auth_me(user: dict = Depends(get_current_user)):
 
 
 @app.get("/api/v1/account/status")
-async def get_account_status():
+async def get_account_status(account=Depends(get_user_account)):
     """KuCoin API bağlantı durumu, gecikme süresi (ms) ve yetkileri döndürür."""
     result = await account.get_status()
     return result
 
 
 @app.get("/api/v1/account/balances")
-async def get_account_balances():
+async def get_account_balances(account=Depends(get_user_account)):
     """Tüm kripto varlıkların serbest, kilitli ve USDT karşılığı bakiyelerini listeler."""
     result = await account.get_balances()
     return result
 
 
 @app.get("/api/v1/account/summary")
-async def get_portfolio_summary():
+async def get_portfolio_summary(account=Depends(get_user_account)):
     """Toplam portföy değeri ve serbest nakit özetini döndürür."""
     result = await account.get_summary()
     return result
@@ -437,7 +459,7 @@ class SwitchModeRequest(BaseModel):
 
 
 @app.post("/api/v1/orders/create")
-async def create_order(req: OrderCreateRequest):
+async def create_order(req: OrderCreateRequest, orders=Depends(get_user_orders)):
     """Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal). Spot/Margin/Futures."""
     try:
         result = await orders.create_order(
@@ -464,7 +486,7 @@ class BracketOrderRequest(BaseModel):
 
 
 @app.post("/api/v1/orders/bracket")
-async def create_bracket(req: BracketOrderRequest):
+async def create_bracket(req: BracketOrderRequest, orders=Depends(get_user_orders)):
     """Akıllı Paket Emir: Giriş + TP1 (%50) + TP2 (%50) + SL (%100) tek pakette. Spot/Margin/Futures."""
     result = await orders.create_bracket_order(
         req.symbol, req.side, req.usdt_amount,
@@ -475,14 +497,14 @@ async def create_bracket(req: BracketOrderRequest):
 
 
 @app.get("/api/v1/orders/open")
-async def get_open_orders(symbol: str | None = None):
+async def get_open_orders(symbol: str | None = None, orders=Depends(get_user_orders)):
     """Borsada dolmayı bekleyen açık emirleri listeler."""
     result = await orders.get_open_orders(symbol)
     return result
 
 
 @app.get("/api/v1/orders/positions")
-async def get_positions(symbol: str | None = None):
+async def get_positions(symbol: str | None = None, orders=Depends(get_user_orders)):
     """Açık pozisyonları, giriş ve stop fiyatlarını, anlık PnL ile döner."""
     result = await orders.get_positions(symbol)
     return result
@@ -490,21 +512,21 @@ async def get_positions(symbol: str | None = None):
 
 
 @app.get("/api/v1/orders/history")
-async def get_order_history(symbol: str | None = None, limit: int | None = 200):
+async def get_order_history(symbol: str | None = None, limit: int | None = 200, orders=Depends(get_user_orders)):
     """Geçmişte dolan veya kapanan emir geçmişini döner."""
     result = await orders.get_history(symbol, limit)
     return result
 
 
 @app.get("/api/v1/orders/pnl")
-async def get_pnl_report(symbol: str | None = None, limit: int = 200):
+async def get_pnl_report(symbol: str | None = None, limit: int = 200, orders=Depends(get_user_orders)):
     """Emir geçmişinden hesaplanan kar/zarar (P&L) raporunu döner."""
     result = await orders.get_pnl_report(symbol, limit)
     return result
 
 
 @app.delete("/api/v1/orders/{order_id}")
-async def cancel_order(order_id: str, symbol: str | None = None):
+async def cancel_order(order_id: str, symbol: str | None = None, orders=Depends(get_user_orders)):
     """Belirtilen açık emri iptal eder."""
     result = await orders.cancel_order(order_id, symbol)
     return result
@@ -517,7 +539,7 @@ class OrderAmendRequest(BaseModel):
 
 
 @app.put("/api/v1/orders/{order_id}")
-async def amend_order(order_id: str, req: OrderAmendRequest):
+async def amend_order(order_id: str, req: OrderAmendRequest, orders=Depends(get_user_orders)):
     """Açık emrin fiyatını ve/veya miktarını günceller (Amend)."""
     result = await orders.amend_order(order_id, req.price, req.amount, req.symbol)
     return result
@@ -541,7 +563,7 @@ async def apply_recommendation(req: ApplyRecRequest):
 
 
 @app.post("/api/v1/orders/panic-stop")
-async def panic_stop():
+async def panic_stop(orders=Depends(get_user_orders)):
     """Acil Durum: Tüm açık emirleri anında iptal eder ve botu durdurur."""
     result = await orders.panic_stop()
     return result
