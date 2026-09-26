@@ -309,8 +309,81 @@ async def auth_logout(request: Request,
 async def auth_me(user: dict = Depends(get_current_user)):
     """Geçerli oturumdaki kullanıcı bilgisini döner."""
     return {"success": True,
-            "data": {"id": user["id"], "username": user["username"], "role": user["role"]},
+            "data": {"id": user["id"], "username": user["username"], "role": user["role"],
+                     "totp_enabled": bool(user.get("totp_secret"))},
             "error": None, "timestamp": timestamp()}
+
+
+# --- 2FA (TOTP) kullanıcı-yönetimli kurulum ---
+from src.auth import auth_service as _auth_svc
+
+
+class Enable2FARequest(_PydBaseModel):
+    secret: str
+    code: str
+
+
+class Disable2FARequest(_PydBaseModel):
+    # Doğrulama için mevcut TOTP kodu VEYA hesap şifresi
+    code: str | None = None
+    password: str | None = None
+
+
+@app.get("/api/v1/auth/2fa/status")
+async def twofa_status(user: dict = Depends(get_current_user)):
+    """Kullanıcının 2FA'sının aktif olup olmadığını döner."""
+    return {"success": True, "data": {"enabled": bool(user.get("totp_secret"))},
+            "error": None, "timestamp": timestamp()}
+
+
+@app.post("/api/v1/auth/2fa/setup")
+async def twofa_setup(user: dict = Depends(get_current_user)):
+    """
+    Yeni bir TOTP secret + QR üretir (henüz KAYDETMEZ). Kullanıcı authenticator'a
+    ekleyip 'enable' ile doğrulayınca aktifleşir. Secret, enable çağrısında geri gönderilir.
+    """
+    if user.get("totp_secret"):
+        return JSONResponse(status_code=400, content={
+            "success": False, "data": {}, "error": "2FA zaten aktif. Önce devre dışı bırakın.",
+            "timestamp": timestamp()})
+    secret = _auth_svc.generate_totp_secret()
+    qr = _auth_svc.totp_qr_data_uri(secret, user["username"])
+    uri = _auth_svc.totp_provisioning_uri(secret, user["username"])
+    return {"success": True, "data": {"secret": secret, "qr_data_uri": qr, "otpauth_uri": uri},
+            "error": None, "timestamp": timestamp()}
+
+
+@app.post("/api/v1/auth/2fa/enable")
+async def twofa_enable(req: Enable2FARequest, user: dict = Depends(get_current_user)):
+    """Setup'tan gelen secret + authenticator kodunu doğrular; doğruysa 2FA'yı aktifleştirir."""
+    if user.get("totp_secret"):
+        return JSONResponse(status_code=400, content={
+            "success": False, "data": {}, "error": "2FA zaten aktif.", "timestamp": timestamp()})
+    if not _auth_svc.verify_totp(req.secret, req.code):
+        return JSONResponse(status_code=400, content={
+            "success": False, "data": {}, "error": "Kod doğrulanamadı. Authenticator kodunu kontrol edin.",
+            "timestamp": timestamp()})
+    await user_store.update_user_fields(user["id"], totp_secret=req.secret)
+    return {"success": True, "data": {"enabled": True}, "error": None, "timestamp": timestamp()}
+
+
+@app.post("/api/v1/auth/2fa/disable")
+async def twofa_disable(req: Disable2FARequest, user: dict = Depends(get_current_user)):
+    """Mevcut TOTP kodu veya hesap şifresi ile doğrulayarak 2FA'yı devre dışı bırakır."""
+    if not user.get("totp_secret"):
+        return JSONResponse(status_code=400, content={
+            "success": False, "data": {}, "error": "2FA zaten kapalı.", "timestamp": timestamp()})
+    verified = False
+    if req.code and _auth_svc.verify_totp(user["totp_secret"], req.code):
+        verified = True
+    elif req.password and _auth_svc.verify_password(req.password, user["password_hash"]):
+        verified = True
+    if not verified:
+        return JSONResponse(status_code=400, content={
+            "success": False, "data": {}, "error": "Doğrulama başarısız (kod veya şifre hatalı).",
+            "timestamp": timestamp()})
+    await user_store.update_user_fields(user["id"], totp_secret=None)
+    return {"success": True, "data": {"enabled": False}, "error": None, "timestamp": timestamp()}
 
 
 @app.get("/api/v1/account/status")

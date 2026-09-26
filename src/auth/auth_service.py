@@ -48,3 +48,20 @@ def verify_totp(secret: str, code: str, valid_window: int = 1) -> bool:
         return pyotp.TOTP(secret).verify(str(code).strip(), valid_window=valid_window)
     except Exception:
         return False
+
+
+def totp_qr_data_uri(secret: str, username: str) -> str:
+    """
+    TOTP provisioning URI'sini QR koda çevirip base64 PNG data-URI döndürür.
+    Authenticator uygulamasıyla taranabilir: <img src="{data_uri}">.
+    """
+    import base64
+    import io
+    import qrcode
+
+    uri = totp_provisioning_uri(secret, username)
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{b64}"

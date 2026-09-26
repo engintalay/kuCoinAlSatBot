@@ -24,11 +24,13 @@ from src.config import Config
 # İş mantığı (test edilebilir — I/O'dan bağımsız)
 # ---------------------------------------------------------------------------- #
 async def create_admin(store: UserStore, username: str, password: str,
-                       email: str | None = None, with_totp: bool = True,
+                       email: str | None = None, with_totp: bool = False,
                        migrate_env_keys: bool = True) -> dict:
     """
-    İlk admin kullanıcıyı oluşturur. TOTP secret üretir ve (istenirse) .env'deki
-    KuCoin API anahtarlarını bu kullanıcıya şifreli aktarır.
+    İlk admin kullanıcıyı oluşturur. Varsayılan olarak 2FA KAPALIDIR; kullanıcı
+    daha sonra Ayarlar ekranından 2FA'yı QR ile aktifleştirir (with_totp=True
+    verilirse yine de secret üretilir). (İstenirse) .env'deki KuCoin API
+    anahtarlarını bu kullanıcıya şifreli aktarır.
     Döner: {user, totp_secret, provisioning_uri, migrated}
     """
     existing = await store.get_user_by_username(username)
@@ -116,15 +118,8 @@ async def _cmd_setup(args):
     print(f"\n✅ Admin '{username}' oluşturuldu.")
     if result["migrated"]:
         print("✅ .env'deki KuCoin API anahtarları bu hesaba şifreli aktarıldı.")
-    if result["provisioning_uri"]:
-        print("\n🔐 2FA (TOTP) kurulumu — Authenticator uygulamanıza ekleyin:")
-        print(f"   Secret : {result['totp_secret']}")
-        print(f"   URI    : {result['provisioning_uri']}")
-        try:
-            import pyotp  # noqa
-            print("   (Bu URI'yi bir QR üreticisine yapıştırarak da tarayabilirsiniz.)")
-        except Exception:
-            pass
+    print("\nℹ️  2FA (iki aşamalı doğrulama) varsayılan olarak KAPALIDIR.")
+    print("   Aktifleştirmek için: giriş yapın → Ayarlar → 🔐 İki Aşamalı Doğrulama (QR ile).")
     print("\nKurulum tamam. Uygulamayı başlatıp giriş yapabilirsiniz.")
 
 

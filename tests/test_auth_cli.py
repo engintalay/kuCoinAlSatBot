@@ -21,12 +21,22 @@ class TestCreateAdmin:
         # .env anahtarı yok say
         monkeypatch.setattr(cli.Config, "API_KEY", None, raising=False)
         s = _store(tmp_path)
-        r = await cli.create_admin(s, "admin", "parola123", migrate_env_keys=False)
+        # 2FA varsayılan kapalı; açıkça with_totp=True istenirse secret üretilir
+        r = await cli.create_admin(s, "admin", "parola123", with_totp=True, migrate_env_keys=False)
         assert r["user"]["role"] == "admin"
         assert r["totp_secret"] and r["provisioning_uri"].startswith("otpauth://")
         # şifre doğrulanabilir
         u = await s.get_user_by_username("admin")
         assert auth_service.verify_password("parola123", u["password_hash"])
+
+    @pytest.mark.asyncio
+    async def test_creates_admin_2fa_disabled_by_default(self, tmp_path, monkeypatch):
+        """Varsayılan: CLI ile oluşturulan admin'de 2FA KAPALI (totp_secret None)."""
+        monkeypatch.setattr(cli.Config, "API_KEY", None, raising=False)
+        s = _store(tmp_path)
+        r = await cli.create_admin(s, "admin2", "parola123", migrate_env_keys=False)
+        assert r["totp_secret"] is None
+        assert r["provisioning_uri"] is None
 
     @pytest.mark.asyncio
     async def test_duplicate_admin_raises(self, tmp_path, monkeypatch):

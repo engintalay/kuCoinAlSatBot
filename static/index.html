@@ -621,6 +621,35 @@
           </div>
         </div>
         <div class="card glass">
+          <div class="card-title">🔐 İki Aşamalı Doğrulama (2FA) <button class="info-btn" data-info="twofa">ℹ️</button></div>
+          <div id="twofa-status" class="apikeys-status">Yükleniyor...</div>
+
+          <!-- 2FA kapalıyken: kurulum -->
+          <div id="twofa-setup-area" class="settings-form" hidden>
+            <button id="twofa-setup-btn" class="btn btn-accent">2FA Kur (QR Üret)</button>
+            <div id="twofa-qr-area" hidden>
+              <p class="apikey-note">1) Authenticator uygulamanızla QR kodu tarayın (veya secret'ı elle girin):</p>
+              <div class="twofa-qr-box"><img id="twofa-qr-img" alt="2FA QR Kodu" /></div>
+              <p class="apikey-note">Secret: <code id="twofa-secret"></code></p>
+              <label>2) Uygulamadaki 6 haneli kodu girin
+                <input id="twofa-enable-code" class="input" inputmode="numeric" maxlength="6" placeholder="000000" />
+              </label>
+              <button id="twofa-enable-btn" class="btn btn-buy">Aktifleştir</button>
+            </div>
+          </div>
+
+          <!-- 2FA açıkken: devre dışı bırakma -->
+          <div id="twofa-disable-area" class="settings-form" hidden>
+            <label>2FA'yı devre dışı bırakmak için authenticator kodu veya şifrenizi girin
+              <input id="twofa-disable-code" class="input" placeholder="6 haneli kod" />
+            </label>
+            <label>veya Hesap Şifresi
+              <input id="twofa-disable-pass" class="input" type="password" autocomplete="current-password" placeholder="Şifre" />
+            </label>
+            <button id="twofa-disable-btn" class="btn btn-sell">2FA'yı Devre Dışı Bırak</button>
+          </div>
+        </div>
+        <div class="card glass">
           <div class="card-title">👁️ İzleme Listesi (Watchlist)</div>
           <div class="watchlist-add">
             <input id="watch-symbol" class="input" placeholder="Örn: AVAX/USDT" />

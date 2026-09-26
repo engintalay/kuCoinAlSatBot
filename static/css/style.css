@@ -796,6 +796,11 @@ body {
 .apikey-sandbox input { width: auto; }
 .apikey-note { font-size: 12px; color: #8b949e; margin: 6px 0 0; line-height: 1.5; }
 
+/* 2FA QR */
+.twofa-qr-box { margin: 10px 0; padding: 12px; background: #fff; border-radius: 10px; display: inline-block; }
+.twofa-qr-box img { width: 180px; height: 180px; display: block; }
+#twofa-secret { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 5px; color: #e6edf3; word-break: break-all; }
+
 /* Kar/Zarar özet kartları */
 .pnl-summary {
   display: flex;

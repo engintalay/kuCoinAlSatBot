@@ -128,6 +128,7 @@ const INFO_TEXT = {
   pnl: { t: "Kar / Zarar Raporu", d: "Emir geçmişindeki dolan emirlerden ortalama maliyet yöntemiyle gerçekleşen (realize) kar/zarar hesaplanır. Komisyonlar düşülür. Açık miktar, henüz satılmamış pozisyonu gösterir." },
   regime: { t: "Piyasa Geneli Rejim", d: "BTC Dominance, toplam piyasa değeri ve stablecoin dominansından risk-on/risk-off ortamını ve altseason ipucunu üretir (CoinGecko verisi)." },
   apikeys: { t: "Borsa API Anahtarları", d: "Kendi KuCoin API anahtarlarınızı girin. Sunucuda master key ile şifreli saklanır ve yalnızca sizin işlemlerinizde kullanılır. Güvenlik için 'Transfer' ve 'Withdrawal' izinlerini kapalı tutmanız önerilir. Kayıtlı gizli anahtar (secret) tekrar gösterilmez." },
+  twofa: { t: "İki Aşamalı Doğrulama (2FA)", d: "Google Authenticator / Authy gibi bir uygulama ile hesabınıza ek güvenlik katmanı ekler. QR kodu tarayıp 6 haneli kodu girerek aktifleştirin. Aktifken uzak ağdan girişte şifreye ek olarak bu kod istenir. (Sunucu ile aynı yerel ağdan girişte 2FA atlanır.)" },
   "bug-report": { t: "Hata & Sorun Bildirimi", d: "Sistemde karşılaştığınız hataları buradan doğrudan kaydedebilirsiniz. Bildirimler sistem teşhis günlüğüne işlenir ve çözümleriyle birlikte takip edilir." },
 };
 
@@ -985,6 +986,7 @@ async function loadSettings() {
   renderWatchlist(s.watchlist || []);
   if (s.default_mode) updateModeBadge(s.default_mode);
   loadApiKeys();
+  load2FA();
 }
 
 // ---- Borsa API Anahtarları ----
@@ -1033,6 +1035,74 @@ async function saveApiKeys() {
 
 const _apikeySaveBtn = document.getElementById("apikey-save");
 if (_apikeySaveBtn) _apikeySaveBtn.addEventListener("click", saveApiKeys);
+
+// ---- İki Aşamalı Doğrulama (2FA) ----
+async function load2FA() {
+  const box = document.getElementById("twofa-status");
+  const setupArea = document.getElementById("twofa-setup-area");
+  const disableArea = document.getElementById("twofa-disable-area");
+  if (!box) return;
+  const res = await apiGet("/auth/2fa/status");
+  const enabled = res.success && res.data.enabled;
+  if (enabled) {
+    box.innerHTML = `<span class="up">✅ 2FA Aktif</span> — Hesabınız iki aşamalı doğrulama ile korunuyor.`;
+    if (setupArea) setupArea.hidden = true;
+    if (disableArea) disableArea.hidden = false;
+  } else {
+    box.innerHTML = `<span class="down">⚠️ 2FA Kapalı</span> — Güvenlik için etkinleştirmeniz önerilir.`;
+    if (setupArea) { setupArea.hidden = false; }
+    if (disableArea) disableArea.hidden = true;
+    // QR alanını gizle (yeniden kur'a basılınca açılır)
+    const qrArea = document.getElementById("twofa-qr-area");
+    if (qrArea) qrArea.hidden = true;
+  }
+}
+
+let _twofaSecret = null;
+async function setup2FA() {
+  const res = await apiSend("/auth/2fa/setup", "POST", {});
+  if (!res.success) { toast(res.error || "2FA kurulumu başlatılamadı.", "error"); return; }
+  _twofaSecret = res.data.secret;
+  document.getElementById("twofa-qr-img").src = res.data.qr_data_uri;
+  document.getElementById("twofa-secret").textContent = res.data.secret;
+  document.getElementById("twofa-qr-area").hidden = false;
+}
+
+async function enable2FA() {
+  const code = document.getElementById("twofa-enable-code").value.trim();
+  if (!_twofaSecret || !code) { toast("Önce QR üretip 6 haneli kodu girin.", "error"); return; }
+  const res = await apiSend("/auth/2fa/enable", "POST", { secret: _twofaSecret, code });
+  if (res.success) {
+    toast("2FA etkinleştirildi.", "success");
+    _twofaSecret = null;
+    document.getElementById("twofa-enable-code").value = "";
+    load2FA();
+  } else {
+    toast(res.error || "Kod doğrulanamadı.", "error");
+  }
+}
+
+async function disable2FA() {
+  const code = document.getElementById("twofa-disable-code").value.trim();
+  const password = document.getElementById("twofa-disable-pass").value;
+  if (!code && !password) { toast("Kod veya şifre girin.", "error"); return; }
+  const res = await apiSend("/auth/2fa/disable", "POST", { code: code || null, password: password || null });
+  if (res.success) {
+    toast("2FA devre dışı bırakıldı.", "warning");
+    document.getElementById("twofa-disable-code").value = "";
+    document.getElementById("twofa-disable-pass").value = "";
+    load2FA();
+  } else {
+    toast(res.error || "Doğrulama başarısız.", "error");
+  }
+}
+
+const _twofaSetupBtn = document.getElementById("twofa-setup-btn");
+if (_twofaSetupBtn) _twofaSetupBtn.addEventListener("click", setup2FA);
+const _twofaEnableBtn = document.getElementById("twofa-enable-btn");
+if (_twofaEnableBtn) _twofaEnableBtn.addEventListener("click", enable2FA);
+const _twofaDisableBtn = document.getElementById("twofa-disable-btn");
+if (_twofaDisableBtn) _twofaDisableBtn.addEventListener("click", disable2FA);
 
 function renderWatchlist(list) {
   const ul = document.getElementById("watchlist");
