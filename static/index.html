@@ -604,6 +604,23 @@
           </div>
         </div>
         <div class="card glass">
+          <div class="card-title">🔑 Borsa API Anahtarları <button class="info-btn" data-info="apikeys">ℹ️</button></div>
+          <div id="apikeys-status" class="apikeys-status">Yükleniyor...</div>
+          <div class="settings-form">
+            <label>Borsa
+              <select id="apikey-exchange" class="input">
+                <option value="kucoin" selected>KuCoin</option>
+              </select>
+            </label>
+            <label>API Key <input id="apikey-key" class="input" autocomplete="off" placeholder="API anahtarı" /></label>
+            <label>API Secret <input id="apikey-secret" class="input" type="password" autocomplete="new-password" placeholder="Gizli anahtar" /></label>
+            <label>API Passphrase <input id="apikey-passphrase" class="input" type="password" autocomplete="new-password" placeholder="Parola (KuCoin)" /></label>
+            <label class="apikey-sandbox"><input id="apikey-sandbox" type="checkbox" /> Sandbox (test ortamı)</label>
+            <button id="apikey-save" class="btn btn-accent">API Anahtarlarını Kaydet</button>
+            <p class="apikey-note">🔒 Anahtarlar sunucuda master key ile şifreli saklanır; kayıtlı secret asla geri gösterilmez.</p>
+          </div>
+        </div>
+        <div class="card glass">
           <div class="card-title">👁️ İzleme Listesi (Watchlist)</div>
           <div class="watchlist-add">
             <input id="watch-symbol" class="input" placeholder="Örn: AVAX/USDT" />

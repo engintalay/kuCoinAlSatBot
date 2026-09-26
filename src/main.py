@@ -659,6 +659,63 @@ async def remove_watchlist(symbol: str, sm=Depends(get_user_settings)):
     return await sm.remove_from_watchlist(symbol)
 
 
+# --- Kullanıcı bazlı Borsa API Anahtarları ---
+def _mask(value: str | None) -> str:
+    """Hassas değeri maskeler: ilk 4 + **** + son 2 karakter."""
+    if not value:
+        return ""
+    if len(value) <= 6:
+        return "****"
+    return f"{value[:4]}****{value[-2:]}"
+
+
+class ApiKeysRequest(_PydBaseModel):
+    api_key: str
+    api_secret: str
+    api_passphrase: str = ""
+    is_sandbox: bool = False
+    exchange: str = "kucoin"
+
+
+@app.get("/api/v1/settings/api-keys")
+async def get_api_keys(exchange: str = "kucoin", user: dict = Depends(get_current_user)):
+    """
+    Kullanıcının kayıtlı borsa API anahtarlarının DURUMUNU döndürür.
+    Güvenlik: secret asla tam dönmez; yalnızca maskelenmiş önizleme.
+    """
+    keys = await user_store.get_api_keys(user["id"], exchange)
+    if not keys:
+        return {"success": True, "data": {"configured": False, "exchange": exchange},
+                "error": None, "timestamp": timestamp()}
+    return {"success": True, "data": {
+        "configured": True,
+        "exchange": exchange,
+        "api_key_masked": _mask(keys["api_key"]),
+        "api_passphrase_set": bool(keys["api_passphrase"]),
+        "is_sandbox": keys["is_sandbox"],
+    }, "error": None, "timestamp": timestamp()}
+
+
+@app.post("/api/v1/settings/api-keys")
+async def save_api_keys(req: ApiKeysRequest, user: dict = Depends(get_current_user)):
+    """
+    Kullanıcının borsa API anahtarlarını şifreli olarak kaydeder/günceller.
+    Kaydetme sonrası kullanıcının önbellekteki borsa client'ları yenilenir.
+    """
+    if not req.api_key or not req.api_secret:
+        return JSONResponse(status_code=400, content={
+            "success": False, "data": {}, "error": "api_key ve api_secret zorunludur.",
+            "timestamp": timestamp()})
+    await user_store.save_api_keys(
+        user["id"], req.api_key, req.api_secret, req.api_passphrase,
+        exchange=req.exchange, is_sandbox=req.is_sandbox,
+    )
+    # Önbellekteki eski client'ları düşür → sonraki istekte yeni anahtarla kurulur
+    await client_factory.invalidate_user(user["id"])
+    return {"success": True, "data": {"configured": True, "exchange": req.exchange},
+            "error": None, "timestamp": timestamp()}
+
+
 # ============================================================================
 # Hata Raporlama & Sorun Takibi (Issue Tracker)
 # ============================================================================

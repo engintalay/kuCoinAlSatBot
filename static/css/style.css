@@ -789,6 +789,13 @@ body {
 }
 .logout-btn:hover { background: rgba(248,81,73,0.22); }
 
+/* Borsa API anahtarları formu */
+.apikeys-status { font-size: 13px; margin-bottom: 12px; color: #8b949e; }
+.apikeys-status code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 5px; color: #e6edf3; }
+.apikey-sandbox { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #8b949e; }
+.apikey-sandbox input { width: auto; }
+.apikey-note { font-size: 12px; color: #8b949e; margin: 6px 0 0; line-height: 1.5; }
+
 /* Kar/Zarar özet kartları */
 .pnl-summary {
   display: flex;

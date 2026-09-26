@@ -127,6 +127,7 @@ const INFO_TEXT = {
   bracket: { t: "Akıllı Paket Emir", d: "Analiz motorunun ATR/seviye hesabından otomatik Giriş + TP1 (%50) + TP2 (%50) + Stop-Loss üretir. Sadece USDT tutarı girin, tek tıkla tüm paket iletilir." },
   pnl: { t: "Kar / Zarar Raporu", d: "Emir geçmişindeki dolan emirlerden ortalama maliyet yöntemiyle gerçekleşen (realize) kar/zarar hesaplanır. Komisyonlar düşülür. Açık miktar, henüz satılmamış pozisyonu gösterir." },
   regime: { t: "Piyasa Geneli Rejim", d: "BTC Dominance, toplam piyasa değeri ve stablecoin dominansından risk-on/risk-off ortamını ve altseason ipucunu üretir (CoinGecko verisi)." },
+  apikeys: { t: "Borsa API Anahtarları", d: "Kendi KuCoin API anahtarlarınızı girin. Sunucuda master key ile şifreli saklanır ve yalnızca sizin işlemlerinizde kullanılır. Güvenlik için 'Transfer' ve 'Withdrawal' izinlerini kapalı tutmanız önerilir. Kayıtlı gizli anahtar (secret) tekrar gösterilmez." },
   "bug-report": { t: "Hata & Sorun Bildirimi", d: "Sistemde karşılaştığınız hataları buradan doğrudan kaydedebilirsiniz. Bildirimler sistem teşhis günlüğüne işlenir ve çözümleriyle birlikte takip edilir." },
 };
 
@@ -983,7 +984,55 @@ async function loadSettings() {
   document.getElementById("set-maxorder").value = (s.risk && s.risk.max_order_usdt) || 1000;
   renderWatchlist(s.watchlist || []);
   if (s.default_mode) updateModeBadge(s.default_mode);
+  loadApiKeys();
 }
+
+// ---- Borsa API Anahtarları ----
+async function loadApiKeys() {
+  const box = document.getElementById("apikeys-status");
+  if (!box) return;
+  const exchange = (document.getElementById("apikey-exchange") || {}).value || "kucoin";
+  const res = await apiGet("/settings/api-keys?exchange=" + encodeURIComponent(exchange));
+  if (!res.success) { box.textContent = "Durum alınamadı."; return; }
+  const d = res.data;
+  if (d.configured) {
+    const sb = d.is_sandbox ? " · 🧪 Sandbox" : "";
+    box.innerHTML = `<span class="up">✅ Tanımlı</span> — Anahtar: <code>${d.api_key_masked}</code>` +
+      `${d.api_passphrase_set ? " · Passphrase ✓" : ""}${sb}`;
+    const sb2 = document.getElementById("apikey-sandbox");
+    if (sb2) sb2.checked = !!d.is_sandbox;
+  } else {
+    box.innerHTML = `<span class="down">⚠️ Henüz tanımlı değil</span> — İşlem yapmak için API anahtarlarınızı girin.`;
+  }
+}
+
+async function saveApiKeys() {
+  const body = {
+    exchange: (document.getElementById("apikey-exchange") || {}).value || "kucoin",
+    api_key: document.getElementById("apikey-key").value.trim(),
+    api_secret: document.getElementById("apikey-secret").value.trim(),
+    api_passphrase: document.getElementById("apikey-passphrase").value.trim(),
+    is_sandbox: document.getElementById("apikey-sandbox").checked,
+  };
+  if (!body.api_key || !body.api_secret) {
+    toast("API Key ve Secret zorunludur.", "error");
+    return;
+  }
+  const res = await apiSend("/settings/api-keys", "POST", body);
+  if (res.success) {
+    toast("API anahtarları şifreli olarak kaydedildi.", "success");
+    // formu temizle (secret'ı ekranda tutma)
+    document.getElementById("apikey-key").value = "";
+    document.getElementById("apikey-secret").value = "";
+    document.getElementById("apikey-passphrase").value = "";
+    loadApiKeys();
+  } else {
+    toast("Kaydedilemedi: " + (res.error || ""), "error");
+  }
+}
+
+const _apikeySaveBtn = document.getElementById("apikey-save");
+if (_apikeySaveBtn) _apikeySaveBtn.addEventListener("click", saveApiKeys);
 
 function renderWatchlist(list) {
   const ul = document.getElementById("watchlist");
