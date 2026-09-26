@@ -24,6 +24,13 @@ from src.config import Config
 from src.utils.logger import logger
 from src.utils.time_sync import timestamp
 
+# --- Kimlik Doğrulama (Faz 1) ---
+import socket
+from fastapi import Cookie, Depends, HTTPException, status
+from pydantic import BaseModel as _PydBaseModel
+from src.auth.user_store import UserStore
+from src.auth.auth_manager import AuthManager, SESSION_COOKIE
+
 app = FastAPI(
     title="KuCoin Al-Sat Botu",
     description="KuCoin borsası için al-sat botu API'si ve dashboard.",
@@ -47,6 +54,56 @@ recommender = RecommendationEngine(orders=orders, market=market)
 market_regime = MarketRegime()
 bug_tracker = BugTracker()
 
+# --- Auth instance & dependency (Faz 1) ---
+def _detect_server_ip() -> str | None:
+    """Sunucunun yerel ağ IP'sini tespit et (yerel-ağ istisnası için)."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return None
+
+
+user_store = UserStore()
+auth_manager = AuthManager(user_store, server_ip=_detect_server_ip())
+
+
+def _client_ip(request: Request) -> str | None:
+    """İstemci IP'sini al (proxy arkasında X-Forwarded-For öncelikli)."""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
+async def get_current_user(
+    request: Request,
+    session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> dict:
+    """Auth guard: geçerli oturumdaki kullanıcıyı döndürür, yoksa 401."""
+    user = await auth_manager.resolve_session(session_cookie)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Oturum bulunamadı veya süresi doldu. Lütfen giriş yapın.")
+    return user
+
+
+async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    """Yalnızca admin rolüne izin verir."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Bu işlem için yönetici yetkisi gerekli.")
+    return user
+
+
+class LoginRequest(_PydBaseModel):
+    username: str
+    password: str
+    totp_code: str | None = None
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -55,6 +112,7 @@ async def startup_event():
     MODULE_1_SPEC 3.3: REST bakiye çekimi sonrası WebSocket aboneliği.
     """
     await bug_tracker.init_db()
+    await user_store.init_db()
     # Kaydedilmiş varsayılan modu yükle ve emir motoruna uygula
     try:
         s_data = await settings_mgr.get_settings()
@@ -139,6 +197,46 @@ async def api_info():
         "error": None,
         "timestamp": timestamp()
     }
+
+
+# ============================================================================
+# Kimlik Doğrulama (Faz 1)
+# ============================================================================
+@app.post("/api/v1/auth/login")
+async def auth_login(req: LoginRequest, request: Request):
+    """Kullanıcı adı/şifre (+ gerekiyorsa TOTP) ile giriş. Session cookie kurar."""
+    ip = _client_ip(request)
+    result = await auth_manager.login(req.username, req.password, req.totp_code, request_ip=ip)
+    if not result["success"]:
+        payload = {"success": False, "data": {"totp_required": result.get("totp_required", False)},
+                   "error": result["error"], "timestamp": timestamp()}
+        return JSONResponse(status_code=401, content=payload)
+    resp = JSONResponse(content={
+        "success": True, "data": {"user": result["user"]}, "error": None, "timestamp": timestamp()})
+    # HttpOnly cookie — JS erişemez (XSS koruması)
+    resp.set_cookie(
+        key=SESSION_COOKIE, value=result["session_id"],
+        httponly=True, samesite="lax", max_age=12 * 3600, path="/",
+    )
+    return resp
+
+
+@app.post("/api/v1/auth/logout")
+async def auth_logout(request: Request,
+                      session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    """Oturumu sonlandırır ve cookie'yi siler."""
+    await auth_manager.logout(session_cookie)
+    resp = JSONResponse(content={"success": True, "data": {}, "error": None, "timestamp": timestamp()})
+    resp.delete_cookie(SESSION_COOKIE, path="/")
+    return resp
+
+
+@app.get("/api/v1/auth/me")
+async def auth_me(user: dict = Depends(get_current_user)):
+    """Geçerli oturumdaki kullanıcı bilgisini döner."""
+    return {"success": True,
+            "data": {"id": user["id"], "username": user["username"], "role": user["role"]},
+            "error": None, "timestamp": timestamp()}
 
 
 @app.get("/api/v1/account/status")
