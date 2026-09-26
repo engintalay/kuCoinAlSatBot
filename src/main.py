@@ -121,6 +121,14 @@ async def get_user_account(request: Request):
     return await client_factory.get_account_for_user(user["id"])
 
 
+def get_user_settings(request: Request):
+    """Oturumdaki kullanıcıya bağlı SettingsManager. Auth kapalıysa global (test)."""
+    user = getattr(request.state, "user", None)
+    if user is None:
+        return settings_mgr
+    return settings_mgr.for_user(user["id"])
+
+
 class LoginRequest(_PydBaseModel):
     username: str
     password: str
@@ -610,36 +618,36 @@ class WatchlistItemRequest(BaseModel):
 
 
 @app.get("/api/v1/settings")
-async def get_settings():
+async def get_settings(sm=Depends(get_user_settings)):
     """İzleme listesi, varsayılan mod ve risk parametrelerini döner."""
-    return await settings_mgr.get_settings()
+    return await sm.get_settings()
 
 
 @app.post("/api/v1/settings")
-async def update_settings(req: SettingsUpdateRequest):
+async def update_settings(req: SettingsUpdateRequest, orders=Depends(get_user_orders), sm=Depends(get_user_settings)):
     """Ayarları kaydeder ve SQLite'ta kalıcı kılar."""
     payload = {k: v for k, v in req.model_dump().items() if v is not None}
     if "default_mode" in payload and payload["default_mode"] in ("paper", "live"):
         await orders.switch_mode(payload["default_mode"])
-    return await settings_mgr.update_settings(payload)
+    return await sm.update_settings(payload)
 
 
 @app.get("/api/v1/settings/symbols")
-async def search_settings_symbols(query: str = "", quote: str = "USDT"):
+async def search_settings_symbols(query: str = "", quote: str = "USDT", sm=Depends(get_user_settings)):
     """KuCoin geçerli sembollerini arar ve listeler."""
-    return await settings_mgr.search_symbols(query, quote)
+    return await sm.search_symbols(query, quote)
 
 
 @app.post("/api/v1/settings/watchlist")
-async def add_watchlist(req: WatchlistItemRequest):
+async def add_watchlist(req: WatchlistItemRequest, sm=Depends(get_user_settings)):
     """İzleme listesine sembol ekler."""
-    return await settings_mgr.add_to_watchlist(req.symbol)
+    return await sm.add_to_watchlist(req.symbol)
 
 
 @app.delete("/api/v1/settings/watchlist/{symbol:path}")
-async def remove_watchlist(symbol: str):
+async def remove_watchlist(symbol: str, sm=Depends(get_user_settings)):
     """İzleme listesinden sembol çıkarır."""
-    return await settings_mgr.remove_from_watchlist(symbol)
+    return await sm.remove_from_watchlist(symbol)
 
 
 # ============================================================================

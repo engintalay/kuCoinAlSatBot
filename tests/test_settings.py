@@ -96,3 +96,49 @@ class TestSettings:
         res = await sm.search_symbols("eth")
         assert res["success"] is True
         assert res["data"]["symbols"] == ["ETH/USDT"]
+
+
+class TestUserScopedSettings:
+    """Task 7: kullanıcı-bazlı ayarlar (user_settings tablosu)."""
+
+    @pytest.mark.asyncio
+    async def test_per_user_watchlist_isolated(self, tmp_path):
+        from src.modules.settings import SettingsManager
+        base = SettingsManager(db_path=str(tmp_path / "us.db"))
+        s1 = base.for_user(1)
+        s2 = base.for_user(2)
+        await s1.update_settings({"watchlist": ["BTC/USDT", "DOGE/USDT"]})
+        await s2.update_settings({"watchlist": ["ETH/USDT"]})
+        r1 = (await s1.get_settings())["data"]["watchlist"]
+        r2 = (await s2.get_settings())["data"]["watchlist"]
+        assert r1 == ["BTC/USDT", "DOGE/USDT"]
+        assert r2 == ["ETH/USDT"]
+
+    @pytest.mark.asyncio
+    async def test_user_settings_persist_across_instances(self, tmp_path):
+        from src.modules.settings import SettingsManager
+        db = str(tmp_path / "persist_user.db")
+        await SettingsManager(db_path=db, user_id=7).update_settings({"default_symbol": "SOL/USDT"})
+        # yeni instance ile diskten oku
+        got = await SettingsManager(db_path=db, user_id=7).get_settings()
+        assert got["data"]["default_symbol"] == "SOL/USDT"
+
+    @pytest.mark.asyncio
+    async def test_global_and_user_are_separate(self, tmp_path):
+        from src.modules.settings import SettingsManager
+        db = str(tmp_path / "sep.db")
+        base = SettingsManager(db_path=db)  # global (user_id=None)
+        await base.update_settings({"default_symbol": "GLOBAL/USDT"})
+        u = base.for_user(99)
+        await u.update_settings({"default_symbol": "USER/USDT"})
+        assert (await base.get_settings())["data"]["default_symbol"] == "GLOBAL/USDT"
+        assert (await u.get_settings())["data"]["default_symbol"] == "USER/USDT"
+
+    @pytest.mark.asyncio
+    async def test_watchlist_add_remove_user_scoped(self, tmp_path):
+        from src.modules.settings import SettingsManager
+        s = SettingsManager(db_path=str(tmp_path / "wl.db"), user_id=3)
+        await s.add_to_watchlist("AVAX/USDT")
+        assert "AVAX/USDT" in (await s.get_settings())["data"]["watchlist"]
+        await s.remove_from_watchlist("AVAX/USDT")
+        assert "AVAX/USDT" not in (await s.get_settings())["data"]["watchlist"]

@@ -25,12 +25,22 @@ DEFAULT_SETTINGS = {
 
 
 class SettingsManager:
-    """Ayarların SQLite kalıcılığı ve watchlist yönetimi."""
+    """Ayarların SQLite kalıcılığı ve watchlist yönetimi.
 
-    def __init__(self, db_path: str = "bot_settings.db", market=None):
+    Kullanıcı-bazlı: `user_id` verilirse ayarlar `user_settings` tablosunda o
+    kullanıcıya özel saklanır. Verilmezse geriye uyumlu tek-satır `settings`
+    (id=1) kullanılır (legacy/global).
+    """
+
+    def __init__(self, db_path: str = "bot_settings.db", market=None, user_id: int | None = None):
         self.db_path = db_path
         self.market = market
+        self.user_id = user_id
         self._settings: dict | None = None  # bellek önbelleği
+
+    def for_user(self, user_id: int) -> "SettingsManager":
+        """Aynı DB/market'i paylaşan, belirli kullanıcıya bağlı yeni yönetici döndürür."""
+        return SettingsManager(db_path=self.db_path, market=self.market, user_id=user_id)
 
     async def _ensure_table(self):
         async with aiosqlite.connect(self.db_path) as db:
@@ -41,16 +51,21 @@ class SettingsManager:
                     updated_at TEXT
                 )
             """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS user_settings (
+                    user_id INTEGER PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    updated_at TEXT
+                )
+            """)
             await db.commit()
 
     async def load(self) -> dict:
         """Ayarları yükle; yoksa varsayılanı oluştur."""
         await self._ensure_table()
-        async with aiosqlite.connect(self.db_path) as db:
-            async with db.execute("SELECT data FROM settings WHERE id = 1") as cur:
-                row = await cur.fetchone()
-        if row:
-            self._settings = json.loads(row[0])
+        raw = await self._read_raw()
+        if raw:
+            self._settings = raw
         else:
             self._settings = json.loads(json.dumps(DEFAULT_SETTINGS))  # kopya
             await self.save(self._settings)
@@ -84,11 +99,18 @@ class SettingsManager:
         if merged.get("default_mode") not in ("paper", "live"):
             merged["default_mode"] = "paper"
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute(
-                "INSERT INTO settings (id, data, updated_at) VALUES (1, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
-                (json.dumps(merged), timestamp()),
-            )
+            if self.user_id is not None:
+                await db.execute(
+                    "INSERT INTO user_settings (user_id, data, updated_at) VALUES (?, ?, ?) "
+                    "ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+                    (self.user_id, json.dumps(merged), timestamp()),
+                )
+            else:
+                await db.execute(
+                    "INSERT INTO settings (id, data, updated_at) VALUES (1, ?, ?) "
+                    "ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+                    (json.dumps(merged), timestamp()),
+                )
             await db.commit()
         self._settings = merged
         return merged
@@ -96,8 +118,14 @@ class SettingsManager:
     async def _read_raw(self) -> dict | None:
         """Diskteki ham ayar sözlüğünü okur (yoksa None)."""
         async with aiosqlite.connect(self.db_path) as db:
-            async with db.execute("SELECT data FROM settings WHERE id = 1") as cur:
-                row = await cur.fetchone()
+            if self.user_id is not None:
+                async with db.execute(
+                    "SELECT data FROM user_settings WHERE user_id = ?", (self.user_id,)
+                ) as cur:
+                    row = await cur.fetchone()
+            else:
+                async with db.execute("SELECT data FROM settings WHERE id = 1") as cur:
+                    row = await cur.fetchone()
         return json.loads(row[0]) if row else None
 
     async def get_settings(self) -> dict:
