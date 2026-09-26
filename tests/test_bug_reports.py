@@ -12,6 +12,7 @@ from src.modules.bug_reports import BugTracker
 
 @pytest.fixture
 def client():
+    app.state.auth_enabled = False
     return TestClient(app)
 
 

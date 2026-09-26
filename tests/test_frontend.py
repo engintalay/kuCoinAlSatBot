@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture(scope="module")
 def client():
     from src.main import app
+    app.state.auth_enabled = False
     return TestClient(app)
 
 

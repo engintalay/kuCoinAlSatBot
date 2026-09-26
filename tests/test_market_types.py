@@ -14,6 +14,7 @@ from src.modules.analysis.scoring_engine import compute_score
 
 @pytest.fixture
 def client():
+    app.state.auth_enabled = False  # bu testler auth kapsamı dışı (piyasa/analiz)
     return TestClient(app)
 
 

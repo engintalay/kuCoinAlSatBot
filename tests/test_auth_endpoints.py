@@ -17,6 +17,7 @@ def client_and_user(tmp_path_factory):
     db_dir = tmp_path_factory.mktemp("authep")
     user_store.db_path = str(db_dir / "auth.db")
     user_store._initialized = False
+    app.state.auth_enabled = True  # bu testler guard'ın AÇIK olmasını gerektirir
 
     async def seed():
         await user_store.init_db()
@@ -56,3 +57,20 @@ def test_logout_invalidates_session(client_and_user):
     assert c.get("/api/v1/auth/me").status_code == 200
     c.post("/api/v1/auth/logout")
     assert c.get("/api/v1/auth/me").status_code == 401
+
+
+def test_protected_endpoint_requires_auth(client_and_user):
+    """Auth guard: oturumsuz korumalı endpoint 401 dönmeli."""
+    c = client_and_user
+    # temiz oturum (login yok)
+    c.cookies.clear()
+    r = c.get("/api/v1/orders/mode")
+    assert r.status_code == 401
+
+
+def test_protected_endpoint_ok_after_login(client_and_user):
+    """Giriş sonrası korumalı endpoint erişilebilir olmalı."""
+    c = client_and_user
+    c.post("/api/v1/auth/login", json={"username": "tester", "password": "parola123"})
+    r = c.get("/api/v1/orders/mode")
+    assert r.status_code == 200

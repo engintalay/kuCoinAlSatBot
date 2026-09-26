@@ -56,6 +56,7 @@ def client_with_mock_market():
         timestamp=timestamp(),
     ))
 
+    app.state.auth_enabled = False
     client = TestClient(app)
     yield client
 

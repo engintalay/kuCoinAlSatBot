@@ -42,8 +42,11 @@ MIN_NOTIONAL_USDT = 1.0  # KuCoin minimum emir tutarı (yaklaşık)
 class KuCoinOrders:
     """Emir oluşturma, takip, iptal; paper ve live mod desteği."""
 
-    def __init__(self, market=None):
+    def __init__(self, market=None, credentials: dict | None = None):
         self.config = Config()
+        # İsteğe bağlı kullanıcı-bazlı kimlik bilgileri (request-scoped).
+        # Verilmezse .env/Config kullanılır (geriye uyumlu).
+        self.credentials = credentials
         # 'paper' (simülasyon) veya 'live' (gerçek)
         self.mode = "paper" if self.config.SIMULATION_MODE else self.config.DEFAULT_TRADING_MODE
         if self.mode not in ("paper", "live"):
@@ -67,11 +70,12 @@ class KuCoinOrders:
     # ------------------------------------------------------------------ #
     def connect(self) -> bool:
         try:
+            c = self.credentials or {}
             creds = {
-                "apiKey": self.config.API_KEY,
-                "secret": self.config.API_SECRET,
-                "password": self.config.API_PASSPHRASE,
-                "sandbox": self.config.IS_SANDBOX,
+                "apiKey": c.get("api_key") or self.config.API_KEY,
+                "secret": c.get("api_secret") or self.config.API_SECRET,
+                "password": c.get("api_passphrase") or self.config.API_PASSPHRASE,
+                "sandbox": c.get("is_sandbox", self.config.IS_SANDBOX),
             }
             self.exchange = ccxt.async_support.kucoin(dict(creds))
             # Futures ayrı bir borsa uç noktası kullanır (kucoinfutures)

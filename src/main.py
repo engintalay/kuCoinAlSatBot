@@ -146,6 +146,41 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+# Auth zorunlu değil sayılan path önekleri (public)
+_AUTH_EXEMPT_PREFIXES = (
+    "/api/v1/auth/",   # login/logout/me
+    "/static",
+    "/ws",             # websocket kendi auth'unu yapar (Faz sonrası)
+    "/docs", "/openapi.json", "/redoc",
+)
+
+# Test/geliştirme için auth zorlamasını kapatma bayrağı (varsayılan: açık)
+app.state.auth_enabled = True
+
+
+def _is_auth_exempt(path: str) -> bool:
+    if path == "/" or path == "/api" or path == "/login":
+        return True
+    return any(path.startswith(p) for p in _AUTH_EXEMPT_PREFIXES)
+
+
+@app.middleware("http")
+async def auth_guard_mw(request: Request, call_next):
+    """Korumalı yollara oturumsuz erişimi 401 ile engeller (public yollar hariç)."""
+    if getattr(app.state, "auth_enabled", True) and request.url.path.startswith("/api/v1/") \
+            and not _is_auth_exempt(request.url.path):
+        session_id = request.cookies.get(SESSION_COOKIE)
+        user = await auth_manager.resolve_session(session_id)
+        if not user:
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "data": {}, "error": "Oturum gerekli. Lütfen giriş yapın.",
+                         "timestamp": timestamp()},
+            )
+        # Kullanıcıyı sonraki katmanlara aktar
+        request.state.user = user
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def log_errors(request: Request, call_next):

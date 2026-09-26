@@ -30,9 +30,11 @@ from typing import Any
 class KuCoinAccount:
     """KuCoin hesap bağlantısı ve bakiye yönetimi."""
 
-    def __init__(self, orders: Any = None):
+    def __init__(self, orders: Any = None, credentials: dict | None = None):
         self.config = Config()
         self.orders = orders
+        # İsteğe bağlı kullanıcı-bazlı kimlik bilgileri (request-scoped).
+        self.credentials = credentials
         self.exchange: ccxt.async_support.kucoin | None = None
         self.futures_exchange: ccxt.async_support.kucoinfutures | None = None
         self.is_connected = False
@@ -47,11 +49,12 @@ class KuCoinAccount:
     def connect(self) -> bool:
         """KuCoin API'ye bağlan."""
         try:
+            c = self.credentials or {}
             creds = {
-                "apiKey": self.config.API_KEY,
-                "secret": self.config.API_SECRET,
-                "password": self.config.API_PASSPHRASE,
-                "sandbox": self.config.IS_SANDBOX,
+                "apiKey": c.get("api_key") or self.config.API_KEY,
+                "secret": c.get("api_secret") or self.config.API_SECRET,
+                "password": c.get("api_passphrase") or self.config.API_PASSPHRASE,
+                "sandbox": c.get("is_sandbox", self.config.IS_SANDBOX),
             }
             self.exchange = ccxt.async_support.kucoin(dict(creds))
             # Futures teminat bakiyesi ayrı uç noktadan (kucoinfutures) gelir
