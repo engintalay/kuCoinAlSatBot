@@ -390,18 +390,20 @@
 
             <div class="guide-container">
 
-              <!-- Bölüm 1: API Kurulumu & Güvenlik -->
+              <!-- Bölüm 1: Admin Kurulumu, Kimlik Doğrulama & API Güvenliği -->
               <div class="guide-chapter">
                 <div class="guide-chapter-header">
-                  <div class="guide-chapter-title">🔐 1. Başlangıç, API Kurulumu ve Güvenlik</div>
-                  <span class="guide-chip">Güvenlik</span>
+                  <div class="guide-chapter-title">🔐 1. Admin Kullanıcı, Kimlik Doğrulama & API Güvenliği</div>
+                  <span class="guide-chip">Güvenlik & Auth</span>
                 </div>
                 <div class="guide-chapter-content">
-                  <p>KuCoin API kimlik bilgilerinizi projenin kök dizininde bulunan <code>.env</code> dosyasına girerek sistemi başlatın:</p>
+                  <p>Bot, çok kullanıcılı ve yüksek güvenlikli kurumsal mimariyle çalışır. Dışarıdan yetkisiz kaydolmayı engellemek için self-registration kapalıdır; ilk yönetici hesabı sunucu konsolundan oluşturulur:</p>
                   <ul>
-                    <li><code>KUCOIN_API_KEY</code>: KuCoin API anahtarınız.</li>
-                    <li><code>KUCOIN_API_SECRET</code>: KuCoin API gizli anahtarınız.</li>
-                    <li><code>KUCOIN_API_PASSPHRASE</code>: API oluştururken belirlediğiniz şifreniz.</li>
+                    <li><strong>Admin Oluşturma:</strong> Terminalde <code>source .venv/bin/activate</code> sonrası <code>python -m src.auth.cli setup</code> komutunu çalıştırın. Kullanıcı adı ve en az 8 karakterli şifre belirleyin.</li>
+                    <li><strong>2FA (TOTP) İki Faktörlü Doğrulama:</strong> Kurulum çıktısında verilen <code>Secret</code> kodunu veya <code>otpauth://</code> bağlantısını Google Authenticator, Microsoft Authenticator veya Authy uygulamanıza ekleyin.</li>
+                    <li><strong>Şifreli API Anahtarı Kasası:</strong> Varsa <code>.env</code> dosyasındaki <code>KUCOIN_API_KEY</code>, <code>KUCOIN_API_SECRET</code> ve <code>KUCOIN_API_PASSPHRASE</code> anahtarları sistemin <code>.master_key</code> kasası ile Fernet (AES-128) standardında şifrelenerek doğrudan admin hesabına aktarılır.</li>
+                    <li><strong>Web Girişi:</strong> Tarayıcıdan <code>http://localhost:9876</code> adresine gittiğinizde otomatik yönlendirileceğiniz <code>/login</code> sayfasından kullanıcı adı, şifre ve 6 haneli 2FA kodunuzla güvenle giriş yapın (12 saatlik güvenli HttpOnly oturum çerezi kurulur).</li>
+                    <li><strong>Şifre Sıfırlama / Kilit Açma:</strong> Şifrenizi unutursanız veya hatalı denemelerle kilitlenirse terminalden <code>python -m src.auth.cli reset-password --username admin</code> komutunu çalıştırabilirsiniz.</li>
                   </ul>
                   <div class="guide-alert-box">
                     <strong>🛑 Kritik Güvenlik Kuralı:</strong> KuCoin API anahtarı oluştururken <strong>kesinlikle "Para Çekme (Withdraw)" yetkisi VERMEYİNİZ!</strong> Bot yalnızca "General" (hesap/bakiye okuma) ve "Spot/Futures Trade" (işlem açma/kapama) yetkilerine ihtiyaç duyar. Ayrıca borsa arayüzünden sabit IP kısıtlaması (IP Whitelist) tanımlamanız önerilir.

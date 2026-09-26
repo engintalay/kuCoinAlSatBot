@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Kapsamlı Kullanım Kılavuzu & Sistem Analizi
 
-> **Sürüm:** 2.0 (Çoklu Piyasa, Gelişmiş SMC, Bracket Emirler, Canlı Pozisyon & Hata Takip Entegreli)  
+> **Sürüm:** 2.1 (Çok Kullanıcılı Kimlik Doğrulama, TOTP 2FA, Şifreli Kasa, Çoklu Piyasa & Gelişmiş SMC Entegreli)  
 > **Erişim Adresi:** `http://localhost:9876` (veya `http://0.0.0.0:9876`)  
 > **Temel İlke:** *"Geliştirme ve Analiz Beraberdir."* Tüm algoritmik kararlar, mimari gerekçeleri ve piyasa dinamikleriyle açıklanır.
 
@@ -8,17 +8,19 @@
 
 ## İçindekiler
 1. [Sistem Mimarisi ve Tasarım İlkeleri](#1-sistem-mimarisi-ve-tasarım-ilkeleri)
-2. [Hızlı Başlangıç ve API Kurulumu](#2-hızlı-başlangıç-ve-api-kurulumu)
-3. [İşlem Modları (Simülasyon vs. Canlı)](#3-işlem-modları-simülasyon-vs-canlı)
-4. [Çoklu Piyasa Desteği: Spot, Margin ve Futures](#4-çoklu-piyasa-desteği-spot-margin-ve-futures)
-5. [Çoklu Cüzdan ve Hesap Bakiye Kırılımı](#5-çoklu-cüzdan-ve-hesap-bakiye-kırılımı)
-6. [Çoklu Zaman Dilimi (MTF) ve Sub-15m Motoru](#6-çoklu-zaman-dilimi-mtf-ve-sub-15m-motoru)
-7. [Teknik ve Kurumsal Piyasa Analizi (SMC & 10 Katman)](#7-teknik-ve-kurumsal-piyasa-analizi-smc--10-katman)
-8. [Eğitici 4-Boyutlu Analiz Tablosu](#8-eğitici-4-boyutlu-analiz-tablosu)
-9. [Dinamik Mum Grafiği ve Otomatik Seviyeler](#9-dinamik-mum-grafiği-ve-otomatik-seviyeler)
-10. [Akıllı Paket Emir (Bracket Order) ve R:R Risk Yönetimi](#10-akıllı-paket-emir-bracket-order-ve-rr-risk-yönetimi)
-11. [Açık Pozisyonlar ve Canlı Emir Takip Ekranı](#11-açık-pozisyonlar-ve-canlı-emir-takip-ekranı)
-12. [Acil Durum (Panic Stop) ve Hata Teşhis & Raporlama](#12-acil-durum-panic-stop-ve-hata-teşhis--raporlama)
+2. [Hızlı Başlangıç ve İlk Admin Kullanıcı Kurulumu](#2-hızlı-başlangıç-ve-ilk-admin-kullanıcı-kurulumu)
+3. [Kimlik Doğrulama, 2FA (TOTP) ve Kasa (CryptoVault) Mimarisi](#3-kimlik-doğrulama-2fa-totp-ve-kasa-cryptovault-mimarisi)
+4. [İşlem Modları (Simülasyon vs. Canlı)](#4-işlem-modları-simülasyon-vs-canlı)
+5. [Çoklu Piyasa Desteği: Spot, Margin ve Futures](#5-çoklu-piyasa-desteği-spot-margin-ve-futures)
+6. [Çoklu Cüzdan, Kullanıcı İzolasyonu ve Bakiye Kırılımı](#6-çoklu-cüzdan-kullanıcı-izolasyonu-ve-bakiye-kırılımı)
+7. [Çoklu Zaman Dilimi (MTF) ve Sub-15m Motoru](#7-çoklu-zaman-dilimi-mtf-ve-sub-15m-motoru)
+8. [Teknik ve Kurumsal Piyasa Analizi (SMC & 10 Katman)](#8-teknik-ve-kurumsal-piyasa-analizi-smc--10-katman)
+9. [Eğitici 4-Boyutlu Analiz Tablosu](#9-eğitici-4-boyutlu-analiz-tablosu)
+10. [Dinamik Mum Grafiği ve Otomatik Seviyeler](#10-dinamik-mum-grafiği-ve-otomatik-seviyeler)
+11. [Akıllı Paket Emir (Bracket Order) ve R:R Risk Yönetimi](#11-akıllı-paket-emir-bracket-order-ve-rr-risk-yönetimi)
+12. [Açık Pozisyonlar ve Canlı Emir Takip Ekranı](#12-açık-pozisyonlar-ve-canlı-emir-takip-ekranı)
+13. [Acil Durum (Panic Stop) ve Hata Teşhis & Raporlama](#13-acil-durum-panic-stop-ve-hata-teşhis--raporlama)
+14. [Yönetici Konsol Komutları Referansı (CLI)](#14-yönetici-konsol-komutları-referansı-cli)
 
 ---
 
@@ -30,11 +32,16 @@ KuCoin Al-Sat Botu; modern, asenkron ve yüksek performanslı Python (FastAPI + 
                     ┌────────────────────────────────────────────────────────┐
                     │            Kullanıcı Arayüzü (Web Dashboard)          │
                     │   HTML5 / Glassmorphism CSS3 / ES6+ Responsive SPA     │
+                    │           [ /login  ──►  / (Korumalı Panel) ]          │
                     └───────────────┬────────────────────────┬───────────────┘
                                     │ REST API               │ WebSocket
                                     ▼                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                FastAPI Uygulama Çekirdeği                              │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│  [Auth Guard Middleware] ──► Oturum Doğrulama (HttpOnly Session Cookie)                 │
+│  [CryptoVault & UserStore] ──► AES-128 (Fernet) ile Şifrelenmiş Borsa API Anahtarları   │
+│  [ExchangeClientFactory] ──► Her Kullanıcı İçin İzole Account / Orders İstemcileri      │
 ├──────────────────────────┬─────────────────────────────┬────────────────────────────────┤
 │    Modül 1: Hesap        │     Modül 2: Piyasa & SMC   │      Modül 3: Emir Motoru      │
 │  - Çoklu Cüzdan Denetimi │  - 10 Katmanlı Puanlama     │  - Spot / Margin / Futures     │
@@ -49,13 +56,15 @@ KuCoin Al-Sat Botu; modern, asenkron ve yüksek performanslı Python (FastAPI + 
 ```
 
 ### Temel Tasarım İlkeleri:
-1. **Önce Sermaye Güvenliği (Capital Protection First):** Para çekme (Withdraw) yetkisi sistem tarafından kesinlikle engellenir ve reddedilir. Pre-trade risk kontrolleri bakiyenizi aşan veya kontrolsüz emirleri bloklar.
-2. **Geliştirme ve Analiz Birlikteliği:** Sistemdeki hiçbir gösterge veya emir tek başına kuru bir sayıdan ibaret değildir; gerekçesi, sebebi, olası piyasa sonucu ve korunma tavsiyesiyle birlikte sunulur.
-3. **Sıfır Dış Bağımlılık (Frontend):** Ağır JavaScript framework'leri (React, Angular, Vue vb.) yerine doğrudan optimize edilmiş, tarayıcıda anında yüklenen ve WebSocket ile hafif haberleşen yerel ES6 mimarisi kullanılmıştır.
+1. **Çok Kullanıcılı İzolasyon (Tenant Isolation):** Her kullanıcının borsa anahtarları, emirleri, açık pozisyonları ve izleme listesi (`settings`) birbirinden tamamen izoledir.
+2. **Kriptografik Güvenlik (Master Key & Fernet):** Borsa API anahtarları veritabanında asla açık metin tutulmaz; simetrik master key kasası (`CryptoVault`) ile şifrelenir.
+3. **Önce Sermaye Güvenliği (Capital Protection First):** Para çekme (Withdraw) yetkisi sistem tarafından kesinlikle engellenir ve reddedilir. Pre-trade risk kontrolleri bakiyenizi aşan veya kontrolsüz emirleri bloklar.
+4. **Geliştirme ve Analiz Birlikteliği:** Sistemdeki hiçbir gösterge veya emir tek başına kuru bir sayıdan ibaret değildir; gerekçesi, sebebi, olası piyasa sonucu ve korunma tavsiyesiyle birlikte sunulur.
+5. **Sıfır Dış Bağımlılık (Frontend):** Ağır JavaScript framework'leri (React, Angular, Vue vb.) yerine doğrudan optimize edilmiş, tarayıcıda anında yüklenen ve WebSocket ile hafif haberleşen yerel ES6 mimarisi kullanılmıştır.
 
 ---
 
-## 2. Hızlı Başlangıç ve API Kurulumu
+## 2. Hızlı Başlangıç ve İlk Admin Kullanıcı Kurulumu
 
 ### Adım 1: Gereksinimler
 - Python 3.10 veya üzeri (Sistemde Python 3.11+ tavsiye edilir)
@@ -71,8 +80,12 @@ chmod +x install.sh first_run.sh run.sh run_tests.sh
 Bu script sanal ortamı (`.venv`) kurar ve tüm bağımlılıkları (`requirements.txt`) yükler.
 
 ### Adım 3: `.env` Yapılandırması
-Proje kök dizinindeki `.env` dosyasını düzenleyin:
+Proje kök dizinindeki `.env` dosyasını oluşturun veya düzenleyin:
 ```env
+# İsteğe bağlı: Sabit bir Master Key belirlemek isterseniz (boş bırakılırsa '.master_key' otomatik üretilir)
+MASTER_KEY=
+
+# KuCoin API Anahtarlarınız (İsteğe bağlı - Admin oluşturulurken otomatik aktarılabilir)
 KUCOIN_API_KEY="api_anahtariniz"
 KUCOIN_API_SECRET="api_gizli_anahtariniz"
 KUCOIN_API_PASSPHRASE="api_parolaniz"
@@ -83,15 +96,69 @@ PORT=9876
 > [!CAUTION]
 > **Kritik Güvenlik Kuralı:** KuCoin API anahtarınızı oluştururken **"Withdrawal (Para Çekme)" iznini KESİNLİKLE İŞARETLEMEYİN**. Botun çalışması için sadece **"General" (Görüntüleme)** ve **"Spot/Margin/Futures Trade" (İşlem)** yetkileri yeterlidir. Ayrıca KuCoin panelinden sabit IP adresinizi beyaz listeye (IP Whitelist) ekleyin.
 
-### Adım 4: Botu Başlatma
+### Adım 4: İlk Admin Kullanıcısını Oluşturma
+Sistemde self-registration (dışarıdan rastgele kayıt) kapalıdır. İlk yönetici hesabı sunucu terminalinden oluşturulur:
+```bash
+source .venv/bin/activate
+python -m src.auth.cli setup
+```
+1. Konsolda **kullanıcı adı** ve **şifre** (en az 8 karakter) belirleyin.
+2. Sistem şifrenizi `bcrypt` ile hash'leyip `role="admin"` olarak kaydeder.
+3. Varsa `.env` dosyasındaki KuCoin anahtarlarınız master key ile şifrelenerek doğrudan bu admin hesabına aktarılır.
+4. Çıktıda verilen **2FA (TOTP) Secret** kodunu veya `otpauth://` bağlantısını Google Authenticator, Authy veya 1Password uygulamanıza ekleyin.
+
+### Adım 5: Botu Başlatma ve Giriş
 ```bash
 ./run.sh
 ```
-Terminalde servis başladığında tarayıcınızda `http://localhost:9876` adresini açarak kontrol panelini görüntüleyebilirsiniz.
+Tarayıcınızda `http://localhost:9876` adresini açın:
+1. Sistem sizi otomatik olarak `http://localhost:9876/login` sayfasına yönlendirir.
+2. Kullanıcı adı, şifre ve Authenticator uygulamanızın ürettiği 6 haneli 2FA kodunu girin.
+3. 12 saatlik güvenli HttpOnly oturumu ile kontrol paneline erişin.
 
 ---
 
-## 3. İşlem Modları (Simülasyon vs. Canlı)
+## 3. Kimlik Doğrulama, 2FA (TOTP) ve Kasa (CryptoVault) Mimarisi
+
+Bot, finansal varlıkları yöneten bir yazılım olduğu için kurumsal düzeyde çok katmanlı savunma mimarisiyle donatılmıştır:
+
+```
+[İstemci / Tarayıcı] 
+        │ (POST /api/v1/auth/login)
+        ▼
+[AuthManager]
+        ├── 1. Parola Kontrolü (bcrypt hash doğrulama)
+        ├── 2. Kademeli Brute-Force Denetimi (LockoutManager)
+        ├── 3. İki Faktörlü Doğrulama (pyotp RFC 6238 TOTP)
+        └── 4. HttpOnly Session Cookie (XSS korumalı opak ID)
+                 │
+                 ▼
+[UserStore & CryptoVault (Fernet AES-128)]
+        ├── users tablosu: Kullanıcı kimliği & TOTP secret
+        ├── sessions tablosu: Aktif 12 saatlik oturumlar
+        └── user_api_keys tablosu: Şifreli KuCoin API Anahtarları
+```
+
+### 1. Parola Güvenliği ve 2FA (TOTP)
+- Kullanıcı parolaları geri döndürülemez `bcrypt` tuzlamasıyla (salt) saklanır.
+- RFC 6238 standardına uygun 30 saniyelik zaman tabanlı tek kullanımlık şifreler (TOTP) zorunludur.
+
+### 2. Kademeli Brute-Force Koruması (Lockout Stages)
+Kötü niyetli parola denemelerine karşı `LockoutManager` 3 aşamalı savunma uygular:
+- **Aşama 1 (3-4 Hatalı Deneme):** Cevap süresi yapay olarak geciktirilir (progressive sleep).
+- **Aşama 2 (5-9 Hatalı Deneme):** Hesap geçici olarak 15 dakika kilitlenir.
+- **Aşama 3 (10+ Hatalı Deneme):** Hesap güvenlik amacıyla tamamen devre dışı bırakılır (`is_disabled = 1`). Yalnızca sunucu yöneticisi CLI üzerinden kilidi kaldırabilir.
+*(Not: Geliştirme kolaylığı için `127.0.0.1` yerel ağ isteklerinde lockout kilit süresi esnetilir).*
+
+### 3. Master Key ve Kripto Kasa (`CryptoVault`)
+Kullanıcıların borsa anahtarları veritabanında asla açık tutulmaz.
+- Kök dizindeki `.master_key` dosyasında saklanan 32 baytlık Fernet anahtarı kullanılır.
+- Bu anahtar dosyasının dosya izinleri `0600` (sadece sahip okuyabilir) olarak kilitlenir.
+- `.master_key` dosyasını mutlaka güvenli bir yerde yedekleyiniz; bu dosya kaybolursa veritabanındaki borsa anahtarları çözülemez.
+
+---
+
+## 4. İşlem Modları (Simülasyon vs. Canlı)
 
 Sistem iki ayrı operasyonel çalışma modunu destekler:
 
@@ -111,7 +178,7 @@ Kazara canlı moda geçişi önlemek için arayüzde çift aşamalı onay pencer
 
 ---
 
-## 4. Çoklu Piyasa Desteği: Spot, Margin ve Futures
+## 5. Çoklu Piyasa Desteği: Spot, Margin ve Futures
 
 Bot, KuCoin'in sunduğu üç farklı piyasa yapısıyla tam entegre çalışır:
 
@@ -135,9 +202,9 @@ Bot, KuCoin'in sunduğu üç farklı piyasa yapısıyla tam entegre çalışır:
 
 ---
 
-## 5. Çoklu Cüzdan ve Hesap Bakiye Kırılımı
+## 6. Çoklu Cüzdan, Kullanıcı İzolasyonu ve Bakiye Kırılımı
 
-KuCoin borsasında tek bir hesap altında bağımsız cüzdan hesapları bulunur. Bot, portföy kartında bu hesapların her birini ayrı ayrı denetler:
+KuCoin borsasında tek bir hesap altında bağımsız cüzdan hesapları bulunur. Sistem, oturum açan kullanıcının şifreli anahtarlarını çözerek yalnızca o kullanıcıya ait bakiye kırılımını listeler:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -153,10 +220,11 @@ KuCoin borsasında tek bir hesap altında bağımsız cüzdan hesapları bulunur
 Arayüzdeki **"Detaylı Hesap Kırılımı"** paneli sayesinde:
 - Hangi cüzdanda kaç USDT serbest (free), kaç USDT emirde kilitli (used) olduğu anlık listelenir.
 - Bir piyasada emir verirken yetersiz bakiye uyarısı alırsanız, varlıklarınızın hangi cüzdanda kaldığını tek bakışta görebilirsiniz.
+- Kullanıcı İzolasyonu sayesinde bir kullanıcının emirleri ve bakiyesi diğer kullanıcılar tarafından kesinlikle görüntülenemez.
 
 ---
 
-## 6. Çoklu Zaman Dilimi (MTF) ve Sub-15m Motoru
+## 7. Çoklu Zaman Dilimi (MTF) ve Sub-15m Motoru
 
 Tek bir zaman dilimine bakarak işlem yapmak en sık karşılaşılan tuzaklardan biridir. Bot, 8 farklı zaman diliminde (`1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d`) piyasayı tarar ve hiyerarşik MTF prensibini uygular:
 
@@ -175,7 +243,7 @@ Tek bir zaman dilimine bakarak işlem yapmak en sık karşılaşılan tuzaklarda
 
 ---
 
-## 7. Teknik ve Kurumsal Piyasa Analizi (SMC & 10 Katman)
+## 8. Teknik ve Kurumsal Piyasa Analizi (SMC & 10 Katman)
 
 Analiz motoru, fiyatı 10 bağımsız analitik katmanda inceler ve 0-100 arasında normalize edilmiş bileşik skor üretir:
 
@@ -196,7 +264,7 @@ Analiz motoru, fiyatı 10 bağımsız analitik katmanda inceler ve 0-100 arasın
 
 ---
 
-## 8. Eğitici 4-Boyutlu Analiz Tablosu
+## 9. Eğitici 4-Boyutlu Analiz Tablosu
 
 Klasik analiz araçları yalnızca "RSI: 78" gibi teknik rakamlar verip yatırımcıyı yalnız bırakır. KuCoin Al-Sat Botu ise her sinyali 4 temel boyutta açıklar:
 
@@ -221,7 +289,7 @@ Bu yapı sayesinde hem acemi kullanıcılar indikatörlerin piyasadaki gerçek k
 
 ---
 
-## 9. Dinamik Mum Grafiği ve Otomatik Seviyeler
+## 10. Dinamik Mum Grafiği ve Otomatik Seviyeler
 
 Analiz ekranındaki interaktif SVG grafiği, seçilen sembolün ve zaman diliminin son mumlarını çizer. Aynı zamanda sistemin algoritmik olarak belirlediği seviyeleri görselleştirir:
 
@@ -235,7 +303,7 @@ Grafiğin hemen altındaki **"🚀 Akıllı Pakete Aktar"** butonu, bu koordinat
 
 ---
 
-## 10. Akıllı Paket Emir (Bracket Order) ve R:R Risk Yönetimi
+## 11. Akıllı Paket Emir (Bracket Order) ve R:R Risk Yönetimi
 
 Disiplinli ticaretin en kritik bileşeni **Bracket Order (Paket Emir)** mimarisidir. Bir işleme girerken çıkış planı önceden belirlenmemişse o işlem bir kumardır.
 
@@ -265,7 +333,7 @@ $$\text{R:R Oranı} = \frac{\text{Beklenen Ortalama Kazanç}}{\text{Göze Alına
 
 ---
 
-## 11. Açık Pozisyonlar ve Canlı Emir Takip Ekranı
+## 12. Açık Pozisyonlar ve Canlı Emir Takip Ekranı
 
 Emirler sekmesi iki ana yönetim panelinden oluşur:
 
@@ -284,7 +352,7 @@ Emirler sekmesi iki ana yönetim panelinden oluşur:
 
 ---
 
-## 12. Acil Durum (Panic Stop) ve Hata Teşhis & Raporlama
+## 13. Acil Durum (Panic Stop) ve Hata Teşhis & Raporlama
 
 ### 🛑 Panic Stop Kalkanı
 Beklenmedik bir piyasa çöküşü, aşırı volatilite veya kişisel acil durumlarda:
@@ -300,6 +368,19 @@ Bir hata veya bağlantı kopması durumunda:
 ### 🐞 Sorun Takip ve Hata Raporlama Ekranı (`#view-issues`)
 - Arayüzde veya analizlerde fark ettiğiniz durumları kategori (UI, Analiz, Emir, API), öncelik ve açıklama belirterek kaydedebilirsiniz.
 - Kayıtlar yerel SQLite veritabanında saklanır ve çözüldüğünde durumları güncellenebilir.
+
+---
+
+## 14. Yönetici Konsol Komutları Referansı (CLI)
+
+Yönetim komutları projenin sanal ortamı üzerinden doğrudan çalıştırılabilir:
+
+| Komut | Açıklama |
+|-------|----------|
+| `python -m src.auth.cli setup` | İlk admin kullanıcısını oluşturur, TOTP 2FA secret üretir ve `.env` anahtarlarını şifreli aktarır. |
+| `python -m src.auth.cli setup --force` | Veritabanında zaten kullanıcı bulunsa dahi yeni bir admin hesabı ekler. |
+| `python -m src.auth.cli reset-password --username <isim>` | Belirtilen kullanıcının şifresini sıfırlar, hatalı giriş sayacını temizler, hesap kilidini kaldırır ve eski açık oturumları düşürür. |
+| `python -m src.auth.cli migrate-env --username <isim>` | `.env` dosyasındaki KuCoin API anahtarlarını belirtilen kullanıcının şifreli kasasına aktarır. |
 
 ---
 

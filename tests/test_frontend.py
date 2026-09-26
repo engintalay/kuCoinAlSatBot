@@ -69,6 +69,9 @@ def test_guide_view_present(client):
     assert "Bracket" in r.text
     assert "Açık Pozisyonlar" in r.text
     assert "PANIC STOP" in r.text
+    assert "Admin" in r.text
+    assert "TOTP" in r.text
+    assert "reset-password" in r.text
 
 
 def test_contextual_info_buttons(client):
