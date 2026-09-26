@@ -4,10 +4,18 @@
 const API = "/api/v1";
 let activeSymbol = "BTC/USDT";
 
+// 401 durumunda giriş ekranına yönlendir
+function _handleUnauthorized() {
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.href = "/login";
+  }
+}
+
 // ---- Yardımcılar ----
 async function apiGet(path) {
   try {
-    const r = await fetch(API + path);
+    const r = await fetch(API + path, { credentials: "include" });
+    if (r.status === 401) { _handleUnauthorized(); return { success: false, data: {}, error: "Oturum gerekli", timestamp: Date.now() }; }
     if (!r.ok) {
       let msg = `HTTP ${r.status}`;
       try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (_) {}
@@ -23,8 +31,10 @@ async function apiSend(path, method, body) {
     const r = await fetch(API + path, {
       method,
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     });
+    if (r.status === 401) { _handleUnauthorized(); return { success: false, data: {}, error: "Oturum gerekli", timestamp: Date.now() }; }
     if (!r.ok) {
       let msg = `HTTP ${r.status}`;
       try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (_) {}
@@ -1838,12 +1848,43 @@ async function loadMode() {
   }
 }
 
-// İlk yükleme
-loadMode();
-loadStatus();
-loadSummary();
-loadTicker();
-loadChart();
-populateSymbolChoices();
-setInterval(() => loadChart(), 60000);  // grafik 60sn'de bir yenilenir
-connectWebSocket();
+// İlk yükleme — önce oturum kontrolü
+async function checkAuthAndInit() {
+  let me;
+  try {
+    const r = await fetch("/api/v1/auth/me", { credentials: "include" });
+    if (r.status === 401) { window.location.href = "/login"; return; }
+    me = await r.json();
+  } catch (e) {
+    // Sunucuya ulaşılamazsa yine de dashboard'ı dene
+    me = { success: false };
+  }
+  if (me && me.success && me.data) {
+    setCurrentUser(me.data);
+  }
+  loadMode();
+  loadStatus();
+  loadSummary();
+  loadTicker();
+  loadChart();
+  populateSymbolChoices();
+  setInterval(() => loadChart(), 60000);  // grafik 60sn'de bir yenilenir
+  connectWebSocket();
+}
+
+function setCurrentUser(user) {
+  const box = document.getElementById("current-user");
+  if (box) {
+    box.textContent = `👤 ${user.username}${user.role === "admin" ? " (admin)" : ""}`;
+  }
+}
+
+async function logout() {
+  await fetch("/api/v1/auth/logout", { method: "POST", credentials: "include" });
+  window.location.href = "/login";
+}
+
+const _logoutBtn = document.getElementById("logout-btn");
+if (_logoutBtn) _logoutBtn.addEventListener("click", logout);
+
+checkAuthAndInit();

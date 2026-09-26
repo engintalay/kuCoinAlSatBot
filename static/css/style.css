@@ -781,6 +781,14 @@ body {
 .market-badge.market-futures { background: rgba(163, 113, 247, 0.15); color: #bc8cff; border: 1px solid rgba(163, 113, 247, 0.4); }
 .market-badge.market-funding { background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); }
 
+/* Giriş/kullanıcı (Faz 1 auth) */
+.current-user { color: #8b949e; font-size: 13px; margin-left: 8px; }
+.logout-btn {
+  background: rgba(248,81,73,0.12); border: 1px solid rgba(248,81,73,0.4); color: #f85149;
+  padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-left: 8px;
+}
+.logout-btn:hover { background: rgba(248,81,73,0.22); }
+
 /* Kar/Zarar özet kartları */
 .pnl-summary {
   display: flex;

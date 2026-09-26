@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Giriş — KuCoin Al-Sat Botu</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    .login-wrap {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: #0d1117;
+    }
+    .login-card {
+      width: 360px; max-width: 92vw; background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 32px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .login-card h1 { font-size: 20px; margin: 0 0 4px; color: #e6edf3; }
+    .login-card p.sub { margin: 0 0 22px; color: #8b949e; font-size: 13px; }
+    .login-field { margin-bottom: 14px; }
+    .login-field label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+    .login-field input {
+      width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
+      background: #0d1117; border: 1px solid rgba(255,255,255,0.15); color: #e6edf3; font-size: 14px;
+    }
+    .login-field input:focus { outline: none; border-color: #58a6ff; }
+    #totp-field { display: none; }
+    .login-btn {
+      width: 100%; padding: 11px; border: none; border-radius: 8px; cursor: pointer;
+      background: #238636; color: #fff; font-size: 15px; font-weight: 600; margin-top: 6px;
+    }
+    .login-btn:hover { background: #2ea043; }
+    .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .login-error {
+      background: rgba(248,81,73,0.12); border: 1px solid rgba(248,81,73,0.4); color: #f85149;
+      padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; display: none;
+    }
+    .login-logo { font-size: 26px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="login-card" id="login-form" autocomplete="off">
+      <div class="login-logo">🟢</div>
+      <h1>KuCoin Al-Sat Botu</h1>
+      <p class="sub">Devam etmek için giriş yapın</p>
+
+      <div class="login-error" id="login-error"></div>
+
+      <div class="login-field">
+        <label for="login-username">Kullanıcı Adı</label>
+        <input type="text" id="login-username" autocomplete="username" required />
+      </div>
+      <div class="login-field">
+        <label for="login-password">Şifre</label>
+        <input type="password" id="login-password" autocomplete="current-password" required />
+      </div>
+      <div class="login-field" id="totp-field">
+        <label for="login-totp">2FA Kodu (Authenticator)</label>
+        <input type="text" id="login-totp" inputmode="numeric" maxlength="6" placeholder="6 haneli kod" />
+      </div>
+
+      <button type="submit" class="login-btn" id="login-btn">Giriş Yap</button>
+    </form>
+  </div>
+
+  <script src="/static/js/login.js"></script>
+</body>
+</html>

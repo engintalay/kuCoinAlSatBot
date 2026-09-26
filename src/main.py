@@ -249,6 +249,15 @@ async def dashboard():
     return {"success": False, "error": "Dashboard bulunamadı", "timestamp": timestamp()}
 
 
+@app.get("/login")
+async def login_page():
+    """Giriş ekranı (auth gerektirmez)."""
+    page = os.path.join(STATIC_DIR, "login.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return {"success": False, "error": "Giriş ekranı bulunamadı", "timestamp": timestamp()}
+
+
 @app.get("/api")
 async def api_info():
     """API bilgi endpoint'i."""
