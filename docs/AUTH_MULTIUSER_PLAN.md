@@ -1,6 +1,18 @@
 # Kimlik Doğrulama, Çok Kullanıcı, Transfer & Binance — Yol Haritası
 
-> **Durum:** Faz 1 geliştirme başladı | **Son Güncelleme:** 2026-09-26
+> **Durum:** Faz 1 TAMAMLANDI ✅ | **Son Güncelleme:** 2026-09-27
+
+## Faz 1 Tamamlanma Özeti (Auth & Multi-user)
+- ✅ CryptoVault (master key, Fernet) — `src/auth/crypto_vault.py`
+- ✅ UserStore (users/sessions/user_api_keys, şifreli anahtarlar) — `src/auth/user_store.py`
+- ✅ Şifre (bcrypt) + TOTP (pyotp) — `src/auth/auth_service.py`
+- ✅ Brute-force aşamalı kilitleme + yerel-ağ /24 istisnası — `src/auth/lockout.py`
+- ✅ Session yönetimi + login/logout/me + auth guard middleware — `src/auth/auth_manager.py`, `src/main.py`
+- ✅ Request-scoped borsa client fabrikası — `src/exchanges/factory.py`
+- ✅ Kullanıcı-bazlı ayarlar (`user_settings`) — `src/modules/settings.py`
+- ✅ Admin CLI (setup/reset-password/migrate-env) — `src/auth/cli.py`
+- ✅ Frontend giriş ekranı — `static/login.html`, `static/js/login.js`, dashboard entegrasyonu
+- **299/299 test %100 yeşil, %81 coverage.** Uçtan uca doğrulandı (admin oluştur→TOTP login→korumalı endpoint→reset ile oturum düşme).
 
 ## Onaylanan Kararlar
 

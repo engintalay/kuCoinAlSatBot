@@ -35,7 +35,14 @@ echo "=================================================================="
 echo "   📊 Web Dashboard        : http://$HOST:$PORT/"
 echo "   📖 Canlı Swagger UI     : http://$HOST:$PORT/docs"
 echo "   📑 ReDoc Dokümantasyonu : http://$HOST:$PORT/redoc"
+echo "   🔐 Giriş Ekranı         : http://$HOST:$PORT/login"
 echo "=================================================================="
+# İlk kurulum: admin hesabı yoksa uyar
+if [ ! -f "$PROJECT_DIR/auth.db" ]; then
+    echo "ℹ️  İlk kurulum: Henüz admin hesabı yok. Yeni bir terminalde çalıştırın:"
+    echo "     python -m src.auth.cli setup"
+    echo "=================================================================="
+fi
 echo "Durdurmak için: CTRL + C"
 echo ""
 

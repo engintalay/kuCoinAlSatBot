@@ -29,6 +29,12 @@ requests>=2.31.0
 # Asenkron SQLite Veritabanı
 aiosqlite>=0.20.0
 
+# Kimlik Doğrulama & Güvenlik (Faz 1: çok kullanıcılı auth + 2FA)
+passlib[bcrypt]==1.7.4       # şifre hash (bcrypt)
+bcrypt==4.0.1               # passlib 1.7.4 ile uyumlu sürüm
+pyotp==2.9.0                # TOTP (2FA) kod üretimi/doğrulama
+cryptography>=42.0.0        # Fernet (master key ile API anahtarı şifreleme)
+
 # Birim Test (Unit Test) ve Kod Kapsamı (Coverage)
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
