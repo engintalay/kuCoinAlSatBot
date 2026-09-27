@@ -484,7 +484,8 @@ function renderAnalysisSetup(side, ts, marketType) {
   const container = document.getElementById("analysis-setup-content");
   if (!container) return;
   const isBuy = side === "buy";
-  const dirLabel = isBuy ? "🟢 LONG (ALIŞ)" : "🔴 SHORT (SATIŞ)";
+  const isSpot = (marketType || "spot").toLowerCase() === "spot";
+  const dirLabel = isBuy ? "🟢 LONG (ALIŞ)" : (isSpot ? "🔴 SATIŞ (NAKDE GEÇ)" : "🔴 SHORT (SATIŞ)");
   const riskDiff = Math.abs(ts.entry_price - ts.stop_loss_price);
   const riskPct = ((riskDiff / ts.entry_price) * 100).toFixed(2);
   const tp1Diff = Math.abs(ts.tp1_price - ts.entry_price);
@@ -543,6 +544,10 @@ const toBracketBtnEl = document.getElementById("analysis-to-bracket-btn");
 if (toBracketBtnEl) {
   toBracketBtnEl.addEventListener("click", () => {
     if (!lastAnalysisSetup) return;
+    if ((lastAnalysisSetup.market_type || "").toLowerCase() === "spot" && lastAnalysisSetup.side === "sell") {
+      toast("Spot piyasada açığa satış (Short) yapılamaz. Vadeli (Futures) sekmesinde short emir oluşturabilirsiniz.", "warning");
+      return;
+    }
     switchView("orders");
     document.getElementById("bracket-symbol").value = lastAnalysisSetup.symbol;
     document.getElementById("bracket-side").value = lastAnalysisSetup.side;
@@ -740,9 +745,11 @@ async function loadPositions() {
       const levBadge = (mt === "futures" && p.leverage) ? ` ${p.leverage}x` : "";
       const mmBadge = p.margin_mode ? ` [${String(p.margin_mode).toUpperCase()}]` : "";
       const mtLabel = ({ spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt) + levBadge + mmBadge;
-      const side = (p.side || "long").toLowerCase();
-      const sideLabel = side === "long" ? "LONG" : "SHORT";
-      const sideCls = side === "long" ? "side-buy" : "side-sell";
+      const rawSide = (p.side || "long").toLowerCase();
+      const isSpot = mt === "spot";
+      const isLong = isSpot || rawSide === "long" || rawSide === "buy" || rawSide === "spot";
+      const sideLabel = isLong ? "LONG" : "SHORT";
+      const sideCls = isLong ? "side-buy" : "side-sell";
 
       const entryPrice = p.entry_price ? fmtOrderPrice(p.entry_price) : "-";
       const totalCost = p.total_cost != null && p.total_cost > 0
@@ -1075,19 +1082,22 @@ async function cancelOrder(id) {
 function openPositionTpSlModal(p) {
   const modal = document.getElementById("position-tpsl-modal");
   if (!modal) return;
+  const mt = (p.market_type || p.market || "futures").toLowerCase();
+  const isSpot = mt === "spot" || (p.side || "").toLowerCase() === "spot";
+  const rawSide = (p.side || "long").toLowerCase();
+  const isLong = isSpot || rawSide === "long" || rawSide === "buy" || rawSide === "spot";
   document.getElementById("tpsl-symbol").value = p.symbol || "";
-  document.getElementById("tpsl-market-type").value = p.market_type || "futures";
-  document.getElementById("tpsl-side").value = p.side || "long";
+  document.getElementById("tpsl-market-type").value = mt;
+  document.getElementById("tpsl-side").value = isLong ? "long" : "short";
   document.getElementById("tpsl-amount").value = p.amount || "";
   document.getElementById("tpsl-leverage").value = p.leverage || "";
   document.getElementById("tpsl-entry-price").value = p.entry_price || "";
   document.getElementById("tpsl-curr-price").value = p.current_price || "";
 
   const infoDiv = document.getElementById("tpsl-pos-info");
-  const isLong = (p.side || "long").toLowerCase() === "long";
   const sideColor = isLong ? "var(--green)" : "var(--red)";
-  const sideText = isLong ? "LONG (ALIŞ)" : "SHORT (SATIŞ)";
-  const levStr = p.leverage ? ` (${p.leverage}x Kaldıraç)` : "";
+  const sideText = isSpot ? "SPOT (VARLIK)" : (isLong ? "LONG (ALIŞ)" : "SHORT (SATIŞ)");
+  const levStr = (mt === "futures" && p.leverage) ? ` (${p.leverage}x Kaldıraç)` : "";
 
   infoDiv.innerHTML = `
     <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
@@ -1406,6 +1416,10 @@ document.getElementById("bracket-load").addEventListener("click", async () => {
   const symbol = document.getElementById("bracket-symbol").value;
   const side = document.getElementById("bracket-side").value;
   const marketType = document.getElementById("bracket-market-type").value;
+  if (marketType === "spot" && (side === "sell" || side === "short")) {
+    toast("Spot piyasada açığa satış (Short) açılamaz. Lütfen Futures piyasayı seçin veya Long yönlü işlem açın.", "warning");
+    return;
+  }
   const leverage = marketType === "futures"
     ? (parseFloat(document.getElementById("bracket-leverage")?.value) || 5.0)
     : 1.0;
@@ -1440,6 +1454,11 @@ document.getElementById("bracket-load").addEventListener("click", async () => {
 document.getElementById("bracket-submit").addEventListener("click", async () => {
   if (!bracketSetup) return;
   const marketType = document.getElementById("bracket-market-type").value;
+  const side = document.getElementById("bracket-side").value;
+  if (marketType === "spot" && (side === "sell" || side === "short")) {
+    toast("Spot piyasada açığa satış (Short) yapılamaz. Vadeli (Futures) piyasayı seçiniz.", "error");
+    return;
+  }
   const leverage = marketType === "futures"
     ? (parseFloat(document.getElementById("bracket-leverage")?.value) || 5.0)
     : null;
@@ -1823,9 +1842,10 @@ function updateAnalysisLiveSetupDiff(livePrice) {
   bar.style.display = "flex";
   const { side, entry_price, stop_loss_price, tp1_price, tp2_price } = lastAnalysisSetup;
   const isBuy = side === "buy";
+  const isSpot = (lastAnalysisSetup.market_type || "spot").toLowerCase() === "spot";
 
   if (signalLabel) {
-    signalLabel.textContent = isBuy ? "🟢 LONG Pozisyon Planı" : "🔴 SHORT Pozisyon Planı";
+    signalLabel.textContent = isBuy ? "🟢 LONG Pozisyon Planı" : (isSpot ? "🔴 Satış / Nakde Geç Planı" : "🔴 SHORT Pozisyon Planı");
   }
 
   const calcDiff = (target) => {

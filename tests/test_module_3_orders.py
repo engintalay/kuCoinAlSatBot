@@ -570,6 +570,8 @@ class TestHoldingCostsAndHistory:
         assert res["data"]["count"] == 1
         pos = res["data"]["positions"][0]
         assert pos["symbol"] == "BTC/USDT"
+        assert pos["market_type"] == "spot"
+        assert pos["side"] == "long"
         assert pos["amount"] == 0.1
         assert pos["entry_price"] == 60000.0  # Kaça mal olduğu
         assert pos["total_cost"] == 6000.0   # Toplam maliyet
@@ -577,3 +579,23 @@ class TestHoldingCostsAndHistory:
         assert pos["current_value"] == 6500.0   # Güncel değer
         assert pos["unrealized_pnl"] == 500.0   # Kâr
         assert round(pos["pnl_percent"], 2) == 8.33
+
+    @pytest.mark.asyncio
+    async def test_calculate_holding_costs_ignores_futures_and_short_positions(self):
+        """Vadeli piyasa kontratları ve vadeli semboller spot varlık maliyetine dahil edilmemelidir."""
+        from src.modules.module3_orders import KuCoinOrders
+        o = KuCoinOrders()
+        orders = [
+            # Vadeli işlem: SUI/USDT:USDT short veya buy
+            {"symbol": "SUI/USDT:USDT", "market_type": "futures", "side": "sell", "amount": 100.0, "filled_price": 2.5, "status": "filled", "created_at": "t1"},
+            {"symbol": "SUI/USDT", "market_type": "futures", "side": "buy", "amount": 50.0, "filled_price": 2.4, "status": "filled", "created_at": "t2"},
+            # Gerçek Spot işlem: BTC/USDT buy
+            {"symbol": "BTC/USDT", "market_type": "spot", "side": "buy", "amount": 0.5, "filled_price": 60000.0, "status": "filled", "created_at": "t3"},
+        ]
+        hc = o.calculate_holding_costs(orders)
+        # SUI vadeli olduğu için holding_costs içinde bulunmamalı
+        assert "SUI" not in hc
+        # Sadece Spot BTC bulunmalı
+        assert "BTC" in hc
+        assert hc["BTC"]["qty"] == 0.5
+        assert hc["BTC"]["avg_cost"] == 60000.0

@@ -253,3 +253,18 @@ class TestTradeSetup:
             timestamp="2026-01-01T00:00:00Z"))
         res = await m.get_trade_setup("BTC/USDT", "1h", "buy")
         assert res.success is False
+
+    @pytest.mark.asyncio
+    async def test_bracket_order_spot_short_rejected(self):
+        """Spot piyasada short yönlü bracket emir açılamaz."""
+        from src.modules.module3_orders import KuCoinOrders
+        o = KuCoinOrders()
+        o.mode = "paper"
+        o.bot_active = True
+        res = await o.create_bracket_order(
+            symbol="SUI/USDT", side="sell", usdt_amount=100.0,
+            entry_price=2.0, stop_loss_price=2.2, tp1_price=1.8, tp2_price=1.6,
+            market_type="spot"
+        )
+        assert res.success is False
+        assert "Spot piyasada açığa satış (Short)" in res.error

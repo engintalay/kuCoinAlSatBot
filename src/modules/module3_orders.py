@@ -701,8 +701,8 @@ class KuCoinOrders:
                 sym = hc["symbol"]
                 if symbol and sym != symbol:
                     continue
-                # Eğer zaten bu sembolde bir bracket veya futures pozisyonu varsa tekrar ekleme
-                if any(p.get("symbol") == sym for p in positions):
+                # Eğer zaten bu sembolde bir spot pozisyonu varsa (ör. paper spot bracket) tekrar ekleme
+                if any(p.get("market_type") == "spot" and p.get("symbol") == sym for p in positions):
                     continue
                 amt = hc["qty"]
                 entry_p = hc["avg_cost"]
@@ -728,7 +728,7 @@ class KuCoinOrders:
                     "id": f"holding-{base_asset}",
                     "symbol": sym,
                     "market_type": "spot",
-                    "side": "spot",
+                    "side": "long",
                     "amount": amt,
                     "entry_price": entry_p,
                     "total_cost": total_c,
@@ -769,9 +769,20 @@ class KuCoinOrders:
             status = str(o.get("status", "")).lower()
             if status not in ("filled", "closed", "done"):
                 continue
+
+            # Vadeli (Futures) emirlerini hariç tut - spot varlık değildir
+            mt = str(o.get("market_type", "")).lower()
+            if mt == "futures":
+                continue
+
             sym = o.get("symbol")
             if not sym or "/" not in sym:
                 continue
+
+            # Vadeli sembol formatlarını hariç tut (örn: SUI/USDT:USDT)
+            if ":" in sym:
+                continue
+
             clean_sym = sym.split(":")[0] if ":" in sym else sym
             base_asset = clean_sym.split("/")[0].upper()
             quote_asset = clean_sym.split("/")[1].upper() if "/" in clean_sym else "USDT"
@@ -1124,6 +1135,12 @@ class KuCoinOrders:
         """
         side = (side or "buy").lower()
         market_type = (market_type or "spot").lower()
+        if market_type == "spot" and side in ("sell", "short"):
+            return OrderCreateResponse(
+                success=False, data={},
+                error="Spot piyasada açığa satış (Short) veya satış yönlü bracket pozisyon açılamaz. Vadeli (Futures) veya Margin piyasayı seçiniz.",
+                timestamp=timestamp()
+            )
         err = self._validate_order(symbol, side, "limit", usdt_amount and 1, entry_price, market_type)
         if err and "Miktar" not in err:  # miktar burada usdt bazlı, ayrı kontrol
             return OrderCreateResponse(success=False, data={}, error=err, timestamp=timestamp())
@@ -1316,7 +1333,7 @@ class KuCoinOrders:
         """
         try:
             side_norm = (side or "long").lower()
-            exit_side = "sell" if side_norm == "long" else "buy"
+            exit_side = "sell" if side_norm in ("long", "spot", "buy") else "buy"
             mt = (market_type or "futures").lower()
 
             # Miktar tespit et (verilmediyse açık pozisyondan çek)
