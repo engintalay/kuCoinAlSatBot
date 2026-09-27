@@ -117,6 +117,93 @@ class TestBracketOrder:
         r = await o.create_bracket_order("BTC/USDT", "buy", 0, 50000, 49000, 51500, 53000)
         assert r.success is False
 
+    @pytest.mark.asyncio
+    async def test_bracket_live_futures_single_contract(self):
+        """Live futures 1 kontrat olduğunda TP1 tüm pozisyonu almalı, TP2 atlanmalı ve SL stop_market olmalı."""
+        o = _paper_orders()
+        o.mode = "live"
+        calls = []
+
+        async def mock_create_live_order(symbol, side, order_type, amount, price, market_type="spot",
+                                         margin_mode="cross", leverage=None, stop_loss_price=None,
+                                         is_stop=False, reduce_only=False):
+            calls.append({
+                "symbol": symbol, "side": side, "type": order_type,
+                "amount": amount, "price": price, "is_stop": is_stop,
+                "reduce_only": reduce_only, "stop_loss_price": stop_loss_price,
+            })
+            from src.models.orders import OrderCreateResponse
+            from src.utils.time_sync import timestamp
+            return OrderCreateResponse(
+                success=True,
+                data={
+                    "id": f"live-{len(calls)}", "symbol": symbol, "side": side,
+                    "type": order_type, "amount": amount, "price": price,
+                    "market_type": market_type, "created_at": timestamp()
+                },
+                error=None, timestamp=timestamp()
+            )
+
+        o._create_live_order = mock_create_live_order
+        r = await o.create_bracket_order(
+            "SUI/USDT", "buy", usdt_amount=1.25,
+            entry_price=1.25, stop_loss_price=1.15,
+            tp1_price=1.35, tp2_price=1.45,
+            market_type="futures", margin_mode="cross", leverage=3.0
+        )
+        assert r.success is True
+        legs = r.data["legs"]
+        assert "entry" in legs
+        assert "tp1" in legs
+        assert "tp2" in legs
+        assert "sl" in legs
+        # TP1 1 kontrat ve reduce_only
+        assert legs["tp1"]["amount"] == 1
+        # TP2 atlanmış olmalı
+        assert legs["tp2"].get("status") == "skipped"
+        # SL is_stop ve reduce_only ile çağrılmış olmalı
+        sl_call = [c for c in calls if c["is_stop"] is True][0]
+        assert sl_call["amount"] == 1
+        assert sl_call["stop_loss_price"] == 1.15
+        assert sl_call["reduce_only"] is True
+
+    @pytest.mark.asyncio
+    async def test_set_position_tp_sl(self):
+        """set_position_tp_sl metodu açık pozisyona TP ve SL bağlayabilmeli."""
+        o = _paper_orders()
+        calls = []
+
+        async def mock_create_order(symbol, side, order_type, amount, price, market_type="spot",
+                                    margin_mode="cross", leverage=None, entry_price=None,
+                                    stop_loss_price=None, is_stop=False, reduce_only=False):
+            calls.append({
+                "symbol": symbol, "side": side, "type": order_type, "amount": amount,
+                "price": price, "is_stop": is_stop, "reduce_only": reduce_only,
+                "stop_loss_price": stop_loss_price
+            })
+            from src.models.orders import OrderCreateResponse
+            from src.utils.time_sync import timestamp
+            return OrderCreateResponse(
+                success=True,
+                data={"id": "pos-tp-sl-1", "symbol": symbol, "side": side, "amount": amount},
+                error=None, timestamp=timestamp()
+            )
+
+        o.create_order = mock_create_order
+        res = await o.set_position_tp_sl(
+            "SUI/USDT:USDT", market_type="futures",
+            tp_price=1.35, sl_price=1.15, amount=1.0, side="long", leverage=3.0
+        )
+        assert res["success"] is True
+        assert len(calls) == 2
+        tp_call = calls[0]
+        sl_call = calls[1]
+        assert tp_call["price"] == 1.35
+        assert tp_call["reduce_only"] is True
+        assert sl_call["is_stop"] is True
+        assert sl_call["stop_loss_price"] == 1.15
+        assert sl_call["reduce_only"] is True
+
 
 class TestTradeSetup:
     @pytest.mark.asyncio

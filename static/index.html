@@ -382,9 +382,10 @@
                 <th>Stop Fiyatı (SL)</th>
                 <th>Hedef (TP1 / TP2)</th>
                 <th>Kâr / Zarar (PnL)</th>
+                <th>İşlem</th>
               </tr>
             </thead>
-            <tbody><tr><td colspan="11">Açık pozisyon bulunmuyor.</td></tr></tbody>
+            <tbody><tr><td colspan="12">Açık pozisyon bulunmuyor.</td></tr></tbody>
           </table>
         </div>
 
@@ -850,6 +851,41 @@
       <div class="modal-actions">
         <button id="edit-cancel" class="btn" style="background:var(--border)">Vazgeç</button>
         <button id="edit-save" class="btn btn-accent">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pozisyona TP/SL Bağlama Modalı -->
+  <div id="position-tpsl-modal" class="modal-overlay" hidden>
+    <div class="modal glass" style="max-width: 440px;">
+      <div class="card-title">🛡️ Pozisyon Koruma (TP / SL Belirle)</div>
+      <div id="tpsl-pos-info" style="font-size:0.85rem; margin-bottom:12px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:6px; line-height:1.5;">
+        <!-- JS fills position info -->
+      </div>
+      <input id="tpsl-symbol" type="hidden" />
+      <input id="tpsl-market-type" type="hidden" />
+      <input id="tpsl-side" type="hidden" />
+      <input id="tpsl-amount" type="hidden" />
+      <input id="tpsl-leverage" type="hidden" />
+      <input id="tpsl-entry-price" type="hidden" />
+      <input id="tpsl-curr-price" type="hidden" />
+
+      <label style="display:block; margin-bottom:8px;">Take Profit (Kâr Al) Fiyatı:
+        <input id="tpsl-tp-price" class="input" type="number" step="any" placeholder="Hedef kâr alma fiyatı" style="margin-top:4px;" />
+      </label>
+      <label style="display:block; margin-bottom:8px;">Stop Loss (Zarar Durdur) Fiyatı:
+        <input id="tpsl-sl-price" class="input" type="number" step="any" placeholder="Zarar kes fiyatı" style="margin-top:4px;" />
+      </label>
+
+      <div style="display:flex; gap:6px; margin: 12px 0;">
+        <button type="button" class="btn-mini btn-tpsl-preset" data-tp="2" data-sl="1">+%2 TP / -%1 SL</button>
+        <button type="button" class="btn-mini btn-tpsl-preset" data-tp="4" data-sl="2">+%4 TP / -%2 SL</button>
+        <button type="button" class="btn-mini btn-tpsl-preset" data-tp="8" data-sl="3">+%8 TP / -%3 SL</button>
+      </div>
+
+      <div class="modal-actions">
+        <button id="tpsl-cancel" class="btn" style="background:var(--border)">Vazgeç</button>
+        <button id="tpsl-save" class="btn btn-buy">🛡️ TP / SL Emirlerini İlet</button>
       </div>
     </div>
   </div>

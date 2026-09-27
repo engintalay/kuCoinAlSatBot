@@ -785,18 +785,37 @@ async function loadPositions() {
         <td><strong>${entryPrice}</strong></td>
         <td>${totalCost}</td>
         <td><strong>${currPrice}</strong></td>
-        <td><strong>${currVal}</strong></td>
+        <td>${currVal}</td>
         <td>${slHtml}</td>
         <td>${tpHtml}</td>
         <td>${pnlHtml}</td>
+        <td>
+          <button class="btn-mini btn-tpsl" data-symbol="${escapeHtml(p.symbol)}" data-market="${escapeHtml(mt)}" data-side="${escapeHtml(side)}" data-amount="${p.amount || ''}" data-entry="${p.entry_price || ''}" data-curr="${p.current_price || ''}" data-lev="${p.leverage || ''}" data-tp1="${p.tp1_price || ''}" data-sl="${p.stop_loss_price || ''}" title="Pozisyona Kâr Al (TP) ve Zarar Durdur (SL) bağla">🛡️ TP/SL</button>
+        </td>
       </tr>`;
     }).join("");
+
+    tbody.querySelectorAll(".btn-tpsl").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        openPositionTpSlModal({
+          symbol: btn.dataset.symbol,
+          market_type: btn.dataset.market,
+          side: btn.dataset.side,
+          amount: btn.dataset.amount ? Number(btn.dataset.amount) : null,
+          entry_price: btn.dataset.entry ? Number(btn.dataset.entry) : null,
+          current_price: btn.dataset.curr ? Number(btn.dataset.curr) : null,
+          leverage: btn.dataset.lev ? Number(btn.dataset.lev) : null,
+          tp1_price: btn.dataset.tp1 ? Number(btn.dataset.tp1) : null,
+          stop_loss_price: btn.dataset.sl ? Number(btn.dataset.sl) : null,
+        });
+      });
+    });
   } else if (!res.success) {
     if (badge) badge.textContent = "Hata";
-    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--red);">⚠️ Pozisyonlar alınamadı: ${escapeHtml(res.error || "Bilinmeyen hata")}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="color:var(--red);">⚠️ Pozisyonlar alınamadı: ${escapeHtml(res.error || "Bilinmeyen hata")}</td></tr>`;
   } else {
     if (badge) badge.textContent = "0 Aktif";
-    tbody.innerHTML = `<tr><td colspan="11">Şu anda açık pozisyonunuz bulunmuyor.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12">Şu anda açık pozisyonunuz bulunmuyor.</td></tr>`;
   }
 }
 
@@ -866,7 +885,7 @@ async function loadOpenOrders() {
       let legHtml = `<span class="text-dim">${o.type || 'limit'}</span>`;
       if (o.bracket_leg === "tp1") legHtml = `<span class="leg-badge leg-tp1">🎯 TP1</span>`;
       else if (o.bracket_leg === "tp2") legHtml = `<span class="leg-badge leg-tp2">🎯 TP2</span>`;
-      else if (o.bracket_leg === "sl") legHtml = `<span class="leg-badge leg-sl">🛑 STOP LOSS</span>`;
+      else if (o.bracket_leg === "sl" || o.is_stop || (o.type && o.type.includes("stop"))) legHtml = `<span class="leg-badge leg-sl">🛑 STOP LOSS</span>`;
       else if (o.bracket_leg === "entry") legHtml = `<span class="leg-badge leg-entry">🚀 GİRİŞ</span>`;
 
       // Giriş Fiyatı
@@ -892,12 +911,13 @@ async function loadOpenOrders() {
 
       // Fiyat farkı & Mesafe (%)
       let diffHtml = `<span class="text-dim">--</span>`;
-      if (currPrice !== null && orderPrice !== null && orderPrice > 0) {
-        const diff = currPrice - orderPrice;
-        const diffPct = (diff / orderPrice) * 100;
+      const targetPrice = (orderPrice !== null && orderPrice > 0) ? orderPrice : stopPrice;
+      if (currPrice !== null && targetPrice !== null && targetPrice > 0) {
+        const diff = currPrice - targetPrice;
+        const diffPct = (diff / targetPrice) * 100;
         const sign = diffPct > 0 ? "+" : "";
         const diffCls = diffPct > 0 ? "diff-up" : (diffPct < 0 ? "diff-down" : "diff-flat");
-        const titleText = `Piyasa: ${fmtOrderPrice(currPrice)} | Emir: ${fmtOrderPrice(orderPrice)} | Fark: ${sign}${fmtOrderPrice(diff)} (${sign}${diffPct.toFixed(2)}%)`;
+        const titleText = `Piyasa: ${fmtOrderPrice(currPrice)} | Hedef/Stop: ${fmtOrderPrice(targetPrice)} | Fark: ${sign}${fmtOrderPrice(diff)} (${sign}${diffPct.toFixed(2)}%)`;
         diffHtml = `<span class="diff-badge ${diffCls}" title="${titleText}">${sign}${diffPct.toFixed(2)}%</span>`;
       }
 
@@ -1042,6 +1062,117 @@ async function cancelOrder(id) {
   const res = await apiSend(`/orders/${id}`, "DELETE");
   if (res.success) { toast("Emir iptal edildi", "success"); loadOpenOrders(); }
   else toast("İptal başarısız", "error");
+}
+
+// ---- Pozisyona TP / SL Bağlama Modalı ----
+function openPositionTpSlModal(p) {
+  const modal = document.getElementById("position-tpsl-modal");
+  if (!modal) return;
+  document.getElementById("tpsl-symbol").value = p.symbol || "";
+  document.getElementById("tpsl-market-type").value = p.market_type || "futures";
+  document.getElementById("tpsl-side").value = p.side || "long";
+  document.getElementById("tpsl-amount").value = p.amount || "";
+  document.getElementById("tpsl-leverage").value = p.leverage || "";
+  document.getElementById("tpsl-entry-price").value = p.entry_price || "";
+  document.getElementById("tpsl-curr-price").value = p.current_price || "";
+
+  const infoDiv = document.getElementById("tpsl-pos-info");
+  const isLong = (p.side || "long").toLowerCase() === "long";
+  const sideColor = isLong ? "var(--green)" : "var(--red)";
+  const sideText = isLong ? "LONG (ALIŞ)" : "SHORT (SATIŞ)";
+  const levStr = p.leverage ? ` (${p.leverage}x Kaldıraç)` : "";
+
+  infoDiv.innerHTML = `
+    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+      <strong>${escapeHtml(p.symbol)}</strong>
+      <span style="color:${sideColor}; font-weight:bold;">${sideText}${levStr}</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; color:var(--text-muted); font-size:0.8rem;">
+      <span>Giriş: <strong>${p.entry_price ? fmtOrderPrice(p.entry_price) : '-'}</strong></span>
+      <span>Piyasa: <strong>${p.current_price ? fmtOrderPrice(p.current_price) : '-'}</strong></span>
+      <span>Miktar: <strong>${p.amount || '-'}</strong></span>
+    </div>
+  `;
+
+  // Mevcut TP / SL değerlerini doldur
+  document.getElementById("tpsl-tp-price").value = p.tp1_price || "";
+  document.getElementById("tpsl-sl-price").value = p.stop_loss_price || "";
+
+  modal.hidden = false;
+}
+
+const tpslCancelBtn = document.getElementById("tpsl-cancel");
+if (tpslCancelBtn) {
+  tpslCancelBtn.addEventListener("click", () => {
+    document.getElementById("position-tpsl-modal").hidden = true;
+  });
+}
+
+document.querySelectorAll(".btn-tpsl-preset").forEach((b) => {
+  b.addEventListener("click", () => {
+    const tpPct = parseFloat(b.dataset.tp) || 0;
+    const slPct = parseFloat(b.dataset.sl) || 0;
+    const entryP = parseFloat(document.getElementById("tpsl-entry-price").value) || parseFloat(document.getElementById("tpsl-curr-price").value);
+    const side = (document.getElementById("tpsl-side").value || "long").toLowerCase();
+    if (!entryP || entryP <= 0) return;
+
+    if (side === "long") {
+      const tp = entryP * (1 + tpPct / 100);
+      const sl = entryP * (1 - slPct / 100);
+      document.getElementById("tpsl-tp-price").value = tp < 1 ? tp.toFixed(6) : tp.toFixed(4);
+      document.getElementById("tpsl-sl-price").value = sl < 1 ? sl.toFixed(6) : sl.toFixed(4);
+    } else {
+      const tp = entryP * (1 - tpPct / 100);
+      const sl = entryP * (1 + slPct / 100);
+      document.getElementById("tpsl-tp-price").value = tp < 1 ? tp.toFixed(6) : tp.toFixed(4);
+      document.getElementById("tpsl-sl-price").value = sl < 1 ? sl.toFixed(6) : sl.toFixed(4);
+    }
+  });
+});
+
+const tpslSaveBtn = document.getElementById("tpsl-save");
+if (tpslSaveBtn) {
+  tpslSaveBtn.addEventListener("click", async () => {
+    const symbol = document.getElementById("tpsl-symbol").value;
+    const marketType = document.getElementById("tpsl-market-type").value;
+    const side = document.getElementById("tpsl-side").value;
+    const amount = parseFloat(document.getElementById("tpsl-amount").value) || null;
+    const leverage = parseFloat(document.getElementById("tpsl-leverage").value) || null;
+    const tpPrice = parseFloat(document.getElementById("tpsl-tp-price").value) || null;
+    const slPrice = parseFloat(document.getElementById("tpsl-sl-price").value) || null;
+
+    if (!tpPrice && !slPrice) {
+      toast("Lütfen en az bir TP veya SL fiyatı girin", "warning");
+      return;
+    }
+
+    tpslSaveBtn.disabled = true;
+    tpslSaveBtn.textContent = "⏳ İletiliyor...";
+    try {
+      const res = await apiSend("/orders/position/set-tp-sl", "POST", {
+        symbol: symbol,
+        market_type: marketType,
+        side: side,
+        amount: amount,
+        leverage: leverage,
+        tp_price: tpPrice,
+        sl_price: slPrice,
+      });
+      if (res.success) {
+        toast("🛡️ TP/SL emirleri başarıyla iletildi!", "success");
+        document.getElementById("position-tpsl-modal").hidden = true;
+        await loadOpenOrders();
+        await loadPositions();
+      } else {
+        toast("TP/SL iletilemedi: " + (res.error || "Hata"), "error");
+      }
+    } catch (e) {
+      toast("Bağlantı hatası: " + e.message, "error");
+    } finally {
+      tpslSaveBtn.disabled = false;
+      tpslSaveBtn.textContent = "🛡️ TP / SL Emirlerini İlet";
+    }
+  });
 }
 
 function updateModeBadge(mode) {

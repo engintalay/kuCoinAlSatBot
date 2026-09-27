@@ -624,6 +624,33 @@ async def get_positions(symbol: str | None = None, orders=Depends(get_user_order
     return result
 
 
+class SetTpSlRequest(_PydBaseModel):
+    symbol: str
+    market_type: str = "futures"
+    tp_price: float | None = None
+    sl_price: float | None = None
+    amount: float | None = None
+    side: str = "long"
+    leverage: float | None = None
+    margin_mode: str = "cross"
+
+
+@app.post("/api/v1/orders/position/set-tp-sl")
+async def set_position_tp_sl(req: SetTpSlRequest, orders=Depends(get_user_orders)):
+    """Açık pozisyona TP ve/veya SL bağlar veya günceller."""
+    result = await orders.set_position_tp_sl(
+        symbol=req.symbol,
+        market_type=req.market_type,
+        tp_price=req.tp_price,
+        sl_price=req.sl_price,
+        amount=req.amount,
+        side=req.side,
+        leverage=req.leverage,
+        margin_mode=req.margin_mode,
+    )
+    return result
+
+
 
 @app.get("/api/v1/orders/history")
 async def get_order_history(symbol: str | None = None, limit: int | None = 200, orders=Depends(get_user_orders)):

@@ -331,6 +331,11 @@ $$\text{R:R Oranı} = \frac{\text{Beklenen Ortalama Kazanç}}{\text{Göze Alına
 - **R:R < 1:1.5:** Yüksek riskli, tavsiye edilmez.
 - **R:R ≥ 1:2.0:** İdeal ve kabul edilebilir trade kurulumu.
 
+### KuCoin Vadeli (Futures) Kontrat & Stop Emir Motoru:
+- **Tam Sayı Kontrat Kuralları:** KuCoin Futures piyasasında kontratlar kesirli (ör. 0.5 kontrat) açılamaz; minimum büyüklük 1 kontrattır. 1 kontratlık pozisyonlarda TP1 tüm pozisyonu (%100) kapsar. 2 ve üzeri kontratlarda TP1 ve TP2 eşit paylaştırılır.
+- **Gerçek Stop-Loss (Conditional Stop Market):** Stop emirleri standart limit emri olarak değil, KuCoin'in yerel Stop Order uç noktalarına (`/api/v1/st-orders` ve `/api/v1/stop-order`) tetikleme koşuluyla iletilir. Böylece fiyat stop seviyesine ulaşana kadar tahtada bekler ve tetiklendiğinde piyasa emrine dönüşerek slippage ve fiyat bandı reddi yaşamadan sermayenizi korur.
+- **Reduce-Only Güvencesi:** Tüm TP ve SL emirleri `reduceOnly: True` bayrağı ile iletilir; bu sayede pozisyon kapandığında ters yönde kazaen yeni bir pozisyon açılması engellenir.
+
 ---
 
 ## 12. Açık Pozisyonlar ve Canlı Emir Takip Ekranı
@@ -341,14 +346,16 @@ Emirler sekmesi iki ana yönetim panelinden oluşur:
 - **Giriş Fiyatı:** Pozisyonun açıldığı ortalama maliyet.
 - **Anlık Fiyat:** KuCoin canlı tahtasındaki son işlem fiyatı.
 - **Stop Fiyatı & Mesafe:** Stop seviyeniz ve fiyata olan yüzde uzaklığı (örn. `-1.85%`).
+- **Hedefler (TP1 / TP2):** Pozisyon için belirlenen kâr alma fiyat seviyeleri.
 - **Kâr / Zarar (PnL):** Gerçekleşmemiş net kâr/zarar durumu (hem USDT değeri hem de yeşil/kırmızı yüzde rozeti olarak).
+- **🛡️ TP/SL Belirle Butonu:** Açıkta duran veya stop/hedef emri eksik kalmış herhangi bir pozisyonunuza sonradan tek tıkla TP ve SL bağlamanızı sağlar. Açılan pencerede otomatik +%2/-%1, +%4/-%2 hazır yüzdeleri kullanabilir veya istediğiniz seviyeleri elle girebilirsiniz.
 
 ### 2. Açık Emirler Tablosu
 - **Piyasa Türü:** `Spot`, `Margin` veya `Futures` rozeti.
-- **Bacak Rolü:** Emrin niteliği (`🎯 TP1`, `🎯 TP2`, `🛑 SL`, `🔵 Giriş`).
-- **Anlık Fiyat & Fark Rozeti:** Emrin gerçekleşmesi için piyasa fiyatının kaç yüzde uzaklıkta olduğunu dinamik renklerle gösterir.
-- **🔄 Anlık Yenile Butonu:** Tahta verilerini gecikmesiz tazelemek için kullanılır.
-- **İptal & Düzenle (Amend):** Bekleyen limit fiyatınızı piyasa koşullarına göre anında güncelleyebilirsiniz.
+- **Bacak Rolü:** Emrin niteliği (`🎯 TP1`, `🎯 TP2`, `🛑 STOP LOSS`, `🔵 Giriş`).
+- **Anlık Fiyat & Fark Rozeti:** Emrin gerçekleşmesi veya stopun tetiklenmesi için piyasa fiyatının kaç yüzde uzaklıkta olduğunu dinamik renklerle gösterir.
+- **🔄 Anlık Yenile Butonu:** Tahta verilerini ve açık stop emirlerini gecikmesiz tazelemek için kullanılır.
+- **İptal & Düzenle (Amend):** Bekleyen limit ve stop emirlerinizi piyasa koşullarına göre anında iptal edebilir veya fiyatını güncelleyebilirsiniz.
 
 ---
 

@@ -34,7 +34,7 @@ from src.utils.logger import logger
 from src.utils.time_sync import timestamp
 
 VALID_SIDES = ("buy", "sell")
-VALID_TYPES = ("market", "limit")
+VALID_TYPES = ("market", "limit", "stop", "stop_market", "stop_loss")
 VALID_MARKET_TYPES = ("spot", "margin", "futures")
 MIN_NOTIONAL_USDT = 1.0  # KuCoin minimum emir tutarı (yaklaşık)
 
@@ -133,12 +133,12 @@ class KuCoinOrders:
         if side not in VALID_SIDES:
             return f"Geçersiz yön: {side}. Geçerli: buy/sell."
         if order_type not in VALID_TYPES:
-            return f"Geçersiz emir türü: {order_type}. Geçerli: market/limit."
+            return f"Geçersiz emir türü: {order_type}."
         if market_type not in VALID_MARKET_TYPES:
             return f"Geçersiz piyasa türü: {market_type}. Geçerli: spot/margin/futures."
         if amount is None or amount <= 0:
             return "Miktar (amount) pozitif olmalı."
-        if order_type == "limit" and (price is None or price <= 0):
+        if order_type in ("limit", "stop_limit") and (price is None or price <= 0):
             return "Limit emir için geçerli bir fiyat (price) gerekli."
         return None
 
@@ -165,12 +165,14 @@ class KuCoinOrders:
                            market_type: str = "spot",
                            margin_mode: str = "cross", leverage: float | None = None,
                            entry_price: float | None = None,
-                           stop_loss_price: float | None = None) -> OrderCreateResponse:
+                           stop_loss_price: float | None = None,
+                           is_stop: bool = False, reduce_only: bool = False) -> OrderCreateResponse:
         side = (side or "").lower()
         order_type = (order_type or "").lower()
         market_type = (market_type or "spot").lower()
 
-        err = self._validate_order(symbol, side, order_type, amount, price, market_type)
+        validate_price = price if price is not None else (stop_loss_price if is_stop else None)
+        err = self._validate_order(symbol, side, order_type, amount, validate_price, market_type)
         if err:
             return OrderCreateResponse(success=False, data={}, error=err, timestamp=timestamp())
 
@@ -179,13 +181,18 @@ class KuCoinOrders:
                 symbol, side, order_type, amount, price, market_type,
                 margin_mode=margin_mode, leverage=leverage,
                 entry_price=entry_price, stop_loss_price=stop_loss_price,
+                is_stop=is_stop, reduce_only=reduce_only,
             )
-        return await self._create_live_order(symbol, side, order_type, amount, price,
-                                             market_type, margin_mode, leverage)
+        return await self._create_live_order(
+            symbol, side, order_type, amount, price,
+            market_type, margin_mode, leverage,
+            stop_loss_price=stop_loss_price, is_stop=is_stop, reduce_only=reduce_only,
+        )
 
     async def _create_paper_order(self, symbol, side, order_type, amount, price, market_type="spot",
                                   margin_mode="cross", leverage=None,
-                                  entry_price=None, stop_loss_price=None):
+                                  entry_price=None, stop_loss_price=None,
+                                  is_stop=False, reduce_only=False):
         """Paper trading emir motoru (M3-C07)."""
         last_price = await self._current_price(symbol)
         if last_price is None:
@@ -193,7 +200,7 @@ class KuCoinOrders:
                 success=False, data={},
                 error="Simülasyon için anlık fiyat alınamadı.", timestamp=timestamp())
 
-        fill_price = last_price if order_type == "market" else float(price)
+        fill_price = last_price if order_type == "market" else float(price or stop_loss_price or last_price)
         notional = amount * fill_price
 
         # M3-C01: bakiye & min notional kontrolü (alış için)
@@ -208,6 +215,23 @@ class KuCoinOrders:
                        f"mevcut {self.paper_balance_usdt:.2f} USDT."), timestamp=timestamp())
 
         order_id = f"paper-{uuid.uuid4().hex[:12]}"
+
+        # Stop emir: açık stop emri olarak bekler (tetiklenene kadar)
+        if is_stop:
+            record = {
+                "id": order_id, "symbol": symbol, "side": side, "type": "stop_market" if order_type == "market" else "stop_limit",
+                "amount": amount, "price": float(stop_loss_price or price or fill_price), "status": "open",
+                "filled": 0.0, "notional_usdt": round(notional, 2),
+                "mode": "paper", "market_type": market_type,
+                "margin_mode": margin_mode if market_type in ("margin", "futures") else None,
+                "leverage": leverage if market_type == "futures" else (5.0 if market_type == "margin" else None),
+                "entry_price": float(entry_price) if entry_price is not None else None,
+                "stop_loss_price": float(stop_loss_price) if stop_loss_price is not None else float(price or fill_price),
+                "bracket_leg": "sl",
+                "created_at": timestamp(),
+            }
+            self.paper_open_orders[order_id] = record
+            return OrderCreateResponse(success=True, data=record, error=None, timestamp=timestamp())
 
         if order_type == "market":
             # Anında dolar
@@ -245,7 +269,8 @@ class KuCoinOrders:
         return OrderCreateResponse(success=True, data=record, error=None, timestamp=timestamp())
 
     async def _create_live_order(self, symbol, side, order_type, amount, price,
-                                 market_type="spot", margin_mode="cross", leverage=None):
+                                 market_type="spot", margin_mode="cross", leverage=None,
+                                 stop_loss_price=None, is_stop=False, reduce_only=False):
         """Gerçek KuCoin emri (M3-C02/C03). Spot, Margin (cross) ve Futures destekli.
 
         Futures'ta KuCoin, emrin margin modunun (cross/isolated) sembolün hesapta
@@ -261,7 +286,16 @@ class KuCoinOrders:
 
             # Futures sembolünü BASE/QUOTE:SETTLE biçimine çevir (ör. PEPE/USDT -> PEPE/USDT:USDT)
             venue_symbol = await self._normalize_symbol(symbol, market_type)
-            price_arg = price if order_type == "limit" else None
+
+            # KuCoin Futures kontrat bazlı integer lot kontrolü
+            if market_type == "futures":
+                amount_arg = max(1, int(round(amount)))
+            else:
+                amount_arg = amount
+
+            # Stop-market emirlerde limit price None olmalıdır
+            price_arg = price if (order_type == "limit" and not is_stop) else None
+            effective_type = "market" if (is_stop and order_type == "market") else order_type
 
             def _params(mm: str) -> dict:
                 p = {}
@@ -275,19 +309,48 @@ class KuCoinOrders:
                             p["leverage"] = int(lev_f) if lev_f.is_integer() else lev_f
                         except (ValueError, TypeError):
                             p["leverage"] = leverage
+                    if reduce_only:
+                        p["reduceOnly"] = True
+                    if is_stop or stop_loss_price is not None:
+                        stop_p = stop_loss_price if stop_loss_price is not None else price
+                        if stop_p is not None:
+                            try:
+                                stop_p = float(stop_p)
+                            except (ValueError, TypeError):
+                                pass
+                        p["stop"] = "down" if side == "sell" else "up"
+                        p["stopPrice"] = stop_p
+                        p["stopPriceType"] = "MP"
+                        p["reduceOnly"] = True
+                        if side == "sell":
+                            p["stopLoss"] = {"triggerPrice": stop_p, "triggerPriceType": "mark"}
+                        else:
+                            p["takeProfit"] = {"triggerPrice": stop_p, "triggerPriceType": "mark"}
+                elif market_type == "spot":
+                    if is_stop or (stop_loss_price is not None and order_type in ("market", "stop", "stop_market")):
+                        stop_p = stop_loss_price if stop_loss_price is not None else price
+                        if stop_p is not None:
+                            try:
+                                stop_p = float(stop_p)
+                            except (ValueError, TypeError):
+                                pass
+                        p["stop"] = "loss"
+                        p["stopPrice"] = stop_p
+                        p["triggerPrice"] = stop_p
+                        p["stopLossPrice"] = stop_p
                 return p
 
             used_mode = margin_mode
             try:
                 order = await venue.create_order(
-                    venue_symbol, order_type, side, amount, price_arg, _params(margin_mode))
+                    venue_symbol, effective_type, side, amount_arg, price_arg, _params(margin_mode))
             except Exception as e:
                 # 330005: margin modu uyuşmazlığı → diğer modla bir kez daha dene
                 if market_type == "futures" and "330005" in str(e):
                     alt = "isolated" if margin_mode == "cross" else "cross"
                     logger.info(f"Futures margin modu uyuşmadı ({margin_mode}), {alt} deneniyor.")
                     order = await venue.create_order(
-                        venue_symbol, order_type, side, amount, price_arg, _params(alt))
+                        venue_symbol, effective_type, side, amount_arg, price_arg, _params(alt))
                     used_mode = alt
                 else:
                     raise
@@ -295,11 +358,13 @@ class KuCoinOrders:
                 success=True,
                 data={
                     "id": order.get("id"), "symbol": symbol, "side": side,
-                    "type": order_type, "amount": amount, "price": price,
+                    "type": effective_type, "amount": amount_arg, "price": price or stop_loss_price,
                     "status": order.get("status", "open"), "mode": "live",
                     "market_type": market_type, "venue_symbol": venue_symbol,
                     "margin_mode": used_mode if market_type == "futures" else None,
                     "leverage": leverage if market_type == "futures" else None,
+                    "stop_loss_price": stop_loss_price if is_stop else None,
+                    "is_stop": is_stop,
                     "created_at": timestamp(),
                 },
                 error=None, timestamp=timestamp())
@@ -350,6 +415,75 @@ class KuCoinOrders:
             except Exception as e:
                 logger.error(f"Futures açık emir çekme hatası: {e}")
 
+            # Spot stop/tetik emirleri çek
+            try:
+                spot_stops = await self.exchange.privateGetStopOrder({"symbol": symbol} if symbol else {})
+                items = (spot_stops.get("data") or {}).get("items", []) if isinstance(spot_stops, dict) else []
+                for item in items:
+                    oid = item.get("id")
+                    if any(o.get("id") == oid for o in merged):
+                        continue
+                    sym = item.get("symbol", "").replace("-", "/")
+                    price_val = float(item.get("price") or 0.0) if item.get("price") else None
+                    stop_val = float(item.get("stopPrice") or 0.0) if item.get("stopPrice") else None
+                    size_val = float(item.get("size") or 0.0)
+                    merged.append({
+                        "id": oid,
+                        "clientOrderId": item.get("clientOid"),
+                        "symbol": sym,
+                        "side": item.get("side", "").lower(),
+                        "type": "stop_loss" if item.get("stop") == "loss" else "stop",
+                        "price": price_val,
+                        "stopPrice": stop_val,
+                        "stop_loss_price": stop_val,
+                        "amount": size_val,
+                        "filled": 0.0,
+                        "remaining": size_val,
+                        "status": "open",
+                        "bracket_leg": "sl",
+                        "market_type": "spot",
+                        "is_stop": True,
+                        "info": item,
+                        "timestamp": item.get("createdAt"),
+                    })
+            except Exception as e:
+                logger.debug(f"Spot stop emir listeleme hatası: {e}")
+
+            # Futures stop/tetik emirleri çek
+            try:
+                fut_symbol = await self._normalize_symbol(symbol, "futures") if symbol else None
+                fut_stops = await self.futures_exchange.futuresPrivateGetStopOrders({"symbol": fut_symbol} if fut_symbol else {})
+                items = (fut_stops.get("data") or {}).get("items", []) if isinstance(fut_stops, dict) else []
+                for item in items:
+                    oid = item.get("id")
+                    if any(o.get("id") == oid for o in merged):
+                        continue
+                    sym = item.get("symbol", "")
+                    sl_val = float(item.get("stopPrice") or item.get("triggerStopDownPrice") or item.get("triggerStopUpPrice") or 0.0)
+                    price_val = float(item.get("price") or 0.0) if item.get("price") else None
+                    size_val = float(item.get("size") or 0.0)
+                    merged.append({
+                        "id": oid,
+                        "clientOrderId": item.get("clientOid"),
+                        "symbol": symbol or sym,
+                        "side": item.get("side", "").lower(),
+                        "type": "stop_market" if item.get("type") == "market" else "stop_limit",
+                        "price": price_val or sl_val,
+                        "stopPrice": sl_val if sl_val > 0 else None,
+                        "stop_loss_price": sl_val if sl_val > 0 else None,
+                        "amount": size_val,
+                        "filled": 0.0,
+                        "remaining": size_val,
+                        "status": "open",
+                        "bracket_leg": "sl",
+                        "market_type": "futures",
+                        "is_stop": True,
+                        "info": item,
+                        "timestamp": item.get("createdAt"),
+                    })
+            except Exception as e:
+                logger.debug(f"Futures stop emir listeleme hatası: {e}")
+
             await self._attach_current_prices(merged)
 
             return OpenOrdersResponse(
@@ -390,14 +524,21 @@ class KuCoinOrders:
 
             # Fiyat farkı ve yüzdesi hesabı
             order_price = o.get("price")
+            stop_price = o.get("stop_loss_price") or o.get("stopPrice")
             try:
                 order_p = float(order_price) if order_price is not None else 0.0
             except (ValueError, TypeError):
                 order_p = 0.0
+            try:
+                stop_p = float(stop_price) if stop_price is not None else 0.0
+            except (ValueError, TypeError):
+                stop_p = 0.0
 
-            if curr_price is not None and order_p > 0:
-                diff = curr_price - order_p
-                diff_pct = (diff / order_p) * 100.0
+            target_p = order_p if order_p > 0 else stop_p
+
+            if curr_price is not None and target_p > 0:
+                diff = curr_price - target_p
+                diff_pct = (diff / target_p) * 100.0
                 o["price_diff"] = round(diff, 6)
                 o["price_diff_percent"] = round(diff_pct, 4)
             else:
@@ -836,10 +977,48 @@ class KuCoinOrders:
 
             if not self.exchange:
                 self.connect()
-            await self.exchange.cancel_order(order_id, symbol)
+
+            # 1. Normal spot/margin iptal dene
+            try:
+                await self.exchange.cancel_order(order_id, symbol)
+                return OrderCancelResponse(
+                    success=True, data={"id": order_id, "status": "canceled"},
+                    error=None, timestamp=timestamp())
+            except Exception as e_norm:
+                logger.debug(f"Spot cancel_order yanıtı: {e_norm}, alternatif iptal deneniyor...")
+
+            # 2. Futures normal iptal dene
+            if self.futures_exchange:
+                try:
+                    await self.futures_exchange.cancel_order(order_id, symbol)
+                    return OrderCancelResponse(
+                        success=True, data={"id": order_id, "status": "canceled"},
+                        error=None, timestamp=timestamp())
+                except Exception as e_fut:
+                    logger.debug(f"Futures normal cancel yanıtı: {e_fut}")
+
+            # 3. KuCoin Futures Stop Order iptali (DELETE /api/v1/stopOrders)
+            if self.futures_exchange:
+                try:
+                    await self.futures_exchange.futuresPrivateDeleteStopOrders({"orderId": order_id})
+                    return OrderCancelResponse(
+                        success=True, data={"id": order_id, "status": "canceled"},
+                        error=None, timestamp=timestamp())
+                except Exception as e_fstop:
+                    logger.debug(f"Futures stop cancel yanıtı: {e_fstop}")
+
+            # 4. KuCoin Spot Stop Order iptali (DELETE /api/v1/stop-order/cancel)
+            if self.exchange:
+                try:
+                    await self.exchange.privateDeleteStopOrderCancel({"orderId": order_id})
+                    return OrderCancelResponse(
+                        success=True, data={"id": order_id, "status": "canceled"},
+                        error=None, timestamp=timestamp())
+                except Exception as e_sstop:
+                    logger.debug(f"Spot stop cancel yanıtı: {e_sstop}")
+
             return OrderCancelResponse(
-                success=True, data={"id": order_id, "status": "canceled"},
-                error=None, timestamp=timestamp())
+                success=False, data={}, error=f"Emir iptal edilemedi: {order_id}", timestamp=timestamp())
         except Exception as e:
             logger.error(f"Emir iptal hatası: {e}")
             return OrderCancelResponse(
@@ -970,33 +1149,110 @@ class KuCoinOrders:
             "created_at": timestamp(),
         }
 
+        # Bacak miktarları ve kontrat hesaplaması
+        if market_type == "futures" and self.mode == "live":
+            tot_contracts = max(1, int(round(amount)))
+            if tot_contracts == 1:
+                tp1_qty = 1
+                tp2_qty = None
+            else:
+                tp1_qty = tot_contracts // 2
+                tp2_qty = tot_contracts - tp1_qty
+            sl_qty = tot_contracts
+        else:
+            tp1_qty = amount * 0.5
+            tp2_qty = amount * 0.5
+            sl_qty = amount
+
         legs = {"entry": entry_res.data}
-        # TP1 (%50), TP2 (%50), SL (%100) — çıkış limit emirleri
-        for name, price, qty in [
-            ("tp1", tp1_price, amount * 0.5),
-            ("tp2", tp2_price, amount * 0.5),
-            ("sl", stop_loss_price, amount),
-        ]:
-            leg = await self.create_order(symbol, exit_side, "limit", qty, price, market_type,
-                                          margin_mode=margin_mode, leverage=leverage,
-                                          entry_price=entry_price, stop_loss_price=stop_loss_price)
-            if leg.success:
-                leg.data["bracket_leg"] = name
-                leg.data["bracket_id"] = bracket_id
-                leg.data["entry_price"] = entry_price
-                leg.data["stop_loss_price"] = stop_loss_price
-                leg.data["tp1_price"] = tp1_price
-                leg.data["tp2_price"] = tp2_price
-                if self.mode == "paper" and leg.data.get("id") in self.paper_open_orders:
-                    self.paper_open_orders[leg.data["id"]].update({
-                        "bracket_leg": name,
-                        "bracket_id": bracket_id,
-                        "entry_price": entry_price,
-                        "stop_loss_price": stop_loss_price,
-                        "tp1_price": tp1_price,
-                        "tp2_price": tp2_price,
+        failed_legs = []
+
+        # 1. TP1 (%50 veya 1 kontrat) — Limit çıkış emri (reduceOnly)
+        tp1_res = await self.create_order(
+            symbol, exit_side, "limit", tp1_qty, tp1_price, market_type,
+            margin_mode=margin_mode, leverage=leverage,
+            entry_price=entry_price, stop_loss_price=stop_loss_price,
+            reduce_only=True,
+        )
+        if tp1_res.success:
+            tp1_res.data["bracket_leg"] = "tp1"
+            tp1_res.data["bracket_id"] = bracket_id
+            tp1_res.data["entry_price"] = entry_price
+            tp1_res.data["stop_loss_price"] = stop_loss_price
+            tp1_res.data["tp1_price"] = tp1_price
+            tp1_res.data["tp2_price"] = tp2_price
+            if self.mode == "paper" and tp1_res.data.get("id") in self.paper_open_orders:
+                self.paper_open_orders[tp1_res.data["id"]].update({
+                    "bracket_leg": "tp1", "bracket_id": bracket_id,
+                    "entry_price": entry_price, "stop_loss_price": stop_loss_price,
+                    "tp1_price": tp1_price, "tp2_price": tp2_price,
+                })
+            legs["tp1"] = tp1_res.data
+        else:
+            legs["tp1"] = {"error": tp1_res.error}
+            failed_legs.append(f"TP1 ({tp1_res.error})")
+
+        # 2. TP2 (%50 veya kalan kontratlar) — Limit çıkış emri (reduceOnly)
+        if tp2_qty is not None and tp2_qty > 0:
+            tp2_res = await self.create_order(
+                symbol, exit_side, "limit", tp2_qty, tp2_price, market_type,
+                margin_mode=margin_mode, leverage=leverage,
+                entry_price=entry_price, stop_loss_price=stop_loss_price,
+                reduce_only=True,
+            )
+            if tp2_res.success:
+                tp2_res.data["bracket_leg"] = "tp2"
+                tp2_res.data["bracket_id"] = bracket_id
+                tp2_res.data["entry_price"] = entry_price
+                tp2_res.data["stop_loss_price"] = stop_loss_price
+                tp2_res.data["tp1_price"] = tp1_price
+                tp2_res.data["tp2_price"] = tp2_price
+                if self.mode == "paper" and tp2_res.data.get("id") in self.paper_open_orders:
+                    self.paper_open_orders[tp2_res.data["id"]].update({
+                        "bracket_leg": "tp2", "bracket_id": bracket_id,
+                        "entry_price": entry_price, "stop_loss_price": stop_loss_price,
+                        "tp1_price": tp1_price, "tp2_price": tp2_price,
                     })
-            legs[name] = leg.data if leg.success else {"error": leg.error}
+                legs["tp2"] = tp2_res.data
+            else:
+                legs["tp2"] = {"error": tp2_res.error}
+                failed_legs.append(f"TP2 ({tp2_res.error})")
+        else:
+            legs["tp2"] = {
+                "bracket_leg": "tp2",
+                "bracket_id": bracket_id,
+                "status": "skipped",
+                "note": "1 kontrat olduğu için TP1 tüm miktarı kapsar.",
+            }
+
+        # 3. Stop Loss (%100 - Stop Market emri, reduceOnly)
+        sl_res = await self.create_order(
+            symbol, exit_side, "market", sl_qty, None, market_type,
+            margin_mode=margin_mode, leverage=leverage,
+            entry_price=entry_price, stop_loss_price=stop_loss_price,
+            is_stop=True, reduce_only=True,
+        )
+        if sl_res.success:
+            sl_res.data["bracket_leg"] = "sl"
+            sl_res.data["bracket_id"] = bracket_id
+            sl_res.data["entry_price"] = entry_price
+            sl_res.data["stop_loss_price"] = stop_loss_price
+            sl_res.data["tp1_price"] = tp1_price
+            sl_res.data["tp2_price"] = tp2_price
+            if self.mode == "paper" and sl_res.data.get("id") in self.paper_open_orders:
+                self.paper_open_orders[sl_res.data["id"]].update({
+                    "bracket_leg": "sl", "bracket_id": bracket_id,
+                    "entry_price": entry_price, "stop_loss_price": stop_loss_price,
+                    "tp1_price": tp1_price, "tp2_price": tp2_price,
+                })
+            legs["sl"] = sl_res.data
+        else:
+            legs["sl"] = {"error": sl_res.error}
+            failed_legs.append(f"SL ({sl_res.error})")
+
+        warning = f"Giriş yapıldı fakat bazı çıkış emirleri iletilemedi: {', '.join(failed_legs)}" if failed_legs else None
+        if warning:
+            logger.warning(f"Bracket emir uyarısı: {warning}")
 
         return OrderCreateResponse(
             success=True,
@@ -1010,8 +1266,77 @@ class KuCoinOrders:
                 "tp1_price": tp1_price, "tp2_price": tp2_price,
                 "risk_usdt": risk_usdt, "gain_tp1_usdt": gain_tp1, "gain_tp2_usdt": gain_tp2,
                 "legs": legs,
+                "failed_legs": failed_legs,
+                "warning": warning,
             },
             error=None, timestamp=timestamp())
+
+    # ------------------------------------------------------------------ #
+    # Pozisyona TP / SL Bağlama veya Güncelleme
+    # ------------------------------------------------------------------ #
+    async def set_position_tp_sl(
+        self, symbol: str, market_type: str = "futures",
+        tp_price: float | None = None, sl_price: float | None = None,
+        amount: float | None = None, side: str = "long",
+        leverage: float | None = None, margin_mode: str = "cross"
+    ) -> dict:
+        """
+        Açık bir pozisyona TP ve/veya SL bağlar veya günceller.
+        Miktar belirtilmezse mevcut açık pozisyon miktarı otomatik kullanılır.
+        """
+        try:
+            side_norm = (side or "long").lower()
+            exit_side = "sell" if side_norm == "long" else "buy"
+            mt = (market_type or "futures").lower()
+
+            # Miktar tespit et (verilmediyse açık pozisyondan çek)
+            qty = amount
+            if qty is None or qty <= 0:
+                pos_resp = await self.get_positions(symbol)
+                positions = (pos_resp.get("data") or {}).get("positions", [])
+                matching = [p for p in positions if p.get("symbol") == symbol or p.get("symbol", "").startswith(symbol)]
+                if matching:
+                    qty = float(matching[0].get("amount") or 0.0)
+                    if not leverage and matching[0].get("leverage"):
+                        leverage = float(matching[0].get("leverage"))
+                if not qty or qty <= 0:
+                    qty = 1.0 if mt == "futures" else 0.01
+
+            results = {"symbol": symbol, "market_type": mt, "amount": qty, "legs": {}}
+
+            # TP Emri (Kâr Al - Limit Order, reduceOnly=True)
+            if tp_price and float(tp_price) > 0:
+                tp_res = await self.create_order(
+                    symbol, exit_side, "limit", qty, float(tp_price), mt,
+                    margin_mode=margin_mode, leverage=leverage, reduce_only=True
+                )
+                if tp_res.success:
+                    tp_res.data["bracket_leg"] = "tp1"
+                    results["legs"]["tp"] = tp_res.data
+                else:
+                    results["legs"]["tp"] = {"error": tp_res.error}
+
+            # SL Emri (Zarar Durdur - Stop Market Order, is_stop=True, reduceOnly=True)
+            if sl_price and float(sl_price) > 0:
+                sl_res = await self.create_order(
+                    symbol, exit_side, "market", qty, None, mt,
+                    margin_mode=margin_mode, leverage=leverage,
+                    stop_loss_price=float(sl_price), is_stop=True, reduce_only=True
+                )
+                if sl_res.success:
+                    sl_res.data["bracket_leg"] = "sl"
+                    results["legs"]["sl"] = sl_res.data
+                else:
+                    results["legs"]["sl"] = {"error": sl_res.error}
+
+            errors = [f"{k}: {v['error']}" for k, v in results["legs"].items() if isinstance(v, dict) and "error" in v]
+            if errors:
+                return {"success": False, "data": results, "error": "; ".join(errors), "timestamp": timestamp()}
+
+            return {"success": True, "data": results, "error": None, "timestamp": timestamp()}
+        except Exception as e:
+            logger.error(f"Pozisyon TP/SL bağlama hatası ({symbol}): {e}")
+            return {"success": False, "data": {}, "error": str(e), "timestamp": timestamp()}
 
     # ------------------------------------------------------------------ #
     # Açık Emir Düzenleme (Amend) — MODULE_3_SPEC 2.6
