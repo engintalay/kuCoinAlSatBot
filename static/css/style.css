@@ -829,6 +829,128 @@ body {
 .pnl-stat.up .pnl-value { color: #3fb950; }
 .pnl-stat.down .pnl-value { color: #f85149; }
 
+/* Günlük K/Z Grafiği ve Tablo Başlıkları */
+.pnl-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0 10px;
+}
+.pnl-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #e6edf3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pnl-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-dim, #8b949e);
+}
+.pnl-chart-legend .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pnl-chart-legend .legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.pnl-chart-legend .legend-dot.up {
+  background: #3fb950;
+}
+.pnl-chart-legend .legend-dot.down {
+  background: #f85149;
+}
+.pnl-chart-legend .legend-line.cum {
+  width: 16px;
+  height: 3px;
+  background: #58a6ff;
+  border-radius: 2px;
+  display: inline-block;
+}
+.pnl-chart-container {
+  background: rgba(13, 17, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pnl-chart-svg-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.pnl-chart-placeholder {
+  color: var(--text-dim, #8b949e);
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 0;
+}
+.pnl-svg-chart {
+  display: block;
+  width: 100%;
+  min-width: 550px;
+  height: auto;
+  user-select: none;
+}
+.pnl-bar-up {
+  fill: #3fb950;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.pnl-bar-up:hover {
+  opacity: 0.8;
+}
+.pnl-bar-down {
+  fill: #f85149;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.pnl-bar-down:hover {
+  opacity: 0.8;
+}
+.pnl-cum-line {
+  fill: none;
+  stroke: #58a6ff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pnl-dot {
+  fill: #58a6ff;
+  stroke: #0d1117;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+.pnl-dot:hover {
+  r: 6;
+}
+.pnl-grid-line {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-dasharray: 3, 3;
+}
+.pnl-zero-line {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1.2;
+}
+.pnl-axis-text {
+  fill: #8b949e;
+  font-size: 10.5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+}
+
 /* Açık emirler — Yön & Fiyat Farkı rozetleri */
 .side-badge {
   display: inline-block;

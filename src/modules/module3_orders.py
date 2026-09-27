@@ -17,6 +17,7 @@ modda ve yeterli bakiye + risk kontrolü geçtiğinde iletilir.
 """
 
 import uuid
+from datetime import datetime, timezone
 import ccxt
 import ccxt.async_support
 
@@ -320,12 +321,10 @@ class KuCoinOrders:
                                 pass
                         p["stop"] = "down" if side == "sell" else "up"
                         p["stopPrice"] = stop_p
+                        p["triggerPrice"] = stop_p
                         p["stopPriceType"] = "MP"
                         p["reduceOnly"] = True
-                        if side == "sell":
-                            p["stopLoss"] = {"triggerPrice": stop_p, "triggerPriceType": "mark"}
-                        else:
-                            p["takeProfit"] = {"triggerPrice": stop_p, "triggerPriceType": "mark"}
+                        p["closeOrder"] = True
                 elif market_type == "spot":
                     if is_stop or (stop_loss_price is not None and order_type in ("market", "stop", "stop_market")):
                         stop_p = stop_loss_price if stop_loss_price is not None else price
@@ -443,70 +442,130 @@ class KuCoinOrders:
 
             # Spot stop/tetik emirleri çek
             try:
-                spot_stops = await self.exchange.privateGetStopOrder({"symbol": symbol} if symbol else {})
-                items = (spot_stops.get("data") or {}).get("items", []) if isinstance(spot_stops, dict) else []
-                for item in items:
-                    oid = item.get("id")
-                    if any(o.get("id") == oid for o in merged):
-                        continue
-                    sym = item.get("symbol", "").replace("-", "/")
-                    price_val = float(item.get("price") or 0.0) if item.get("price") else None
-                    stop_val = float(item.get("stopPrice") or 0.0) if item.get("stopPrice") else None
-                    size_val = float(item.get("size") or 0.0)
-                    merged.append({
-                        "id": oid,
-                        "clientOrderId": item.get("clientOid"),
-                        "symbol": sym,
-                        "side": item.get("side", "").lower(),
-                        "type": "stop_loss" if item.get("stop") == "loss" else "stop",
-                        "price": price_val,
-                        "stopPrice": stop_val,
-                        "stop_loss_price": stop_val,
-                        "amount": size_val,
-                        "filled": 0.0,
-                        "remaining": size_val,
-                        "status": "open",
-                        "bracket_leg": "sl",
-                        "market_type": "spot",
-                        "is_stop": True,
-                        "info": item,
-                        "timestamp": item.get("createdAt"),
-                    })
+                spot_stops_parsed = []
+                try:
+                    spot_stops_parsed = await self.exchange.fetch_open_orders(symbol, params={"trigger": True})
+                except Exception as ex_trig_spot:
+                    logger.debug(f"Spot CCXT trigger fetch: {ex_trig_spot}")
+
+                if spot_stops_parsed:
+                    for o in spot_stops_parsed:
+                        oid = o.get("id")
+                        if any(m.get("id") == oid for m in merged):
+                            continue
+                        sl_val = float(o.get("stopPrice") or 0.0)
+                        o["market_type"] = "spot"
+                        o["is_stop"] = True
+                        o["bracket_leg"] = "sl"
+                        if sl_val > 0:
+                            o["stop_loss_price"] = sl_val
+                        merged.append(o)
+                else:
+                    spot_id = symbol.replace("/", "-") if symbol else None
+                    spot_stops = await self.exchange.privateGetStopOrder({"symbol": spot_id} if spot_id else {})
+                    items = (spot_stops.get("data") or {}).get("items", []) if isinstance(spot_stops, dict) else []
+                    for item in items:
+                        oid = item.get("id")
+                        if any(o.get("id") == oid for o in merged):
+                            continue
+                        sym = item.get("symbol", "").replace("-", "/")
+                        price_val = float(item.get("price") or 0.0) if item.get("price") else None
+                        stop_val = float(item.get("stopPrice") or 0.0) if item.get("stopPrice") else None
+                        size_val = float(item.get("size") or 0.0)
+                        merged.append({
+                            "id": oid,
+                            "clientOrderId": item.get("clientOid"),
+                            "symbol": sym,
+                            "side": item.get("side", "").lower(),
+                            "type": "stop_loss" if item.get("stop") == "loss" else "stop",
+                            "price": price_val,
+                            "stopPrice": stop_val,
+                            "stop_loss_price": stop_val,
+                            "amount": size_val,
+                            "filled": 0.0,
+                            "remaining": size_val,
+                            "status": "open",
+                            "bracket_leg": "sl",
+                            "market_type": "spot",
+                            "is_stop": True,
+                            "info": item,
+                            "timestamp": item.get("createdAt"),
+                        })
             except Exception as e:
                 logger.debug(f"Spot stop emir listeleme hatası: {e}")
 
             # Futures stop/tetik emirleri çek
             try:
                 fut_symbol = await self._normalize_symbol(symbol, "futures") if symbol else None
-                fut_stops = await self.futures_exchange.futuresPrivateGetStopOrders({"symbol": fut_symbol} if fut_symbol else {})
-                items = (fut_stops.get("data") or {}).get("items", []) if isinstance(fut_stops, dict) else []
-                for item in items:
-                    oid = item.get("id")
-                    if any(o.get("id") == oid for o in merged):
-                        continue
-                    sym = item.get("symbol", "")
-                    sl_val = float(item.get("stopPrice") or item.get("triggerStopDownPrice") or item.get("triggerStopUpPrice") or 0.0)
-                    price_val = float(item.get("price") or 0.0) if item.get("price") else None
-                    size_val = float(item.get("size") or 0.0)
-                    merged.append({
-                        "id": oid,
-                        "clientOrderId": item.get("clientOid"),
-                        "symbol": symbol or sym,
-                        "side": item.get("side", "").lower(),
-                        "type": "stop_market" if item.get("type") == "market" else "stop_limit",
-                        "price": price_val or sl_val,
-                        "stopPrice": sl_val if sl_val > 0 else None,
-                        "stop_loss_price": sl_val if sl_val > 0 else None,
-                        "amount": size_val,
-                        "filled": 0.0,
-                        "remaining": size_val,
-                        "status": "open",
-                        "bracket_leg": "sl",
-                        "market_type": "futures",
-                        "is_stop": True,
-                        "info": item,
-                        "timestamp": item.get("createdAt"),
-                    })
+                fut_stops_parsed = []
+                try:
+                    fut_stops_parsed = await self.futures_exchange.fetch_open_orders(fut_symbol, params={"trigger": True})
+                except Exception as ex_trig:
+                    logger.debug(f"Futures CCXT trigger fetch: {ex_trig}")
+
+                if fut_stops_parsed:
+                    for o in fut_stops_parsed:
+                        oid = o.get("id")
+                        if any(m.get("id") == oid for m in merged):
+                            continue
+                        sl_val = float(o.get("stopPrice") or 0.0)
+                        o["market_type"] = "futures"
+                        o["is_stop"] = True
+                        o["bracket_leg"] = "sl"
+                        if sl_val > 0:
+                            o["stop_loss_price"] = sl_val
+                        merged.append(o)
+                else:
+                    market_id = None
+                    if fut_symbol:
+                        if hasattr(self.futures_exchange, "markets") and self.futures_exchange.markets and fut_symbol in self.futures_exchange.markets:
+                            market_id = self.futures_exchange.market_id(fut_symbol)
+                        else:
+                            clean_b = fut_symbol.split(":")[0].replace("/", "")
+                            market_id = f"{clean_b}M" if not clean_b.endswith("M") else clean_b
+
+                    fut_stops = await self.futures_exchange.futuresPrivateGetStopOrders({"symbol": market_id} if market_id else {})
+                    items = (fut_stops.get("data") or {}).get("items", []) if isinstance(fut_stops, dict) else []
+                    for item in items:
+                        oid = item.get("id")
+                        if any(o.get("id") == oid for o in merged):
+                            continue
+                        raw_sym = item.get("symbol", "")
+                        norm_sym = None
+                        if hasattr(self.futures_exchange, "markets") and self.futures_exchange.markets:
+                            norm_sym = self.futures_exchange.safe_symbol(raw_sym)
+                        if not norm_sym:
+                            if raw_sym.endswith("USDTM"):
+                                norm_sym = f"{raw_sym[:-5]}/USDT:USDT"
+                            elif raw_sym.endswith("USDM"):
+                                norm_sym = f"{raw_sym[:-4]}/USD:USD"
+                            elif "/" in raw_sym:
+                                norm_sym = raw_sym if ":" in raw_sym else f"{raw_sym}:USDT"
+                            else:
+                                norm_sym = raw_sym
+
+                        sl_val = float(item.get("stopPrice") or item.get("triggerStopDownPrice") or item.get("triggerStopUpPrice") or 0.0)
+                        price_val = float(item.get("price") or 0.0) if item.get("price") else None
+                        size_val = float(item.get("size") or 0.0)
+                        merged.append({
+                            "id": oid,
+                            "clientOrderId": item.get("clientOid"),
+                            "symbol": norm_sym,
+                            "side": item.get("side", "").lower(),
+                            "type": "stop_market" if item.get("type") == "market" else "stop_limit",
+                            "price": price_val or sl_val,
+                            "stopPrice": sl_val if sl_val > 0 else None,
+                            "stop_loss_price": sl_val if sl_val > 0 else None,
+                            "amount": size_val,
+                            "filled": 0.0,
+                            "remaining": size_val,
+                            "status": "open",
+                            "bracket_leg": "sl",
+                            "market_type": "futures",
+                            "is_stop": True,
+                            "info": item,
+                            "timestamp": item.get("createdAt"),
+                        })
             except Exception as e:
                 logger.debug(f"Futures stop emir listeleme hatası: {e}")
 
@@ -743,6 +802,80 @@ class KuCoinOrders:
                 }
                 positions.append(pos_obj)
 
+            # Açık emirleri (özellikle Stop-Loss ve Take-Profit emirlerini) pozisyonlarla eşleştir
+            try:
+                open_orders_resp = await self.get_open_orders()
+                open_orders = (open_orders_resp.data or {}).get("orders", []) if open_orders_resp.success else []
+            except Exception as oe_err:
+                logger.debug(f"Pozisyonlara açık emirleri bağlama hatası: {oe_err}")
+                open_orders = []
+
+            for pos in positions:
+                p_sym = pos.get("symbol", "")
+                p_clean = p_sym.split(":")[0] if ":" in p_sym else p_sym
+                p_mt = (pos.get("market_type") or "spot").lower()
+                p_side = (pos.get("side") or "long").lower()
+                p_entry = float(pos.get("entry_price") or 0.0)
+                p_curr = float(pos.get("current_price") or p_entry or 0.0)
+
+                # Bu pozisyonla eşleşen açık emirler (sembol varyasyonları dahil)
+                matched = [
+                    o for o in open_orders
+                    if (
+                        o.get("symbol") in (p_sym, p_clean)
+                        or (o.get("symbol") or "").split(":")[0] == p_clean
+                        or (p_clean and (o.get("symbol") or "").replace("/", "").replace("-", "").startswith(p_clean.replace("/", "").replace("-", "")))
+                    )
+                    and (o.get("market_type") or "spot").lower() == p_mt
+                ]
+
+                # 1. Stop-Loss eşleştir (pozisyonda henüz stop yoksa)
+                if not pos.get("stop_loss_price"):
+                    for o in matched:
+                        is_stop_order = (
+                            o.get("is_stop") is True
+                            or o.get("bracket_leg") == "sl"
+                            or "stop" in str(o.get("type", "")).lower()
+                            or o.get("stop_loss_price") is not None
+                            or o.get("stopPrice") is not None
+                        )
+                        if is_stop_order:
+                            sl_p = float(o.get("stop_loss_price") or o.get("stopPrice") or o.get("price") or 0.0)
+                            if sl_p > 0:
+                                pos["stop_loss_price"] = sl_p
+                                pos["stop_order_id"] = o.get("id")
+                                break
+
+                # 2. Take-Profit (TP) eşleştir (pozisyonda henüz tp yoksa)
+                if not pos.get("tp1_price"):
+                    for o in matched:
+                        is_tp_order = o.get("bracket_leg") in ("tp", "tp1")
+                        if not is_tp_order and not o.get("is_stop") and str(o.get("type", "")).lower() == "limit":
+                            o_side = str(o.get("side", "")).lower()
+                            o_price = float(o.get("price") or 0.0)
+                            if p_side in ("long", "buy", "spot") and o_side == "sell" and o_price > p_entry:
+                                is_tp_order = True
+                            elif p_side in ("short", "sell") and o_side == "buy" and (p_entry <= 0 or o_price < p_entry):
+                                is_tp_order = True
+
+                        if is_tp_order:
+                            tp_p = float(o.get("price") or 0.0)
+                            if tp_p > 0:
+                                pos["tp1_price"] = tp_p
+                                pos["tp_order_id"] = o.get("id")
+                                break
+
+                # 3. Stop-Loss uzaklık yüzdesini (stop_distance_percent) hesapla
+                sl_val = pos.get("stop_loss_price")
+                if sl_val and p_curr > 0:
+                    try:
+                        sl_f = float(sl_val)
+                        pos["stop_distance_percent"] = round(((sl_f - p_curr) / p_curr) * 100.0, 2)
+                    except (ValueError, TypeError):
+                        pos["stop_distance_percent"] = None
+                else:
+                    pos["stop_distance_percent"] = None
+
             return {"success": True, "data": {"count": len(positions), "positions": positions},
                     "error": None, "timestamp": timestamp()}
         except Exception as e:
@@ -918,10 +1051,23 @@ class KuCoinOrders:
             # Sembol bazında pozisyon: {symbol: {"qty": float, "cost": float}}
             positions: dict[str, dict] = {}
             per_symbol_pnl: dict[str, dict] = {}
+            daily_pnl_map: dict[str, dict] = {}
 
-            # Zaman sırasına göre işле (eski -> yeni)
+            # Zaman sırasına göre işle (eski -> yeni)
             def _ts(o):
                 return o.get("timestamp") or o.get("created_at") or 0
+
+            def _date(o) -> str:
+                raw = str(o.get("datetime") or o.get("created_at") or "")
+                if len(raw) >= 10 and raw[:4].isdigit() and raw[4] == "-" and raw[7] == "-":
+                    return raw[:10]
+                ts_v = o.get("timestamp") or o.get("created_at")
+                if isinstance(ts_v, (int, float)) and ts_v > 0:
+                    if ts_v > 1e11:
+                        ts_v = ts_v / 1000.0
+                    return datetime.fromtimestamp(ts_v, tz=timezone.utc).strftime("%Y-%m-%d")
+                return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
             for o in sorted(orders, key=_ts):
                 # Yalnızca dolan (filled/closed) emirler P&L üretir
                 status = str(o.get("status", "")).lower()
@@ -940,6 +1086,14 @@ class KuCoinOrders:
                 if isinstance(fee_obj, dict):
                     fee = float(fee_obj.get("cost") or 0.0)
 
+                d_key = _date(o)
+                day_stat = daily_pnl_map.setdefault(d_key, {
+                    "date": d_key, "realized_pnl": 0.0, "buy_count": 0,
+                    "sell_count": 0, "total_fee": 0.0, "volume_usdt": 0.0,
+                })
+                day_stat["total_fee"] += fee
+                day_stat["volume_usdt"] += qty * price
+
                 pos = positions.setdefault(sym, {"qty": 0.0, "cost": 0.0})
                 stats = per_symbol_pnl.setdefault(sym, {
                     "symbol": sym, "realized_pnl": 0.0, "buy_count": 0,
@@ -948,26 +1102,44 @@ class KuCoinOrders:
                 stats["total_fee"] += fee
                 stats["volume_usdt"] += qty * price
 
+                # Vadeli borsa siparişi kendi realizedPnl değerini dönüyorsa:
+                raw_info = o.get("info") or {}
+                fut_realized = raw_info.get("realisedPnl") if isinstance(raw_info, dict) else None
+                if fut_realized is not None:
+                    try:
+                        fut_realized_val = float(fut_realized)
+                    except (ValueError, TypeError):
+                        fut_realized_val = None
+                else:
+                    fut_realized_val = None
+
                 if side == "buy":
-                    # Pozisyona ekle (ortalama maliyet)
                     pos["qty"] += qty
                     pos["cost"] += qty * price
                     stats["buy_count"] += 1
+                    day_stat["buy_count"] += 1
+                    if fut_realized_val is not None and fut_realized_val != 0:
+                        stats["realized_pnl"] += fut_realized_val
+                        day_stat["realized_pnl"] += fut_realized_val
                 elif side == "sell":
                     stats["sell_count"] += 1
-                    # Ortalama maliyet
-                    avg_cost = (pos["cost"] / pos["qty"]) if pos["qty"] > 0 else price
-                    sell_qty = min(qty, pos["qty"]) if pos["qty"] > 0 else qty
-                    realized = (price - avg_cost) * sell_qty - fee
-                    stats["realized_pnl"] += realized
-                    # Pozisyondan düş
-                    pos["qty"] -= sell_qty
-                    pos["cost"] -= avg_cost * sell_qty
-                    if pos["qty"] < 1e-12:
-                        pos["qty"] = 0.0
-                        pos["cost"] = 0.0
+                    day_stat["sell_count"] += 1
+                    if fut_realized_val is not None and fut_realized_val != 0:
+                        stats["realized_pnl"] += fut_realized_val
+                        day_stat["realized_pnl"] += fut_realized_val
+                    else:
+                        avg_cost = (pos["cost"] / pos["qty"]) if pos["qty"] > 0 else price
+                        sell_qty = min(qty, pos["qty"]) if pos["qty"] > 0 else qty
+                        realized = (price - avg_cost) * sell_qty - fee
+                        stats["realized_pnl"] += realized
+                        day_stat["realized_pnl"] += realized
+                        pos["qty"] -= sell_qty
+                        pos["cost"] -= avg_cost * sell_qty
+                        if pos["qty"] < 1e-12:
+                            pos["qty"] = 0.0
+                            pos["cost"] = 0.0
 
-            # Özet
+            # Sembol bazında özet
             symbols_report = []
             total_realized = 0.0
             total_fee = 0.0
@@ -976,7 +1148,6 @@ class KuCoinOrders:
                 stats["realized_pnl"] = round(stats["realized_pnl"], 4)
                 stats["total_fee"] = round(stats["total_fee"], 4)
                 stats["volume_usdt"] = round(stats["volume_usdt"], 4)
-                # Açık kalan pozisyon miktarı
                 stats["open_qty"] = round(positions.get(sym, {}).get("qty", 0.0), 8)
                 total_realized += stats["realized_pnl"]
                 total_fee += stats["total_fee"]
@@ -984,6 +1155,17 @@ class KuCoinOrders:
                 symbols_report.append(stats)
 
             symbols_report.sort(key=lambda x: x["realized_pnl"], reverse=True)
+
+            # Günlük PnL listesini kronolojik olarak sırala ve kümülatif PnL hesapla
+            sorted_days = sorted(daily_pnl_map.values(), key=lambda x: x["date"])
+            cum_pnl = 0.0
+            for d in sorted_days:
+                d["realized_pnl"] = round(d["realized_pnl"], 4)
+                d["total_fee"] = round(d["total_fee"], 4)
+                d["volume_usdt"] = round(d["volume_usdt"], 4)
+                cum_pnl += d["realized_pnl"]
+                d["cumulative_pnl"] = round(cum_pnl, 4)
+                d["trade_count"] = d["buy_count"] + d["sell_count"]
 
             return PnLReportResponse(
                 success=True,
@@ -993,6 +1175,7 @@ class KuCoinOrders:
                     "total_volume_usdt": round(total_volume, 4),
                     "symbol_count": len(symbols_report),
                     "symbols": symbols_report,
+                    "daily_pnl": sorted_days,
                 },
                 error=None, timestamp=timestamp())
         except Exception as e:

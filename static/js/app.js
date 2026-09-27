@@ -827,11 +827,123 @@ async function loadPositions() {
   }
 }
 
+function renderDailyPnlChart(dailyData) {
+  const container = document.getElementById("pnl-daily-chart");
+  if (!container) return;
+
+  if (!dailyData || dailyData.length === 0) {
+    container.innerHTML = '<div class="pnl-chart-placeholder">Günlük grafik için kapalı işlem geçmişi bulunmuyor.</div>';
+    return;
+  }
+
+  const n = dailyData.length;
+  const itemW = Math.max(50, Math.min(80, Math.floor(700 / Math.max(1, n))));
+  const padLeft = 65;
+  const padRight = 35;
+  const padTop = 30;
+  const padBottom = 45;
+  const chartW = Math.max(540, n * itemW);
+  const chartH = 175;
+  const svgW = padLeft + chartW + padRight;
+  const svgH = padTop + chartH + padBottom;
+
+  // Min and Max values for scale
+  let minVal = 0;
+  let maxVal = 0;
+  dailyData.forEach((d) => {
+    minVal = Math.min(minVal, d.realized_pnl, d.cumulative_pnl);
+    maxVal = Math.max(maxVal, d.realized_pnl, d.cumulative_pnl);
+  });
+
+  if (minVal === maxVal) {
+    minVal = -1;
+    maxVal = 1;
+  } else {
+    const span = maxVal - minVal;
+    minVal -= span * 0.15;
+    maxVal += span * 0.15;
+  }
+
+  const getY = (val) => padTop + ((maxVal - val) / (maxVal - minVal)) * chartH;
+  const zeroY = getY(0);
+
+  // Grid lines
+  const gridSteps = 4;
+  let gridLinesHtml = "";
+  for (let i = 0; i <= gridSteps; i++) {
+    const v = minVal + (i / gridSteps) * (maxVal - minVal);
+    const y = getY(v);
+    gridLinesHtml += `
+      <line x1="${padLeft}" y1="${y}" x2="${padLeft + chartW}" y2="${y}" class="pnl-grid-line" />
+      <text x="${padLeft - 8}" y="${y + 3.5}" text-anchor="end" class="pnl-axis-text">${v >= 0 ? "+" : ""}${v.toFixed(2)}</text>
+    `;
+  }
+
+  // Zero line
+  const zeroLineHtml = `<line x1="${padLeft}" y1="${zeroY}" x2="${padLeft + chartW}" y2="${zeroY}" class="pnl-zero-line" />`;
+
+  // Bars and labels
+  const step = chartW / n;
+  const barWidth = Math.min(36, Math.max(12, step * 0.5));
+  let barsHtml = "";
+  let labelsHtml = "";
+  const cumPoints = [];
+
+  dailyData.forEach((d, i) => {
+    const cx = padLeft + i * step + step / 2;
+    const yVal = getY(d.realized_pnl);
+    const barY = Math.min(yVal, zeroY);
+    const barH = Math.max(2, Math.abs(yVal - zeroY));
+    const cls = d.realized_pnl >= 0 ? "pnl-bar-up" : "pnl-bar-down";
+    const sign = d.realized_pnl >= 0 ? "+" : "";
+    const tooltip = `${d.date}&#10;Günlük K/Z: ${sign}${d.realized_pnl.toFixed(4)} USDT&#10;Kümülatif: ${d.cumulative_pnl >= 0 ? "+" : ""}${d.cumulative_pnl.toFixed(4)} USDT&#10;İşlem: ${d.trade_count} (${d.buy_count} Alış / ${d.sell_count} Satış)&#10;Hacim: ${Number(d.volume_usdt).toFixed(2)} USDT&#10;Komisyon: ${Number(d.total_fee).toFixed(4)} USDT`;
+
+    barsHtml += `
+      <rect x="${cx - barWidth / 2}" y="${barY}" width="${barWidth}" height="${barH}" rx="3" class="${cls}">
+        <title>${tooltip}</title>
+      </rect>
+    `;
+
+    // Date label (e.g. MM-DD or short date)
+    const shortDate = d.date.length >= 10 ? d.date.slice(5) : d.date;
+    labelsHtml += `<text x="${cx}" y="${padTop + chartH + 20}" text-anchor="middle" class="pnl-axis-text">${shortDate}</text>`;
+
+    cumPoints.push({ cx, cy: getY(d.cumulative_pnl), cum: d.cumulative_pnl, date: d.date });
+  });
+
+  // Cumulative line and dots
+  const pathD = cumPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.cx.toFixed(1)} ${p.cy.toFixed(1)}`).join(" ");
+  let cumHtml = `<path d="${pathD}" class="pnl-cum-line" />`;
+
+  cumPoints.forEach((p) => {
+    const sign = p.cum >= 0 ? "+" : "";
+    cumHtml += `
+      <circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="4" class="pnl-dot">
+        <title>${p.date}&#10;Kümülatif K/Z: ${sign}${p.cum.toFixed(4)} USDT</title>
+      </circle>
+    `;
+    if (n <= 14) {
+      cumHtml += `<text x="${p.cx.toFixed(1)}" y="${(p.cy - 8).toFixed(1)}" text-anchor="middle" class="pnl-axis-text" style="font-weight:600; fill:#58a6ff;">${sign}${p.cum.toFixed(2)}</text>`;
+    }
+  });
+
+  container.innerHTML = `
+    <svg class="pnl-svg-chart" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMinYMin meet">
+      ${gridLinesHtml}
+      ${zeroLineHtml}
+      ${barsHtml}
+      ${cumHtml}
+      ${labelsHtml}
+    </svg>
+  `;
+}
+
 async function loadPnL() {
   const symbol = (document.getElementById("pnl-symbol")?.value || "").trim();
   const q = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
   const res = await apiGet("/orders/pnl" + q);
   const tbody = document.querySelector("#pnl-table tbody");
+  const dailyTbody = document.querySelector("#pnl-daily-table tbody");
   const summary = document.getElementById("pnl-summary");
   if (!tbody || !summary) return;
 
@@ -839,10 +951,23 @@ async function loadPnL() {
     const d = res.data;
     const totalCls = d.total_realized_pnl >= 0 ? "up" : "down";
     const sign = d.total_realized_pnl >= 0 ? "+" : "";
+
+    // Win days calculation
+    const dailyList = d.daily_pnl || [];
+    let winDays = 0;
+    dailyList.forEach((day) => {
+      if (day.realized_pnl > 0) winDays++;
+    });
+    const winDaysRatio = dailyList.length > 0 ? ` (%${((winDays / dailyList.length) * 100).toFixed(0)})` : "";
+
     summary.innerHTML = `
       <div class="pnl-stat ${totalCls}">
         <span class="pnl-label">Toplam Realize K/Z</span>
         <span class="pnl-value">${sign}${d.total_realized_pnl.toLocaleString("en-US", {minimumFractionDigits:4, maximumFractionDigits:4})} USDT</span>
+      </div>
+      <div class="pnl-stat">
+        <span class="pnl-label">Kârlı Gün Sayısı</span>
+        <span class="pnl-value" style="color:var(--text);">${winDays} / ${dailyList.length} Gün${winDaysRatio}</span>
       </div>
       <div class="pnl-stat">
         <span class="pnl-label">Toplam Komisyon</span>
@@ -852,6 +977,34 @@ async function loadPnL() {
         <span class="pnl-label">Toplam Hacim</span>
         <span class="pnl-value">${d.total_volume_usdt.toLocaleString("en-US", {minimumFractionDigits:4, maximumFractionDigits:4})} USDT</span>
       </div>`;
+
+    // Render Daily PnL SVG Chart
+    renderDailyPnlChart(dailyList);
+
+    // Populate Daily PnL Table (newest date first)
+    if (dailyTbody) {
+      if (dailyList.length > 0) {
+        const reversedDaily = [...dailyList].reverse();
+        dailyTbody.innerHTML = reversedDaily.map((day) => {
+          const dCls = day.realized_pnl >= 0 ? "up" : "down";
+          const dSgn = day.realized_pnl >= 0 ? "+" : "";
+          const cCls = day.cumulative_pnl >= 0 ? "up" : "down";
+          const cSgn = day.cumulative_pnl >= 0 ? "+" : "";
+          return `<tr>
+            <td><strong>${escapeHtml(day.date)}</strong></td>
+            <td class="${dCls}"><strong>${dSgn}${Number(day.realized_pnl).toFixed(4)}</strong></td>
+            <td class="${cCls}">${cSgn}${Number(day.cumulative_pnl).toFixed(4)}</td>
+            <td>${day.trade_count} (${day.buy_count} Alış / ${day.sell_count} Satış)</td>
+            <td>${Number(day.volume_usdt).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td>${Number(day.total_fee).toFixed(4)}</td>
+          </tr>`;
+        }).join("");
+      } else {
+        dailyTbody.innerHTML = `<tr><td colspan="6">Günlük işlem verisi bulunamadı.</td></tr>`;
+      }
+    }
+
+    // Populate Symbol Breakdown Table
     tbody.innerHTML = d.symbols.map((s) => {
       const cls = s.realized_pnl >= 0 ? "up" : "down";
       const sgn = s.realized_pnl >= 0 ? "+" : "";
@@ -865,9 +1018,15 @@ async function loadPnL() {
   } else if (res.success) {
     summary.innerHTML = "";
     tbody.innerHTML = `<tr><td colspan="7">Kapanmış (dolan) emir bulunamadı.</td></tr>`;
+    if (dailyTbody) dailyTbody.innerHTML = `<tr><td colspan="6">Kapanmış işlem bulunamadı.</td></tr>`;
+    const chartWrap = document.getElementById("pnl-daily-chart");
+    if (chartWrap) chartWrap.innerHTML = `<div class="pnl-chart-placeholder">Kapanmış işlem bulunamadı.</div>`;
   } else {
     summary.innerHTML = "";
     tbody.innerHTML = `<tr><td colspan="7">Kar/zarar raporu alınamadı: ${res.error || ""}</td></tr>`;
+    if (dailyTbody) dailyTbody.innerHTML = `<tr><td colspan="6">Kar/zarar raporu alınamadı.</td></tr>`;
+    const chartWrap = document.getElementById("pnl-daily-chart");
+    if (chartWrap) chartWrap.innerHTML = `<div class="pnl-chart-placeholder">Veri alınamadı: ${escapeHtml(res.error || "")}</div>`;
   }
 }
 

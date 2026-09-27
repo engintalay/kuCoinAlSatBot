@@ -138,14 +138,17 @@ def test_balances_and_positions_cost_columns(client):
 
 
 def test_pnl_view(client):
-    """Kar/Zarar görünümü, navigasyon ve JS fonksiyonu bulunmalı."""
+    """Kar/Zarar görünümü, günlük grafik, günlük tablo, navigasyon ve JS fonksiyonu bulunmalı."""
     r = client.get("/")
     assert 'data-view="pnl"' in r.text
     assert 'id="view-pnl"' in r.text
     assert 'id="pnl-table"' in r.text
+    assert 'id="pnl-daily-table"' in r.text
+    assert 'id="pnl-daily-chart"' in r.text
     assert 'data-info="pnl"' in r.text
     js = client.get("/static/js/app.js").text
     assert "loadPnL" in js
+    assert "renderDailyPnlChart" in js
     assert "/orders/pnl" in js
 
 def test_market_regime_widget(client):

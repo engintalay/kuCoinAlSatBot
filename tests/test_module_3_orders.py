@@ -599,3 +599,150 @@ class TestHoldingCostsAndHistory:
         assert "BTC" in hc
         assert hc["BTC"]["qty"] == 0.5
         assert hc["BTC"]["avg_cost"] == 60000.0
+
+    @pytest.mark.asyncio
+    async def test_get_positions_attaches_open_stop_loss_order(self):
+        """Açık pozisyona ait stop loss emri varsa get_positions bunu otomatik eşleştirmeli."""
+        from unittest.mock import AsyncMock
+        from src.modules.module3_orders import KuCoinOrders
+        from src.models.orders import OpenOrdersResponse
+
+        o = KuCoinOrders()
+        o.mode = "paper"
+        o.paper_positions = {
+            "SUI/USDT-futures": {
+                "id": "live-pos-SUI/USDT:USDT",
+                "symbol": "SUI/USDT:USDT",
+                "side": "short",
+                "market_type": "futures",
+                "amount": 100.0,
+                "entry_price": 2.0,
+                "current_price": 2.0,
+                "stop_loss_price": None,  # Borsa pozisyon nesnesinde stopPrice yok
+                "created_at": "t1",
+            }
+        }
+        # Açık stop loss emri simülasyonu
+        mock_open_orders = [
+            {
+                "id": "stop-order-1",
+                "symbol": "SUI/USDT:USDT",
+                "market_type": "futures",
+                "side": "buy",
+                "type": "stop_market",
+                "price": 2.2,
+                "stopPrice": 2.2,
+                "stop_loss_price": 2.2,
+                "amount": 100.0,
+                "is_stop": True,
+                "bracket_leg": "sl",
+                "status": "open",
+            }
+        ]
+        o.get_open_orders = AsyncMock(return_value=OpenOrdersResponse(
+            success=True,
+            data={"count": 1, "orders": mock_open_orders},
+            error=None,
+            timestamp="t1"
+        ))
+
+        res = await o.get_positions()
+        assert res["success"] is True
+        assert len(res["data"]["positions"]) == 1
+        pos = res["data"]["positions"][0]
+        assert pos["symbol"] == "SUI/USDT:USDT"
+        assert pos["stop_loss_price"] == 2.2
+        assert pos["stop_order_id"] == "stop-order-1"
+        assert pos["stop_distance_percent"] == 10.0
+
+    @pytest.mark.asyncio
+    async def test_get_pnl_report_includes_daily_pnl(self):
+        """get_pnl_report günlük PnL, kümülatif PnL ve işlem sayılarını hesaplamalı."""
+        from unittest.mock import AsyncMock
+        from src.modules.module3_orders import KuCoinOrders
+        from src.models.orders import OrderHistoryResponse
+
+        o = KuCoinOrders()
+        # Mock get_history with 2 days of closed orders
+        mock_orders = [
+            # Day 1: 2026-09-25: Buy at 100, Sell at 120 (gain = +20 - 1 fee = +19)
+            {
+                "id": "ord-1",
+                "symbol": "BTC/USDT",
+                "side": "buy",
+                "status": "filled",
+                "filled": 1.0,
+                "price": 100.0,
+                "fee": {"cost": 0.5},
+                "datetime": "2026-09-25T10:00:00Z",
+                "timestamp": 1790330400000,
+            },
+            {
+                "id": "ord-2",
+                "symbol": "BTC/USDT",
+                "side": "sell",
+                "status": "filled",
+                "filled": 1.0,
+                "price": 120.0,
+                "fee": {"cost": 0.5},
+                "datetime": "2026-09-25T12:00:00Z",
+                "timestamp": 1790337600000,
+            },
+            # Day 2: 2026-09-26: Buy at 120, Sell at 110 (loss = -10 - 1 fee = -11)
+            {
+                "id": "ord-3",
+                "symbol": "BTC/USDT",
+                "side": "buy",
+                "status": "closed",
+                "filled": 1.0,
+                "price": 120.0,
+                "fee": {"cost": 0.5},
+                "datetime": "2026-09-26T10:00:00Z",
+                "timestamp": 1790416800000,
+            },
+            {
+                "id": "ord-4",
+                "symbol": "BTC/USDT",
+                "side": "sell",
+                "status": "closed",
+                "filled": 1.0,
+                "price": 110.0,
+                "fee": {"cost": 0.5},
+                "datetime": "2026-09-26T14:00:00Z",
+                "timestamp": 1790431200000,
+            },
+        ]
+        o.get_history = AsyncMock(return_value=OrderHistoryResponse(
+            success=True,
+            data={"count": 4, "orders": mock_orders},
+            error=None,
+            timestamp="t1"
+        ))
+
+        res = await o.get_pnl_report()
+        assert res.success is True
+        daily = res.data.get("daily_pnl")
+        assert daily is not None
+        assert len(daily) == 2
+        
+        # Day 1: 2026-09-25
+        d1 = daily[0]
+        assert d1["date"] == "2026-09-25"
+        assert d1["realized_pnl"] == 19.5
+        assert d1["cumulative_pnl"] == 19.5
+        assert d1["trade_count"] == 2
+        assert d1["buy_count"] == 1
+        assert d1["sell_count"] == 1
+        assert d1["total_fee"] == 1.0
+        assert d1["volume_usdt"] == 220.0
+
+        # Day 2: 2026-09-26
+        d2 = daily[1]
+        assert d2["date"] == "2026-09-26"
+        assert d2["realized_pnl"] == -10.5
+        assert d2["cumulative_pnl"] == 9.0  # 19.5 + (-10.5) = 9.0
+        assert d2["trade_count"] == 2
+        assert d2["buy_count"] == 1
+        assert d2["sell_count"] == 1
+        assert d2["total_fee"] == 1.0
+        assert d2["volume_usdt"] == 230.0

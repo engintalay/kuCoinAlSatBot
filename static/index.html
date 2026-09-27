@@ -437,6 +437,44 @@
             <button id="pnl-refresh" class="btn btn-accent">Raporu Getir</button>
           </div>
           <div id="pnl-summary" class="pnl-summary"></div>
+
+          <!-- Günlük Realize K/Z Grafiği -->
+          <div class="pnl-section-header">
+            <div class="pnl-section-title">📊 Günlük Realize K/Z & Kümülatif Grafiği</div>
+            <div class="pnl-chart-legend">
+              <span class="legend-item"><span class="legend-dot up"></span> Kâr Günü</span>
+              <span class="legend-item"><span class="legend-dot down"></span> Zarar Günü</span>
+              <span class="legend-item"><span class="legend-line cum"></span> Kümülatif K/Z</span>
+            </div>
+          </div>
+          <div id="pnl-chart-container" class="pnl-chart-container">
+            <div id="pnl-daily-chart" class="pnl-chart-svg-wrap">
+              <div class="pnl-chart-placeholder">Rapor için "Raporu Getir" düğmesine basın.</div>
+            </div>
+          </div>
+
+          <!-- Günlük K/Z Detay Tablosu -->
+          <div class="pnl-section-header" style="margin-top: 24px;">
+            <div class="pnl-section-title">📅 Günlük K/Z Tablosu</div>
+          </div>
+          <table class="data-table" id="pnl-daily-table" style="margin-bottom: 24px;">
+            <thead>
+              <tr>
+                <th>Tarih</th>
+                <th>Günlük K/Z (USDT)</th>
+                <th>Kümülatif K/Z (USDT)</th>
+                <th>İşlemler (Alış / Satış)</th>
+                <th>Günlük Hacim (USDT)</th>
+                <th>Komisyon (USDT)</th>
+              </tr>
+            </thead>
+            <tbody><tr><td colspan="6">Rapor için "Raporu Getir" düğmesine basın.</td></tr></tbody>
+          </table>
+
+          <!-- Sembol Bazında Dağılım Tablosu -->
+          <div class="pnl-section-header">
+            <div class="pnl-section-title">🪙 Sembol Bazında K/Z Dağılımı</div>
+          </div>
           <table class="data-table" id="pnl-table">
             <thead>
               <tr><th>Sembol</th><th>Realize K/Z (USDT)</th><th>Alış</th><th>Satış</th><th>Komisyon</th><th>Hacim (USDT)</th><th>Açık Miktar</th></tr>
