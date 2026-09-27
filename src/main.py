@@ -414,6 +414,24 @@ async def test_connection():
     return result
 
 
+class TransferRequest(_PydBaseModel):
+    currency: str = "USDT"
+    amount: float
+    from_account: str   # spot | funding | margin | futures
+    to_account: str
+
+
+@app.post("/api/v1/account/transfer")
+async def transfer_funds(req: TransferRequest, account=Depends(get_user_account)):
+    """Hesap içi para transferi (Spot/Funding/Margin/Futures arası). Sonrası bakiye yenilenir."""
+    result = await account.transfer_funds(
+        req.currency, req.amount, req.from_account, req.to_account
+    )
+    if not result.get("success"):
+        return JSONResponse(status_code=400, content=result)
+    return result
+
+
 # ============================================================================
 # Modül 2: Piyasa Verileri (Market Data & Analysis)
 # ============================================================================

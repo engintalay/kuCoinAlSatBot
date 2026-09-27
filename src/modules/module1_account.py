@@ -356,6 +356,79 @@ class KuCoinAccount:
                 timestamp=timestamp()
             )
 
+    # ------------------------------------------------------------------ #
+    # Hesap İçi Para Transferi (Faz 2)
+    # ------------------------------------------------------------------ #
+    # Kullanıcı-dostu hesap adı -> ccxt/KuCoin hesap tipi
+    TRANSFER_ACCOUNTS = {
+        "spot": "trade",       # Spot (işlem) cüzdanı
+        "trade": "trade",
+        "funding": "main",     # Ana/funding cüzdanı
+        "main": "main",
+        "margin": "margin",    # Cross margin
+        "futures": "future",   # Vadeli (ccxt future -> contract)
+        "future": "future",
+    }
+
+    async def transfer_funds(self, currency: str, amount: float,
+                             from_account: str, to_account: str) -> dict:
+        """
+        Hesap içi para transferi (Spot/Funding/Margin/Futures arası, tüm yönler).
+        Transfer sonrası güncel bakiye özetini de döndürür (2a).
+        """
+        try:
+            currency = (currency or "").upper().strip()
+            src = (from_account or "").lower().strip()
+            dst = (to_account or "").lower().strip()
+
+            # Doğrulama
+            if not currency:
+                return {"success": False, "data": {}, "error": "Para birimi (currency) gerekli.",
+                        "timestamp": timestamp()}
+            if amount is None or float(amount) <= 0:
+                return {"success": False, "data": {}, "error": "Transfer miktarı pozitif olmalı.",
+                        "timestamp": timestamp()}
+            if src not in self.TRANSFER_ACCOUNTS or dst not in self.TRANSFER_ACCOUNTS:
+                valid = "spot, funding, margin, futures"
+                return {"success": False, "data": {},
+                        "error": f"Geçersiz hesap türü. Geçerli: {valid}.", "timestamp": timestamp()}
+            if self.TRANSFER_ACCOUNTS[src] == self.TRANSFER_ACCOUNTS[dst]:
+                return {"success": False, "data": {},
+                        "error": "Kaynak ve hedef hesap aynı olamaz.", "timestamp": timestamp()}
+
+            if not self.exchange:
+                self.connect()
+            if not self.exchange:
+                return {"success": False, "data": {}, "error": "KuCoin API'ye bağlanılamadı.",
+                        "timestamp": timestamp()}
+
+            from_type = self.TRANSFER_ACCOUNTS[src]
+            to_type = self.TRANSFER_ACCOUNTS[dst]
+
+            result = await self.exchange.transfer(currency, float(amount), from_type, to_type)
+
+            # Transfer sonrası güncel bakiyeler (2a)
+            balances = await self.get_balances()
+            accounts = balances.data.get("accounts", []) if balances.success else []
+
+            return {
+                "success": True,
+                "data": {
+                    "transfer_id": result.get("id") if isinstance(result, dict) else None,
+                    "currency": currency,
+                    "amount": float(amount),
+                    "from_account": src,
+                    "to_account": dst,
+                    "accounts": accounts,   # güncel hesap-bazlı bakiye kırılımı
+                },
+                "error": None,
+                "timestamp": timestamp(),
+            }
+        except Exception as e:
+            logger.error(f"Transfer hatası ({currency} {amount} {from_account}->{to_account}): {e}")
+            return {"success": False, "data": {},
+                    "error": f"Transfer başarısız: {e}", "timestamp": timestamp()}
+
     async def get_permissions(self) -> dict:
         """
         API anahtarının yetkilerini (Read/Trade/Withdrawal) denetler.

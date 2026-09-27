@@ -129,6 +129,7 @@ const INFO_TEXT = {
   regime: { t: "Piyasa Geneli Rejim", d: "BTC Dominance, toplam piyasa değeri ve stablecoin dominansından risk-on/risk-off ortamını ve altseason ipucunu üretir (CoinGecko verisi)." },
   apikeys: { t: "Borsa API Anahtarları", d: "Kendi KuCoin API anahtarlarınızı girin. Sunucuda master key ile şifreli saklanır ve yalnızca sizin işlemlerinizde kullanılır. Güvenlik için 'Transfer' ve 'Withdrawal' izinlerini kapalı tutmanız önerilir. Kayıtlı gizli anahtar (secret) tekrar gösterilmez." },
   twofa: { t: "İki Aşamalı Doğrulama (2FA)", d: "Google Authenticator / Authy gibi bir uygulama ile hesabınıza ek güvenlik katmanı ekler. QR kodu tarayıp 6 haneli kodu girerek aktifleştirin. Aktifken uzak ağdan girişte şifreye ek olarak bu kod istenir. (Sunucu ile aynı yerel ağdan girişte 2FA atlanır.)" },
+  transfer: { t: "Hesaplar Arası Transfer", d: "KuCoin cüzdanlarınız (Spot, Funding, Margin, Futures) arasında para aktarır. Örneğin Spot'tan Futures'a USDT gönderip vadeli işlem teminatı oluşturabilirsiniz. Transfer sonrası bakiyeler otomatik yenilenir. (API anahtarınızda transfer izni gerekir.)" },
   "bug-report": { t: "Hata & Sorun Bildirimi", d: "Sistemde karşılaştığınız hataları buradan doğrudan kaydedebilirsiniz. Bildirimler sistem teşhis günlüğüne işlenir ve çözümleriyle birlikte takip edilir." },
 };
 
@@ -265,6 +266,38 @@ async function loadBalances() {
     container.innerHTML = "";
   }
 }
+
+// ---- Hesaplar Arası Transfer ----
+async function transferFunds() {
+  const currency = (document.getElementById("transfer-currency").value || "").trim().toUpperCase();
+  const amount = parseFloat(document.getElementById("transfer-amount").value);
+  const from_account = document.getElementById("transfer-from").value;
+  const to_account = document.getElementById("transfer-to").value;
+  const resultBox = document.getElementById("transfer-result");
+
+  if (!currency || !amount || amount <= 0) {
+    toast("Para birimi ve pozitif miktar girin.", "error");
+    return;
+  }
+  if (from_account === to_account) {
+    toast("Kaynak ve hedef hesap aynı olamaz.", "error");
+    return;
+  }
+  const res = await apiSend("/account/transfer", "POST", { currency, amount, from_account, to_account });
+  if (res.success) {
+    toast(`${amount} ${currency} transfer edildi (${from_account} → ${to_account}).`, "success");
+    if (resultBox) resultBox.innerHTML = `<span class="up">✅ Transfer başarılı</span>`;
+    document.getElementById("transfer-amount").value = "";
+    loadBalances();  // bakiyeleri yenile (2a)
+    loadSummary();
+  } else {
+    toast("Transfer başarısız: " + (res.error || ""), "error");
+    if (resultBox) resultBox.innerHTML = `<span class="down">❌ ${res.error || "Transfer başarısız"}</span>`;
+  }
+}
+
+const _transferBtn = document.getElementById("transfer-btn");
+if (_transferBtn) _transferBtn.addEventListener("click", transferFunds);
 
 // ---- Analiz & Seviyeli Mum Grafiği ----
 document.getElementById("analysis-run").addEventListener("click", loadAnalysis);

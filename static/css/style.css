@@ -801,6 +801,11 @@ body {
 .twofa-qr-box img { width: 180px; height: 180px; display: block; }
 #twofa-secret { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 5px; color: #e6edf3; word-break: break-all; }
 
+/* Hesaplar arası transfer */
+.transfer-result { font-size: 13px; margin-top: 8px; }
+.transfer-result .up { color: #3fb950; }
+.transfer-result .down { color: #f85149; }
+
 /* Kar/Zarar özet kartları */
 .pnl-summary {
   display: flex;

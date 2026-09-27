@@ -95,6 +95,31 @@
           </table>
           <div id="account-breakdown" class="account-breakdown"></div>
         </div>
+        <div class="card glass">
+          <div class="card-title">🔄 Hesaplar Arası Transfer <button class="info-btn" data-info="transfer">ℹ️</button></div>
+          <div class="settings-form transfer-form">
+            <label>Para Birimi <input id="transfer-currency" class="input" value="USDT" placeholder="USDT" /></label>
+            <label>Miktar <input id="transfer-amount" class="input" type="number" step="0.01" placeholder="10.00" /></label>
+            <label>Kaynak Hesap
+              <select id="transfer-from" class="input">
+                <option value="spot">Spot</option>
+                <option value="funding">Funding</option>
+                <option value="margin">Margin</option>
+                <option value="futures">Futures</option>
+              </select>
+            </label>
+            <label>Hedef Hesap
+              <select id="transfer-to" class="input">
+                <option value="futures">Futures</option>
+                <option value="spot">Spot</option>
+                <option value="funding">Funding</option>
+                <option value="margin">Margin</option>
+              </select>
+            </label>
+            <button id="transfer-btn" class="btn btn-accent">Transfer Et</button>
+            <div id="transfer-result" class="transfer-result"></div>
+          </div>
+        </div>
       </section>
 
       <!-- Analiz görünümü -->
