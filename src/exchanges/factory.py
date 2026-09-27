@@ -15,9 +15,10 @@ from src.utils.logger import logger
 class ExchangeClientFactory:
     """Kullanıcı bazlı Orders/Account client üretir ve önbelleğe alır."""
 
-    def __init__(self, user_store: UserStore, shared_market: KuCoinMarket):
+    def __init__(self, user_store: UserStore, shared_market: KuCoinMarket, settings_mgr=None):
         self.user_store = user_store
         self.market = shared_market          # public veri, paylaşımlı
+        self.settings_mgr = settings_mgr
         self._orders: dict[int, KuCoinOrders] = {}
         self._accounts: dict[int, KuCoinAccount] = {}
 
@@ -27,7 +28,16 @@ class ExchangeClientFactory:
     async def get_orders_for_user(self, user_id: int) -> KuCoinOrders:
         if user_id not in self._orders:
             creds = await self._credentials(user_id)
-            self._orders[user_id] = KuCoinOrders(market=self.market, credentials=creds)
+            user_orders = KuCoinOrders(market=self.market, credentials=creds)
+            if self.settings_mgr:
+                try:
+                    s_data = await self.settings_mgr.for_user(user_id).get_settings()
+                    saved_mode = s_data.get("data", {}).get("default_mode")
+                    if saved_mode in ("paper", "live"):
+                        await user_orders.switch_mode(saved_mode)
+                except Exception as e:
+                    logger.debug(f"Kullanıcı varsayılan mod yükleme hatası (user={user_id}): {e}")
+            self._orders[user_id] = user_orders
         return self._orders[user_id]
 
     async def get_account_for_user(self, user_id: int) -> KuCoinAccount:

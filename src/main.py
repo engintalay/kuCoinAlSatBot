@@ -102,7 +102,7 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
 # --- Request-scoped borsa client fabrikası ---
 from src.exchanges.factory import ExchangeClientFactory
 
-client_factory = ExchangeClientFactory(user_store, shared_market=market)
+client_factory = ExchangeClientFactory(user_store, shared_market=market, settings_mgr=settings_mgr)
 
 
 async def get_user_orders(request: Request):
@@ -408,7 +408,7 @@ async def get_portfolio_summary(account=Depends(get_user_account)):
 
 
 @app.post("/api/v1/account/test-connection")
-async def test_connection():
+async def test_connection(account=Depends(get_user_account)):
     """API anahtarlarını anlık olarak test eder ve doğrular."""
     result = account.test_connection()
     return result
@@ -654,9 +654,10 @@ async def amend_order(order_id: str, req: OrderAmendRequest, orders=Depends(get_
 
 
 @app.get("/api/v1/orders/recommendations")
-async def get_recommendations():
+async def get_recommendations(orders=Depends(get_user_orders)):
     """Açık emirler + canlı piyasadan dinamik güncelleme tavsiyeleri üretir."""
-    return await recommender.get_recommendations()
+    rec = RecommendationEngine(orders=orders, market=market)
+    return await rec.get_recommendations()
 
 
 class ApplyRecRequest(BaseModel):
@@ -665,9 +666,10 @@ class ApplyRecRequest(BaseModel):
 
 
 @app.post("/api/v1/orders/recommendations/apply")
-async def apply_recommendation(req: ApplyRecRequest):
+async def apply_recommendation(req: ApplyRecRequest, orders=Depends(get_user_orders)):
     """Bir tavsiyeyi uygular (örn. SL fiyatını günceller)."""
-    return await recommender.apply_recommendation(req.order_id, req.new_price)
+    rec = RecommendationEngine(orders=orders, market=market)
+    return await rec.apply_recommendation(req.order_id, req.new_price)
 
 
 @app.post("/api/v1/orders/panic-stop")
@@ -678,27 +680,44 @@ async def panic_stop(orders=Depends(get_user_orders)):
 
 
 @app.post("/api/v1/orders/switch-mode")
-async def switch_mode(req: SwitchModeRequest):
+async def switch_mode(
+    req: SwitchModeRequest,
+    user_orders=Depends(get_user_orders),
+    sm=Depends(get_user_settings),
+):
     """Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar."""
-    result = await orders.switch_mode(req.mode)
+    result = await user_orders.switch_mode(req.mode)
+    if user_orders is not orders:
+        try:
+            await orders.switch_mode(req.mode)
+        except Exception:
+            pass
     if result.success:
-        await settings_mgr.update_settings({"default_mode": req.mode})
+        await sm.update_settings({"default_mode": req.mode})
     return result
 
 
 @app.get("/api/v1/orders/mode")
-async def get_order_mode():
+async def get_order_mode(
+    user_orders=Depends(get_user_orders),
+    user_account=Depends(get_user_account),
+):
     """Mevcut emir motoru modunu (paper veya live) döner."""
+    has_creds = (
+        bool(user_orders.credentials and user_orders.credentials.get("api_key"))
+        if user_orders.credentials is not None
+        else user_account.config.validate_credentials()
+    )
     return {
         "success": True,
         "data": {
-            "mode": orders.mode,
-            "bot_active": orders.bot_active,
-            "is_live": orders.mode == "live",
-            "has_credentials": account.config.validate_credentials()
+            "mode": user_orders.mode,
+            "bot_active": user_orders.bot_active,
+            "is_live": user_orders.mode == "live",
+            "has_credentials": has_creds,
         },
         "error": None,
-        "timestamp": timestamp()
+        "timestamp": timestamp(),
     }
 
 
@@ -895,14 +914,18 @@ async def delete_issue(issue_id: int):
 
 
 @app.get("/api/v1/system/diagnostics")
-async def get_diagnostics():
+async def get_diagnostics(
+    user_orders=Depends(get_user_orders),
+    user_account=Depends(get_user_account),
+    sm=Depends(get_user_settings),
+):
     """Sistem teşhis ve durum bilgilerini getirir."""
     try:
         diag = await bug_tracker.get_diagnostics()
-        diag["orders_mode"] = orders.mode
-        diag["bot_active"] = orders.bot_active
-        diag["exchange_connected"] = bool(account.is_connected)
-        settings_res = await settings_mgr.get_settings()
+        diag["orders_mode"] = user_orders.mode
+        diag["bot_active"] = user_orders.bot_active
+        diag["exchange_connected"] = bool(user_account.is_connected)
+        settings_res = await sm.get_settings()
         watchlist = settings_res.get("data", {}).get("watchlist", []) if isinstance(settings_res, dict) else []
         diag["watchlist_count"] = len(watchlist)
         return {"success": True, "data": diag, "error": None, "timestamp": timestamp()}
@@ -924,6 +947,10 @@ async def ws_live(
     İstemci 'subscribe' mesajı göndererek sembol ve piyasa türünü (spot, margin, futures) dinamik değiştirebilir.
     """
     await websocket.accept()
+    session_id = websocket.cookies.get(SESSION_COOKIE)
+    ws_user = await auth_manager.resolve_session(session_id)
+    ws_account = await client_factory.get_account_for_user(ws_user["id"]) if ws_user else account
+    ws_orders = await client_factory.get_orders_for_user(ws_user["id"]) if ws_user else orders
     state = {
         "symbol": symbol,
         "market_type": market_type,
@@ -980,13 +1007,13 @@ async def ws_live(
                     logger.error(f"WS ticker hatası ({curr_sym}): {e}")
 
                 try:
-                    summary = await account.get_summary()
+                    summary = await ws_account.get_summary()
                     payload["summary"] = summary.data if summary.success else None
                 except Exception:
                     payload["summary"] = None
 
-                payload["mode"] = orders.mode
-                payload["bot_active"] = orders.bot_active
+                payload["mode"] = ws_orders.mode
+                payload["bot_active"] = ws_orders.bot_active
 
                 await websocket.send_json(payload)
 

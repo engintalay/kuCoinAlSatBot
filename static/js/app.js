@@ -752,6 +752,9 @@ async function loadPositions() {
         <td>${pnlHtml}</td>
       </tr>`;
     }).join("");
+  } else if (!res.success) {
+    if (badge) badge.textContent = "Hata";
+    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--red);">⚠️ Pozisyonlar alınamadı: ${escapeHtml(res.error || "Bilinmeyen hata")}</td></tr>`;
   } else {
     if (badge) badge.textContent = "0 Aktif";
     tbody.innerHTML = `<tr><td colspan="11">Şu anda açık pozisyonunuz bulunmuyor.</td></tr>`;
@@ -806,11 +809,11 @@ const _pnlBtn = document.getElementById("pnl-refresh");
 if (_pnlBtn) _pnlBtn.addEventListener("click", loadPnL);
 
 async function loadOpenOrders() {
-  loadPositions();
+  await loadPositions();
   const res = await apiGet("/orders/open");
   const tbody = document.querySelector("#open-orders-table tbody");
   if (!tbody) return;
-  if (res.success && res.data.count) {
+  if (res.success && res.data && res.data.count) {
     tbody.innerHTML = res.data.orders.map((o) => {
       const mt = (o.market_type || "spot").toLowerCase();
       const mtLabel = { spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt;
@@ -881,6 +884,8 @@ async function loadOpenOrders() {
       b.addEventListener("click", () => cancelOrder(b.dataset.id)));
     tbody.querySelectorAll(".btn-edit").forEach((b) =>
       b.addEventListener("click", () => openEditModal(b.dataset.id, b.dataset.price, b.dataset.amount)));
+  } else if (!res.success) {
+    tbody.innerHTML = `<tr><td colspan="13" style="color:var(--red);">⚠️ Açık emirler alınamadı: ${escapeHtml(res.error || "Bilinmeyen hata")}</td></tr>`;
   } else {
     tbody.innerHTML = `<tr><td colspan="13">Açık emir yok.</td></tr>`;
   }
@@ -942,6 +947,8 @@ async function loadOrderHistory() {
         <td>${statusBadge}</td>
       </tr>`;
     }).join("");
+  } else if (!res.success) {
+    tbody.innerHTML = `<tr><td colspan="10" style="color:var(--red);">⚠️ Geçmiş emirler alınamadı: ${escapeHtml(res.error || "Bilinmeyen hata")}</td></tr>`;
   } else {
     tbody.innerHTML = `<tr><td colspan="10">Geçmiş emir kaydı bulunamadı.</td></tr>`;
   }
