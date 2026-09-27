@@ -750,6 +750,7 @@ async function loadPositions() {
       const isLong = isSpot || rawSide === "long" || rawSide === "buy" || rawSide === "spot";
       const sideLabel = isLong ? "LONG" : "SHORT";
       const sideCls = isLong ? "side-buy" : "side-sell";
+      const positionSide = isSpot ? "spot" : (isLong ? "long" : "short");
 
       const entryPrice = p.entry_price ? fmtOrderPrice(p.entry_price) : "-";
       const totalCost = p.total_cost != null && p.total_cost > 0
@@ -802,8 +803,8 @@ async function loadPositions() {
         <td>${tpHtml}</td>
         <td>${pnlHtml}</td>
         <td>
-          <button class="btn-mini btn-tpsl" data-symbol="${escapeHtml(p.symbol)}" data-market="${escapeHtml(mt)}" data-side="${escapeHtml(side)}" data-amount="${p.amount || ''}" data-entry="${p.entry_price || ''}" data-curr="${p.current_price || ''}" data-lev="${p.leverage || ''}" data-tp1="${p.tp1_price || ''}" data-tp2="${p.tp2_price || ''}" data-sl="${p.stop_loss_price || ''}" title="Pozisyona Kâr Al (TP) ve Zarar Durdur (SL) bağla">🛡️ TP/SL</button>
-          <button class="btn-mini btn-danger btn-close-pos" data-symbol="${escapeHtml(p.symbol)}" data-market="${escapeHtml(mt)}" data-side="${escapeHtml(side)}" data-amount="${p.amount || ''}" data-entry="${p.entry_price || ''}" data-curr="${p.current_price || ''}" data-lev="${p.leverage || ''}" data-pnl="${p.unrealized_pnl ?? 0}" data-pnlpct="${p.pnl_percent ?? 0}" title="Pozisyonu ve ilişkili tüm açık emirleri güvenle kapat">❌ Kapat</button>
+          <button class="btn-mini btn-tpsl" data-symbol="${escapeHtml(p.symbol)}" data-market="${escapeHtml(mt)}" data-side="${escapeHtml(positionSide)}" data-amount="${p.amount || ''}" data-entry="${p.entry_price || ''}" data-curr="${p.current_price || ''}" data-lev="${p.leverage || ''}" data-tp1="${p.tp1_price || ''}" data-tp2="${p.tp2_price || ''}" data-sl="${p.stop_loss_price || ''}" title="Pozisyona Kâr Al (TP) ve Zarar Durdur (SL) bağla">🛡️ TP/SL</button>
+          <button class="btn-mini btn-danger btn-close-pos" data-symbol="${escapeHtml(p.symbol)}" data-market="${escapeHtml(mt)}" data-side="${escapeHtml(positionSide)}" data-amount="${p.amount || ''}" data-entry="${p.entry_price || ''}" data-curr="${p.current_price || ''}" data-lev="${p.leverage || ''}" data-pnl="${p.unrealized_pnl ?? 0}" data-pnlpct="${p.pnl_percent ?? 0}" title="Pozisyonu ve ilişkili tüm açık emirleri güvenle kapat">❌ Kapat</button>
         </td>
       </tr>`;
     }).join("");
@@ -1056,7 +1057,7 @@ const _pnlBtn = document.getElementById("pnl-refresh");
 if (_pnlBtn) _pnlBtn.addEventListener("click", loadPnL);
 
 async function loadOpenOrders() {
-  await loadPositions();
+  void loadPositions().catch((error) => console.error("Pozisyonlar yüklenemedi:", error));
   const res = await apiGet("/orders/open");
   const tbody = document.querySelector("#open-orders-table tbody");
   if (!tbody) return;

@@ -78,9 +78,11 @@ class KuCoinOrders:
                 "password": c.get("api_passphrase") or self.config.API_PASSPHRASE,
                 "sandbox": c.get("is_sandbox", self.config.IS_SANDBOX),
             }
-            self.exchange = ccxt.async_support.kucoin(dict(creds))
+            if self.exchange is None:
+                self.exchange = ccxt.async_support.kucoin(dict(creds))
             # Futures ayrı bir borsa uç noktası kullanır (kucoinfutures)
-            self.futures_exchange = ccxt.async_support.kucoinfutures(dict(creds))
+            if self.futures_exchange is None:
+                self.futures_exchange = ccxt.async_support.kucoinfutures(dict(creds))
             return True
         except Exception as e:
             logger.error(f"❌ Emir modülü bağlantı hatası: {e}")

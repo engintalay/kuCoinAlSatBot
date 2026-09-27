@@ -56,9 +56,11 @@ class KuCoinAccount:
                 "password": c.get("api_passphrase") or self.config.API_PASSPHRASE,
                 "sandbox": c.get("is_sandbox", self.config.IS_SANDBOX),
             }
-            self.exchange = ccxt.async_support.kucoin(dict(creds))
+            if self.exchange is None:
+                self.exchange = ccxt.async_support.kucoin(dict(creds))
             # Futures teminat bakiyesi ayrı uç noktadan (kucoinfutures) gelir
-            self.futures_exchange = ccxt.async_support.kucoinfutures(dict(creds))
+            if self.futures_exchange is None:
+                self.futures_exchange = ccxt.async_support.kucoinfutures(dict(creds))
             self.is_connected = True
             logger.info("✅ KuCoin API bağlantısı kuruldu")
             return True

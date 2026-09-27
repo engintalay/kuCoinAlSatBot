@@ -47,6 +47,7 @@ def test_dashboard_references_assets(client):
     r = client.get("/")
     assert "/static/css/style.css" in r.text
     assert "/static/js/app.js" in r.text
+    assert "/static/js/app.js?v=20260927-positions-fix" in r.text
     # Master Layout bileşenleri
     assert "PANIC STOP" in r.text
     assert "toast-container" in r.text
@@ -270,6 +271,24 @@ def test_positions_and_entry_stop_prices_ui(client):
     css = client.get("/static/css/style.css").text
     assert ".leg-badge" in css
     assert ".pnl-badge" in css
+
+
+def test_positions_render_uses_defined_normalized_side(client):
+    """Pozisyon render'ı tanımlı yön değeri üretmeli; aksi halde emir listesi de yüklenemez."""
+    js = client.get("/static/js/app.js").text
+    assert 'const positionSide = isSpot ? "spot" : (isLong ? "long" : "short");' in js
+    assert js.count('data-side="${escapeHtml(positionSide)}"') == 2
+
+
+def test_open_orders_load_without_waiting_for_positions(client):
+    """Açık emir isteği, yavaş pozisyon isteği tamamlanana kadar beklememeli."""
+    js = client.get("/static/js/app.js").text
+    start = js.index("async function loadOpenOrders()")
+    end = js.index("// Açık emirler kartındaki", start)
+    loader = js[start:end]
+    assert 'void loadPositions().catch(' in loader
+    assert 'const res = await apiGet("/orders/open");' in loader
+    assert "await loadPositions();" not in loader
 
 
 def test_analysis_live_price_card_ui(client):
