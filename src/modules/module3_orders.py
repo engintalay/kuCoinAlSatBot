@@ -340,7 +340,28 @@ class KuCoinOrders:
                         p["stopLossPrice"] = stop_p
                 return p
 
+            # Futures için önceden borsa üzerinde marjin modu ve kaldıraç ayarla
+            if market_type == "futures":
+                if leverage is not None:
+                    try:
+                        lev_int = int(round(float(leverage)))
+                        if hasattr(venue, "set_leverage"):
+                            await venue.set_leverage(lev_int, venue_symbol)
+                            logger.info(f"Futures kaldıraç ayarlandı: {venue_symbol} -> {lev_int}x")
+                    except Exception as lev_e:
+                        logger.debug(f"KuCoin set_leverage uyarısı ({venue_symbol} -> {leverage}x): {lev_e}")
+
+                if margin_mode and hasattr(venue, "set_margin_mode"):
+                    try:
+                        mm_clean = margin_mode.lower()
+                        if mm_clean in ("cross", "isolated"):
+                            await venue.set_margin_mode(mm_clean, venue_symbol)
+                            logger.info(f"Futures marjin modu ayarlandı: {venue_symbol} -> {mm_clean.upper()}")
+                    except Exception as mm_e:
+                        logger.debug(f"KuCoin set_margin_mode uyarısı ({venue_symbol} -> {margin_mode}): {mm_e}")
+
             used_mode = margin_mode
+            warning_msg = None
             try:
                 order = await venue.create_order(
                     venue_symbol, effective_type, side, amount_arg, price_arg, _params(margin_mode))
@@ -348,10 +369,14 @@ class KuCoinOrders:
                 # 330005: margin modu uyuşmazlığı → diğer modla bir kez daha dene
                 if market_type == "futures" and "330005" in str(e):
                     alt = "isolated" if margin_mode == "cross" else "cross"
-                    logger.info(f"Futures margin modu uyuşmadı ({margin_mode}), {alt} deneniyor.")
+                    logger.warning(f"Futures margin modu borsa ayarıyla uyuşmadı ({margin_mode}), {alt} deneniyor.")
                     order = await venue.create_order(
                         venue_symbol, effective_type, side, amount_arg, price_arg, _params(alt))
                     used_mode = alt
+                    warning_msg = (
+                        f"KuCoin hesabınızda bu sembol önceden {alt.upper()} modunda ayarlı olduğu için "
+                        f"emir {alt.upper()} modunda açıldı. Mod değiştirmek için KuCoin'de açık emir veya pozisyon bulunmamalıdır."
+                    )
                 else:
                     raise
             return OrderCreateResponse(
@@ -365,6 +390,7 @@ class KuCoinOrders:
                     "leverage": leverage if market_type == "futures" else None,
                     "stop_loss_price": stop_loss_price if is_stop else None,
                     "is_stop": is_stop,
+                    "warning": warning_msg,
                     "created_at": timestamp(),
                 },
                 error=None, timestamp=timestamp())
@@ -642,11 +668,15 @@ class KuCoinOrders:
                             continue
                         entry_p = float(p.get("entryPrice") or 0)
                         mark_p = float(p.get("markPrice") or p.get("last") or 0)
+                        raw_info = p.get("info") or {}
+                        cross_flag = raw_info.get("crossMode") if isinstance(raw_info, dict) else None
+                        margin_mode = p.get("marginMode") or ("cross" if cross_flag else ("isolated" if cross_flag is False else None))
                         pos_obj = {
                             "id": p.get("id") or f"live-pos-{p.get('symbol')}",
                             "symbol": p.get("symbol"),
                             "side": "long" if str(p.get("side", "")).lower() == "long" or amt > 0 else "short",
                             "market_type": "futures",
+                            "margin_mode": margin_mode,
                             "amount": abs(amt),
                             "entry_price": entry_p,
                             "total_cost": round(entry_p * abs(amt), 2),

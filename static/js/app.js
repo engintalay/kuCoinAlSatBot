@@ -738,7 +738,8 @@ async function loadPositions() {
     tbody.innerHTML = res.data.positions.map((p) => {
       const mt = (p.market_type || "spot").toLowerCase();
       const levBadge = (mt === "futures" && p.leverage) ? ` ${p.leverage}x` : "";
-      const mtLabel = ({ spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt) + levBadge;
+      const mmBadge = p.margin_mode ? ` [${String(p.margin_mode).toUpperCase()}]` : "";
+      const mtLabel = ({ spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt) + levBadge + mmBadge;
       const side = (p.side || "long").toLowerCase();
       const sideLabel = side === "long" ? "LONG" : "SHORT";
       const sideCls = side === "long" ? "side-buy" : "side-sell";
@@ -876,7 +877,9 @@ async function loadOpenOrders() {
       const mt = (o.market_type || "spot").toLowerCase();
       const lev = o.leverage || (o.info && o.info.leverage);
       const levBadge = (mt === "futures" && lev) ? ` ${lev}x` : "";
-      const mtLabel = ({ spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt) + levBadge;
+      const mm = o.margin_mode || (o.info && (o.info.marginMode || (o.info.crossMode ? "cross" : null)));
+      const mmBadge = mm ? ` [${String(mm).toUpperCase()}]` : "";
+      const mtLabel = ({ spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt) + levBadge + mmBadge;
       const side = (o.side || "").toLowerCase();
       const sideLabel = side === "buy" ? "ALIŞ" : (side === "sell" ? "SATIŞ" : side.toUpperCase());
       const sideCls = side === "buy" ? "side-buy" : (side === "sell" ? "side-sell" : "");
@@ -980,7 +983,11 @@ async function loadOrderHistory() {
       const dateStr = ts ? new Date(typeof ts === "number" && ts < 1e12 ? ts * 1000 : ts).toLocaleString("tr-TR") : "-";
       const sym = o.symbol || "-";
       const mt = (o.market_type || "spot").toLowerCase();
-      const mtLabel = { spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt;
+      const lev = o.leverage || (o.info && o.info.leverage);
+      const levBadge = (mt === "futures" && lev) ? ` ${lev}x` : "";
+      const mm = o.margin_mode || (o.info && (o.info.marginMode || (o.info.crossMode ? "cross" : null)));
+      const mmBadge = mm ? ` [${String(mm).toUpperCase()}]` : "";
+      const mtLabel = ({ spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt) + levBadge + mmBadge;
       const side = (o.side || "").toLowerCase();
       const sideBadge = side === "buy"
         ? `<span class="side-badge side-buy">AL</span>`
