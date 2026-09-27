@@ -177,12 +177,14 @@ class KuCoinOrders:
         if self.mode == "paper":
             return await self._create_paper_order(
                 symbol, side, order_type, amount, price, market_type,
+                margin_mode=margin_mode, leverage=leverage,
                 entry_price=entry_price, stop_loss_price=stop_loss_price,
             )
         return await self._create_live_order(symbol, side, order_type, amount, price,
                                              market_type, margin_mode, leverage)
 
     async def _create_paper_order(self, symbol, side, order_type, amount, price, market_type="spot",
+                                  margin_mode="cross", leverage=None,
                                   entry_price=None, stop_loss_price=None):
         """Paper trading emir motoru (M3-C07)."""
         last_price = await self._current_price(symbol)
@@ -218,6 +220,8 @@ class KuCoinOrders:
                 "amount": amount, "price": fill_price, "status": "filled",
                 "filled_price": fill_price, "notional_usdt": round(notional, 2),
                 "mode": "paper", "market_type": market_type,
+                "margin_mode": margin_mode if market_type in ("margin", "futures") else None,
+                "leverage": leverage if market_type == "futures" else (5.0 if market_type == "margin" else None),
                 "entry_price": fill_price,
                 "stop_loss_price": float(stop_loss_price) if stop_loss_price is not None else None,
                 "created_at": timestamp(),
@@ -231,6 +235,8 @@ class KuCoinOrders:
             "amount": amount, "price": float(price), "status": "open",
             "filled": 0.0, "notional_usdt": round(notional, 2),
             "mode": "paper", "market_type": market_type,
+            "margin_mode": margin_mode if market_type in ("margin", "futures") else None,
+            "leverage": leverage if market_type == "futures" else (5.0 if market_type == "margin" else None),
             "entry_price": float(entry_price) if entry_price is not None else (float(price) if side == "buy" else None),
             "stop_loss_price": float(stop_loss_price) if stop_loss_price is not None else None,
             "created_at": timestamp(),
@@ -263,8 +269,12 @@ class KuCoinOrders:
                     p["marginMode"] = "cross"
                 elif market_type == "futures":
                     p["marginMode"] = mm  # cross | isolated
-                    if leverage:
-                        p["leverage"] = leverage
+                    if leverage is not None:
+                        try:
+                            lev_f = float(leverage)
+                            p["leverage"] = int(lev_f) if lev_f.is_integer() else lev_f
+                        except (ValueError, TypeError):
+                            p["leverage"] = leverage
                 return p
 
             used_mode = margin_mode
@@ -289,6 +299,7 @@ class KuCoinOrders:
                     "status": order.get("status", "open"), "mode": "live",
                     "market_type": market_type, "venue_symbol": venue_symbol,
                     "margin_mode": used_mode if market_type == "futures" else None,
+                    "leverage": leverage if market_type == "futures" else None,
                     "created_at": timestamp(),
                 },
                 error=None, timestamp=timestamp())
@@ -947,6 +958,8 @@ class KuCoinOrders:
             "symbol": symbol,
             "side": "long" if side == "buy" else "short",
             "market_type": market_type,
+            "margin_mode": margin_mode if market_type in ("margin", "futures") else None,
+            "leverage": leverage if market_type == "futures" else (5.0 if market_type == "margin" else None),
             "amount": amount,
             "notional_usdt": usdt_amount,
             "entry_price": entry_price,
@@ -990,6 +1003,8 @@ class KuCoinOrders:
             data={
                 "bracket_id": bracket_id,
                 "symbol": symbol, "side": side, "market_type": market_type,
+                "margin_mode": margin_mode if market_type in ("margin", "futures") else None,
+                "leverage": leverage if market_type == "futures" else (5.0 if market_type == "margin" else None),
                 "usdt_amount": usdt_amount, "amount": amount,
                 "entry_price": entry_price, "stop_loss_price": stop_loss_price,
                 "tp1_price": tp1_price, "tp2_price": tp2_price,

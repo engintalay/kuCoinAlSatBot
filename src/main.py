@@ -570,9 +570,12 @@ class SwitchModeRequest(BaseModel):
 async def create_order(req: OrderCreateRequest, orders=Depends(get_user_orders)):
     """Yeni Market veya Limit Al/Sat emri iletir (Gerçek veya Sanal). Spot/Margin/Futures."""
     try:
+        lev = req.leverage
+        if req.market_type == "futures" and (lev is None or lev <= 0):
+            lev = 5.0
         result = await orders.create_order(
             req.symbol, req.side, req.order_type, req.amount, req.price, req.market_type,
-            req.margin_mode, req.leverage,
+            req.margin_mode, lev,
         )
         return result
     except Exception as e:
@@ -596,10 +599,13 @@ class BracketOrderRequest(BaseModel):
 @app.post("/api/v1/orders/bracket")
 async def create_bracket(req: BracketOrderRequest, orders=Depends(get_user_orders)):
     """Akıllı Paket Emir: Giriş + TP1 (%50) + TP2 (%50) + SL (%100) tek pakette. Spot/Margin/Futures."""
+    lev = req.leverage
+    if req.market_type == "futures" and (lev is None or lev <= 0):
+        lev = 5.0
     result = await orders.create_bracket_order(
         req.symbol, req.side, req.usdt_amount,
         req.entry_price, req.stop_loss_price, req.tp1_price, req.tp2_price,
-        req.market_type, req.margin_mode, req.leverage,
+        req.market_type, req.margin_mode, lev,
     )
     return result
 

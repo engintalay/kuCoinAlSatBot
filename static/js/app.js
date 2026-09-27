@@ -451,11 +451,14 @@ async function loadAnalysis() {
   }
 
   // 3. Trade Setup Seviyeleri
-  const setupRes = await apiGet(`/market/trade-setup?symbol=${encodeURIComponent(symbol)}&timeframe=${tf}&side=${calcSide}&market_type=${marketType}&leverage=5.0`);
+  const leverage = marketType === "futures"
+    ? (parseFloat(document.getElementById("analysis-leverage")?.value) || 5.0)
+    : (marketType === "margin" ? 5.0 : 1.0);
+  const setupRes = await apiGet(`/market/trade-setup?symbol=${encodeURIComponent(symbol)}&timeframe=${tf}&side=${calcSide}&market_type=${marketType}&leverage=${leverage}`);
   let tradeSetup = null;
   if (setupRes.success && setupRes.data.trade_setup) {
     tradeSetup = setupRes.data.trade_setup;
-    lastAnalysisSetup = { symbol, side: calcSide, ...tradeSetup };
+    lastAnalysisSetup = { symbol, side: calcSide, market_type: marketType, leverage: leverage, ...tradeSetup };
     renderAnalysisSetup(calcSide, tradeSetup, marketType);
     const toBracketBtn = document.getElementById("analysis-to-bracket-btn");
     if (toBracketBtn) toBracketBtn.style.display = "inline-block";
@@ -543,21 +546,48 @@ if (toBracketBtnEl) {
     switchView("orders");
     document.getElementById("bracket-symbol").value = lastAnalysisSetup.symbol;
     document.getElementById("bracket-side").value = lastAnalysisSetup.side;
+
+    if (lastAnalysisSetup.market_type) {
+      const bMt = document.getElementById("bracket-market-type");
+      if (bMt) {
+        bMt.value = lastAnalysisSetup.market_type;
+        bMt.dispatchEvent(new Event("change"));
+      }
+    }
+    if (lastAnalysisSetup.market_type === "futures" && lastAnalysisSetup.leverage) {
+      const bLev = document.getElementById("bracket-leverage");
+      if (bLev) {
+        bLev.value = lastAnalysisSetup.leverage;
+        bLev.dispatchEvent(new Event("input"));
+      }
+    }
+
     bracketSetup = {
       entry_price: lastAnalysisSetup.entry_price,
       stop_loss_price: lastAnalysisSetup.stop_loss_price,
       tp1_price: lastAnalysisSetup.tp1_price,
       tp2_price: lastAnalysisSetup.tp2_price,
       risk_reward_ratio: lastAnalysisSetup.risk_reward_ratio,
+      leverage: lastAnalysisSetup.leverage,
+      est_liquidation_price: lastAnalysisSetup.est_liquidation_price,
+      liquidation_distance_percent: lastAnalysisSetup.liquidation_distance_percent,
     };
     const box = document.getElementById("bracket-levels");
     if (box) {
+      let futRow = "";
+      if (lastAnalysisSetup.market_type === "futures") {
+        futRow = `
+          <div class="level-row" style="background:rgba(41,121,255,0.08); border-left:3px solid var(--accent);"><span>Kaldıraç</span><b style="color:#58a6ff;">${lastAnalysisSetup.leverage || 5}x</b></div>
+          ${lastAnalysisSetup.est_liquidation_price ? `<div class="level-row down"><span>Tahmini Likidasyon</span><b style="color:var(--red);">${fmtOrderPrice(lastAnalysisSetup.est_liquidation_price)} (%${lastAnalysisSetup.liquidation_distance_percent || '--'})</b></div>` : ''}
+        `;
+      }
       box.innerHTML = `
-        <div class="level-row"><span>Giriş</span><b>${bracketSetup.entry_price}</b></div>
-        <div class="level-row up"><span>TP1 (%50)</span><b>${bracketSetup.tp1_price}</b></div>
-        <div class="level-row up"><span>TP2 (%50)</span><b>${bracketSetup.tp2_price}</b></div>
-        <div class="level-row down"><span>Stop-Loss</span><b>${bracketSetup.stop_loss_price}</b></div>
-        <div class="level-row"><span>Risk/Ödül</span><b>1 : ${bracketSetup.risk_reward_ratio}</b></div>`;
+        <div class="level-row"><span>Giriş</span><b>${fmtOrderPrice(bracketSetup.entry_price)}</b></div>
+        <div class="level-row up"><span>TP1 (%50)</span><b>${fmtOrderPrice(bracketSetup.tp1_price)}</b></div>
+        <div class="level-row up"><span>TP2 (%50)</span><b>${fmtOrderPrice(bracketSetup.tp2_price)}</b></div>
+        <div class="level-row down"><span>Stop-Loss</span><b>${fmtOrderPrice(bracketSetup.stop_loss_price)}</b></div>
+        <div class="level-row"><span>Risk/Ödül</span><b>1 : ${bracketSetup.risk_reward_ratio}</b></div>
+        ${futRow}`;
     }
     const subBtn = document.getElementById("bracket-submit");
     if (subBtn) subBtn.disabled = false;
@@ -662,17 +692,25 @@ async function loadAnalysisChart(symbol, timeframe, marketType, setup, side) {
 
 // ---- Emirler ----
 document.getElementById("order-submit").addEventListener("click", async () => {
+  const marketType = document.getElementById("order-market-type").value;
+  const leverage = marketType === "futures"
+    ? (parseFloat(document.getElementById("order-leverage")?.value) || 5.0)
+    : null;
+  const marginMode = document.getElementById("order-margin-mode")?.value || "cross";
   const body = {
     symbol: document.getElementById("order-symbol").value,
     side: document.getElementById("order-side").value,
     order_type: document.getElementById("order-type").value,
     amount: parseFloat(document.getElementById("order-amount").value),
     price: parseFloat(document.getElementById("order-price").value) || null,
-    market_type: document.getElementById("order-market-type").value,
+    market_type: marketType,
+    margin_mode: marginMode,
+    leverage: leverage,
   };
   const res = await apiSend("/orders/create", "POST", body);
   if (res.success) {
-    toast(`Emir oluşturuldu: ${res.data.status}`, "success");
+    const levStr = leverage ? ` (${leverage}x ${marginMode.toUpperCase()})` : "";
+    toast(`Emir oluşturuldu: ${res.data.status}${levStr}`, "success");
     loadOpenOrders();
   } else {
     toast("Emir reddedildi: " + (res.error || ""), "error");
@@ -699,7 +737,8 @@ async function loadPositions() {
     if (badge) badge.textContent = `${res.data.count} Aktif Pozisyon`;
     tbody.innerHTML = res.data.positions.map((p) => {
       const mt = (p.market_type || "spot").toLowerCase();
-      const mtLabel = { spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt;
+      const levBadge = (mt === "futures" && p.leverage) ? ` ${p.leverage}x` : "";
+      const mtLabel = ({ spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt) + levBadge;
       const side = (p.side || "long").toLowerCase();
       const sideLabel = side === "long" ? "LONG" : "SHORT";
       const sideCls = side === "long" ? "side-buy" : "side-sell";
@@ -816,7 +855,9 @@ async function loadOpenOrders() {
   if (res.success && res.data && res.data.count) {
     tbody.innerHTML = res.data.orders.map((o) => {
       const mt = (o.market_type || "spot").toLowerCase();
-      const mtLabel = { spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt;
+      const lev = o.leverage || (o.info && o.info.leverage);
+      const levBadge = (mt === "futures" && lev) ? ` ${lev}x` : "";
+      const mtLabel = ({ spot: "Spot", margin: "Margin", futures: "Futures" }[mt] || mt) + levBadge;
       const side = (o.side || "").toLowerCase();
       const sideLabel = side === "buy" ? "ALIŞ" : (side === "sell" ? "SATIŞ" : side.toUpperCase());
       const sideCls = side === "buy" ? "side-buy" : (side === "sell" ? "side-sell" : "");
@@ -1227,17 +1268,29 @@ document.getElementById("bracket-load").addEventListener("click", async () => {
   const symbol = document.getElementById("bracket-symbol").value;
   const side = document.getElementById("bracket-side").value;
   const marketType = document.getElementById("bracket-market-type").value;
-  const res = await apiGet(`/market/trade-setup?symbol=${encodeURIComponent(symbol)}&side=${side}&market_type=${marketType}`);
+  const leverage = marketType === "futures"
+    ? (parseFloat(document.getElementById("bracket-leverage")?.value) || 5.0)
+    : 1.0;
+  const res = await apiGet(`/market/trade-setup?symbol=${encodeURIComponent(symbol)}&side=${side}&market_type=${marketType}&leverage=${leverage}`);
   const box = document.getElementById("bracket-levels");
   if (res.success) {
     bracketSetup = res.data.trade_setup;
     const s = bracketSetup;
+    let futuresInfo = "";
+    if (marketType === "futures") {
+      const mmVal = document.getElementById("bracket-margin-mode")?.value === "isolated" ? "İzole" : "Çapraz";
+      const liqStr = s.est_liquidation_price ? `${fmtOrderPrice(s.est_liquidation_price)} (%${s.liquidation_distance_percent || '--'})` : "Belirlenmedi";
+      futuresInfo = `
+        <div class="level-row" style="background:rgba(41,121,255,0.08); border-left:3px solid var(--accent);"><span>Kaldıraç & Marjin</span><b style="color:#58a6ff;">${s.leverage || leverage}x (${mmVal})</b></div>
+        <div class="level-row down"><span>Tahmini Likidasyon</span><b style="color:var(--red);">${liqStr}</b></div>`;
+    }
     box.innerHTML = `
-      <div class="level-row"><span>Giriş</span><b>${s.entry_price}</b></div>
-      <div class="level-row up"><span>TP1 (%50)</span><b>${s.tp1_price}</b></div>
-      <div class="level-row up"><span>TP2 (%50)</span><b>${s.tp2_price}</b></div>
-      <div class="level-row down"><span>Stop-Loss</span><b>${s.stop_loss_price}</b></div>
-      <div class="level-row"><span>Risk/Ödül</span><b>1 : ${s.risk_reward_ratio}</b></div>`;
+      <div class="level-row"><span>Giriş</span><b>${fmtOrderPrice(s.entry_price)}</b></div>
+      <div class="level-row up"><span>TP1 (%50)</span><b>${fmtOrderPrice(s.tp1_price)}</b></div>
+      <div class="level-row up"><span>TP2 (%50)</span><b>${fmtOrderPrice(s.tp2_price)}</b></div>
+      <div class="level-row down"><span>Stop-Loss</span><b>${fmtOrderPrice(s.stop_loss_price)}</b></div>
+      <div class="level-row"><span>Risk/Ödül</span><b>1 : ${s.risk_reward_ratio}</b></div>
+      ${futuresInfo}`;
     document.getElementById("bracket-submit").disabled = false;
     toast("Seviyeler hesaplandı", "success");
   } else {
@@ -1248,6 +1301,11 @@ document.getElementById("bracket-load").addEventListener("click", async () => {
 
 document.getElementById("bracket-submit").addEventListener("click", async () => {
   if (!bracketSetup) return;
+  const marketType = document.getElementById("bracket-market-type").value;
+  const leverage = marketType === "futures"
+    ? (parseFloat(document.getElementById("bracket-leverage")?.value) || 5.0)
+    : null;
+  const marginMode = document.getElementById("bracket-margin-mode")?.value || "cross";
   const body = {
     symbol: document.getElementById("bracket-symbol").value,
     side: document.getElementById("bracket-side").value,
@@ -1256,11 +1314,14 @@ document.getElementById("bracket-submit").addEventListener("click", async () => 
     stop_loss_price: bracketSetup.stop_loss_price,
     tp1_price: bracketSetup.tp1_price,
     tp2_price: bracketSetup.tp2_price,
-    market_type: document.getElementById("bracket-market-type").value,
+    market_type: marketType,
+    margin_mode: marginMode,
+    leverage: leverage,
   };
   const res = await apiSend("/orders/bracket", "POST", body);
   if (res.success) {
-    toast(`Paket emir iletildi (${res.data.bracket_id}) — risk ${res.data.risk_usdt} USDT`, "success");
+    const levStr = leverage ? ` (${leverage}x ${marginMode.toUpperCase()})` : "";
+    toast(`Paket emir iletildi (${res.data.bracket_id})${levStr} — risk ${res.data.risk_usdt} USDT`, "success");
     loadOpenOrders();
   } else {
     toast("Paket emir reddedildi: " + (res.error || ""), "error");
@@ -2007,8 +2068,59 @@ async function loadMode() {
   }
 }
 
+function initLeverageControls() {
+  // 1. Analiz Toolbar
+  const aMarket = document.getElementById("analysis-market-type");
+  const aWrap = document.getElementById("analysis-leverage-wrap");
+  if (aMarket && aWrap) {
+    const updateAnalysisLev = () => {
+      aWrap.style.display = aMarket.value === "futures" ? "inline-flex" : "none";
+    };
+    aMarket.addEventListener("change", updateAnalysisLev);
+    updateAnalysisLev();
+  }
+
+  // 2. Manuel Emir Formu (Yeni Emir)
+  setupMarketLeverageSync("order-market-type", "order-leverage-wrap", "order-leverage", "order-leverage-chips");
+
+  // 3. Akıllı Paket Emir Formu (Bracket)
+  setupMarketLeverageSync("bracket-market-type", "bracket-leverage-wrap", "bracket-leverage", "bracket-leverage-chips");
+}
+
+function setupMarketLeverageSync(marketSelId, wrapId, inputId, chipsId) {
+  const mSel = document.getElementById(marketSelId);
+  const wrap = document.getElementById(wrapId);
+  const input = document.getElementById(inputId);
+  const chips = document.getElementById(chipsId);
+  if (!mSel || !wrap) return;
+
+  const updateVis = () => {
+    wrap.style.display = mSel.value === "futures" ? "inline-flex" : "none";
+  };
+  mSel.addEventListener("change", updateVis);
+  updateVis();
+
+  if (chips && input) {
+    chips.querySelectorAll(".leverage-chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        chips.querySelectorAll(".leverage-chip").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        input.value = btn.dataset.lev;
+        input.dispatchEvent(new Event("input"));
+      });
+    });
+    input.addEventListener("input", () => {
+      const val = input.value.trim();
+      chips.querySelectorAll(".leverage-chip").forEach((b) => {
+        b.classList.toggle("active", b.dataset.lev === val);
+      });
+    });
+  }
+}
+
 // İlk yükleme — önce oturum kontrolü
 async function checkAuthAndInit() {
+  initLeverageControls();
   let me;
   try {
     const r = await fetch("/api/v1/auth/me", { credentials: "include" });

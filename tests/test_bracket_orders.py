@@ -50,6 +50,38 @@ class TestBracketOrder:
         assert all(x["market_type"] == mtype for x in oo.data["orders"])
 
     @pytest.mark.asyncio
+    async def test_bracket_futures_with_leverage(self):
+        """Bracket futures modunda kaldıraç ve margin_mode bilgisini taşımalı."""
+        o = _paper_orders(price=50000.0)
+        r = await o.create_bracket_order(
+            "BTC/USDT", "buy", 1000.0,
+            entry_price=50000.0, stop_loss_price=49000.0,
+            tp1_price=51500.0, tp2_price=53000.0,
+            market_type="futures", margin_mode="cross", leverage=10.0,
+        )
+        assert r.success is True
+        assert r.data["market_type"] == "futures"
+        assert r.data["leverage"] == 10.0
+        assert r.data["margin_mode"] == "cross"
+        assert r.data["legs"]["entry"]["leverage"] == 10.0
+        assert o.paper_positions["BTC/USDT-futures"]["leverage"] == 10.0
+        pos_res = await o.get_positions()
+        assert pos_res["data"]["positions"][0]["leverage"] == 10.0
+
+    @pytest.mark.asyncio
+    async def test_single_order_futures_with_leverage(self):
+        """Tekil emir futures modunda kaldıraç ve margin_mode taşımalı."""
+        o = _paper_orders(price=50000.0)
+        r = await o.create_order(
+            "BTC/USDT", "buy", "limit", 0.01, 50000.0,
+            market_type="futures", margin_mode="isolated", leverage=20.0,
+        )
+        assert r.success is True
+        assert r.data["market_type"] == "futures"
+        assert r.data["margin_mode"] == "isolated"
+        assert r.data["leverage"] == 20.0
+
+    @pytest.mark.asyncio
     async def test_bracket_invalid_market_type(self):
         """Geçersiz market_type ile bracket reddedilmeli."""
         o = _paper_orders(price=50000.0)
