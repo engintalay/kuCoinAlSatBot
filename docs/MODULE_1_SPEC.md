@@ -1,16 +1,16 @@
 # Modül 1 Spesifikasyonu: KuCoin Bağlantısı ve Hesap Durumu
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** %100 (Coding AI Tarafından Tamamlandı, 29/29 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-19 22:00:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı ✅) | **Kodlama & Test Durumu:** %100 (Çoklu Cüzdan, Bakiye Kırılımı, İç Transfer, Varlık Maliyetleri & Şifreli Kasa Dahil, 330/330 Test Geçiyor ✅) | **Son Güncelleme:** 2026-09-27 14:20:00 (+03:00)
 
 ## 1. Modülün Amacı
-Bu modül, kullanıcının KuCoin API kimlik bilgilerini yerel `.env` dosyasından güvenli bir şekilde okur, KuCoin sunucularına bağlanarak kimlik ve yetki doğrulamasını yapar ve hesaptaki varlıkların (Spot/Trade hesabı) detaylı durumunu sunar.
+Bu modül, kullanıcının KuCoin API kimlik bilgilerini yerel `.env` dosyasından veya çok kullanıcılı şifreli kasadan (`CryptoVault`) güvenli bir şekilde okur, KuCoin sunucularına bağlanarak kimlik ve yetki doğrulamasını yapar, hesaptaki varlıkların (Spot, Funding, Margin, Futures) detaylı durumunu sunar ve hesaplar arası iç transferleri gerçekleştirir.
 
 ---
 
-## 2. Kimlik Bilgileri ve Güvenlik (.env Yönetimi)
+## 2. Kimlik Bilgileri ve Güvenlik (.env & CryptoVault Yönetimi)
 
-### 2.1. Yapılandırma Dosyası (`.env`)
-Tüm hassas API erişim şifreleri ve gizli anahtarlar projenin ana dizininde bulunacak `.env` dosyasında saklanacaktır. Kod içerisinde hiçbir şifre veya API key açık halde (hardcoded) yer almayacaktır.
+### 2.1. Yapılandırma Dosyası (`.env`) ve Şifreli Kasa (`CryptoVault`)
+Tüm hassas API erişim şifreleri ve gizli anahtarlar projenin ana dizininde bulunacak `.env` dosyasında veya `auth.db` içerisindeki şifreli kasada (`CryptoVault`, AES-128 Fernet) kullanıcı bazlı saklanır. Kod içerisinde hiçbir şifre veya API key açık halde (hardcoded) yer almayacaktır.
 
 #### Örnek `.env` Dosyası Formatı:
 ```env
@@ -41,8 +41,8 @@ DEFAULT_TIMEFRAME=15m
 *(Detaylı seçenekler ve açıklamalar `.env.example` dosyasında yer almaktadır).*
 
 #### Güvenlik Standartları:
-1. **`.gitignore` Entegrasyonu**: `.env` dosyası kesinlikle `.gitignore` dosyasına eklenerek Git versiyon kontrol sistemine veya kaynak kod depolarına (GitHub vb.) aktarılması engellenecektir.
-2. **`.env.example` Şablonu**: Projede şifre içermeyen bir `.env.example` örnek dosyası bulundurulacak, kullanıcı kendi bilgisayarında bunu `.env` olarak kopyalayıp kendi bilgilerini dolduracaktır.
+1. **`.gitignore` Entegrasyonu**: `.env` ve `.master_key` dosyaları kesinlikle `.gitignore` dosyasına eklenerek Git versiyon kontrol sistemine aktarılması engellenmiştir.
+2. **Kullanıcı Bazlı API İzolasyonu**: `ExchangeClientFactory` ile her kullanıcı kendi şifreli API anahtarlarıyla request-scoped borsa istemcisine sahiptir.
 
 ---
 
@@ -59,7 +59,7 @@ Bot başlatıldığında sırasıyla şu adımları kontrol eder:
    - *Güvenlik Uyarısı*: API anahtarında **Para Çekme (Withdrawal)** yetkisi tespit edilirse kullanıcıya güvenlik uyarısı gösterilir.
 
 ### 3.2. Bakiye Sorgulama ve USDT Karşılığı Hesaplama
-* **Hesap Türü**: KuCoin Spot (Trade) Hesabı ve Ana (Main) Hesap.
+* **Hesap Türleri**: KuCoin Spot (`trade`), Ana Cüzdan (`main`/funding), Kaldıraçlı İşlemler (`margin`) ve Vadeli İşlemler (`future`/futures).
 * **Bakiye Çekimi**:
   * Serbest Bakiye (`free`): İşleme hazır kullanılabilir miktar.
   * Kilitli Bakiye (`used`): Açık limit emirlerinde bekleyen miktar.
@@ -72,6 +72,20 @@ Bot başlatıldığında sırasıyla şu adımları kontrol eder:
 ### 3.3. Canlı Bakiye Güncellemesi (WebSocket Integration)
 * İlk açılışta REST API ile bakiye çekilir.
 * Ardından KuCoin Private WebSocket kanalına (`/account/balance`) abone olunarak, bir alış/satış gerçekleştiğinde bakiyelerin anlık olarak güncellenmesi sağlanır.
+
+### 3.4. Tüm Hesap Tiplerinin Birleşimi ve Hesap Kırılımı (Multi-Account Breakdown)
+* `get_balances` uç noktası Spot (`trade`), Funding (`main`), Margin (`margin`) ve KuCoin Futures teminat cüzdanını sorgulayıp varlık bazında tek bir listede birleştirir.
+* Her varlığa ait hangi cüzdanlarda bulunduğu `accounts: ["spot", "futures", "funding", "margin"]` rozetleriyle sunulur.
+* `account_breakdown` listesi ile her hesap tipinde (Spot, Funding, Margin, Futures) toplam kaç USDT varlık bulunduğu ve içerdiği coin listesi döndürülür.
+
+### 3.5. Eldeki Varlıkların Ağırlıklı Alış Maliyeti ve Kâr/Zarar Gösterimi
+* Dolan geçmiş emirlerden ağırlıklı ortalama alış maliyeti (`avg_cost`) ve eldeki varlığın toplam maliyeti (`total_cost`) hesaplanır.
+* Anlık fiyat (`price_usdt`) ile maliyet karşılaştırılarak gerçekleşmemiş kâr/zarar tutarı (`unrealized_pnl`) ve yüzdesi (`pnl_percent`) hesap tablosuna iliştirilir.
+
+### 3.6. Hesaplar Arası İç Para Transferi (Internal Transfer Motoru)
+* Spot (`trade`), Ana Cüzdan (`main`), Marjin (`margin`) ve Vadeli İşlemler (`future`) arasında para birimi ve miktar bazında iki yönlü serbest transfer yapılabilir.
+* Endpoint: `POST /api/v1/account/transfer`
+* Transfer tamamlandığında borsa bakiyeleri ve hesap bazlı kırılım anında taze olarak kullanıcıya sunulur.
 
 ---
 
@@ -141,9 +155,12 @@ Swagger Tag: `Account & Connection`
 | Metod | Endpoint | Açıklama | Swagger Yanıt Modeli |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/account/status` | KuCoin API bağlantı durumu, gecikme süresi (ms) ve yetkileri döndürür. | `ConnectionStatusResponse` |
-| `GET` | `/api/v1/account/balances` | Tüm kripto varlıkların serbest, kilitli ve USDT karşılığı bakiyelerini listeler. | `AccountBalancesResponse` |
-| `GET` | `/api/v1/account/summary` | Toplam portföy değeri ve serbest nakit özetini döndürür. | `PortfolioSummaryResponse` |
-| `POST` | `/api/v1/account/test-connection` | `.env` dosyasındaki şifreleri anlık olarak test eder ve doğrular. | `TestConnectionResponse` |
+| `GET` | `/api/v1/account/balances` | Tüm kripto varlıkların serbest, kilitli, USDT karşılığı, hesap etiketleri ve maliyetlerini listeler. | `AccountBalancesResponse` |
+| `GET` | `/api/v1/account/summary` | Toplam portföy değeri, hesap bazlı bakiye kırılımı (`total_by_account`) ve serbest nakit özetini döndürür. | `PortfolioSummaryResponse` |
+| `POST` | `/api/v1/account/test-connection` | Kullanıcının şifreli veya .env anahtarlarını test eder ve doğrular. | `TestConnectionResponse` |
+| `POST` | `/api/v1/account/transfer` | Spot, Funding, Margin ve Futures hesapları arasında iç para transferi gerçekleştirir. | `TransferResponse` |
+| `GET` | `/api/v1/settings/api-keys` | Kullanıcının kayıtlı borsa anahtarlarının maskeli durumunu döner. | `APIKeysStatusResponse` |
+| `POST` | `/api/v1/settings/api-keys` | Kullanıcı borsa API anahtarını şifreleyerek (`CryptoVault`) kalıcı kaydeder. | `APIKeysSaveResponse` |
 
 ---
 
@@ -155,13 +172,17 @@ Bu tablo, Analiz AI tarafından tanımlanan spesifikasyon maddeleri ile Coding A
 | :--- | :--- | :--- | :---: | :--- |
 | **KuCoin Borsa Bağlantısı** | Bölüm 1 & 2.1 | `src/modules/module1_account.py` | ✅ Tamamlandı | `ccxt.async_support.kucoin` başarıyla bağlandı. |
 | **Async / Await Entegrasyonu** | GLOBAL_STANDARDS | `src/modules/module1_account.py` | ✅ Tamamlandı | Tüm I/O işlemleri asenkron yapıda `await` ile çağrılıyor. |
-| **Zaman Senkronizasyonu (3sn Drift)** | Bölüm 3.1 | `src/utils/time_sync.py` | ✅ Tamamlandı | KuCoin sunucu zamanı ile yerel saat arasındaki 3000ms kayma (drift) kontrolü çalışıyor. |
+| **Zaman Senkronizasyonu (3sn Drift)** | Bölüm 3.1 | `src/utils/time_sync.py` | ✅ Tamamlandı | KuCoin sunucu zamanı ile yerel saat arasındaki 3000ms kayma kontrolü çalışıyor. |
 | **Bakiye Sorgulama Veri Yapısı** | Bölüm 3.2 | `src/modules/module1_account.py` | ✅ Tamamlandı | `free`, `used`, `total` dict yapısıyla doğrulanarak alınıyor. |
 | **Toplam Portföy (USDT) & Pay Hesabı** | Bölüm 3.2 | `src/modules/module1_account.py` | ✅ Tamamlandı | USDT toplamı ve her varlık için `portfolio_share_percent` hesaplanıyor. |
 | **WebSocket Canlı Bakiye Akışı** | Bölüm 3.3 | `src/modules/module1_account.py` | ✅ Tamamlandı | `ccxt.pro.kucoin` ile arka planda canlı bakiye stream ve önbellek desteği sağlandı. |
 | **API Yetki Denetimi (Permissions)** | Bölüm 3.1 | `src/modules/module1_account.py` | ✅ Tamamlandı | Read/Trade yetkisi denetleniyor, Withdrawal yetkisinde güvenlik uyarısı veriliyor. |
-| **.env ↔ config.py Uyumu** | Bölüm 2.1 | `src/config.py` | ✅ Tamamlandı | Tüm ortam değişkenleri (`HOST`, `DEFAULT_TRADING_MODE`, `DEFAULT_SYMBOL` vb.) senkronize edildi. |
-| **Birim Test Kapsamı & Doğruluğu**| GLOBAL_STANDARDS | `tests/test_module_1_account.py` | ✅ Tamamlandı | **29/29 birim test başarıyla geçiyor** (`run_tests.sh` %100 yeşil). |
+| **Tüm Hesap Tipleri Bakiyesi (Spot/Margin/Futures/Funding)** | Bölüm 3.4 | `src/modules/module1_account.py` | ✅ Tamamlandı | `trade`, `main`, `margin` ve `kucoinfutures` cüzdanları tek listede birleştirildi. |
+| **Hesap Bazlı Bakiye Kırılımı** | Bölüm 3.4 | `src/modules/module1_account.py` | ✅ Tamamlandı | `account_breakdown` ve `total_by_account` ile her hesap türünün toplam USDT'si ayrıştırıldı. |
+| **Hesap İçi Transfer Motoru** | Bölüm 3.6 | `src/modules/module1_account.py` | ✅ Tamamlandı | Spot↔Futures↔Margin her yöne serbest transfer `POST /api/v1/account/transfer` ile doğrulandı. |
+| **Şifreli Kasa & Kullanıcı İzolasyonu** | Bölüm 2.1 | `src/auth/crypto_vault.py`, `src/exchanges/factory.py` | ✅ Tamamlandı | AES-128 Fernet şifreleme ve request-scoped kullanıcı borsa fabrikası kuruldu. |
+| **Eldeki Varlık Maliyetleri (Holding Costs)** | Bölüm 3.5 | `src/modules/module1_account.py`, `src/modules/module3_orders.py` | ✅ Tamamlandı | Dolan emirlerden `avg_cost`, `total_cost`, `unrealized_pnl` portföye entegre edildi. |
+| **Birim Test Kapsamı & Doğruluğu**| GLOBAL_STANDARDS | `tests/test_module_1_account.py`, `tests/test_account_transfer.py` | ✅ Tamamlandı | **Tüm hesap testleri başarıyla geçiyor** (330/330 test %100 yeşil). |
 
 ---
 
@@ -174,8 +195,15 @@ Bu tablo, Analiz AI tarafından tanımlanan spesifikasyon maddeleri ile Coding A
 | **2026-09-17 21:04:11** | REST API endpoint tablosu ve Swagger modelleri eklendi. | Tamamlandı |
 | **2026-09-17 21:14:23** | `.env.example` senkronizasyonu tamamlandı. | Tamamlandı |
 | **2026-09-17 21:35:00** | Tamamlanma rozeti ve detaylı işlem günlüğü eklendi. | Tamamlandı |
-| **2026-09-17 22:06:00** | Rozet ayrımı (Spec %100 vs Kod %20) yapıldı ve Spesifikasyon ↔ Kod İzlenebilirlik Tablosu (Bölüm 7) eklendi. | Onaylandı |
-| **2026-09-19 22:00:00** | **Kodlama & Test Doğrulaması**: Coding AI tarafından kucoin async, drift kontrolü, bakiye dict, websocket stream ve yetki denetimi tamamlandı. 29/29 birim test başarıyla geçti. Rozet ve Traceability Matrix %100'e güncellendi. | **Kodlama & Test Tamamlandı (%100)** ✅ |
+| **2026-09-17 22:06:00** | Rozet ayrımı (Spec %100 vs Kod %20) yapıldı ve Spesifikasyon ↔ Kod İzlenebilirlik Tablosu eklendi. | Onaylandı |
+| **2026-09-19 22:00:00** | **Kodlama & Test Doğrulaması**: Coding AI tarafından kucoin async, drift kontrolü, bakiye dict, websocket stream ve yetki denetimi tamamlandı. 29/29 birim test geçti. | **Kodlama & Test Tamamlandı (%100)** ✅ |
+| **2026-09-20 19:46:00** | **Bakiyelere Tüm Hesap Tipleri Dahil Edildi**: Spot (`trade`), Funding (`main`), Margin (`margin`) ve KuCoin Futures cüzdanları tek portföyde birleştirildi ve arayüze `Hesap` sütunu eklendi. | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-21 13:32:00** | **Hesap Bazlı Kırılım**: `account_breakdown` ve `total_by_account` alanları eklenerek her cüzdan türünün USDT varlığı ayrıştırıldı. | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-25 16:30:00** | **Eldeki Varlıkların Alış Maliyeti**: `avg_cost`, `total_cost`, `unrealized_pnl` ve `pnl_percent` portföy varlıklarına entegre edildi. | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 00:48:00** | **Çok Kullanıcılı Şifreli Kasa & Request-Scoped Client**: Borsa anahtarları `CryptoVault` ile şifrelendi, `ExchangeClientFactory` ile request-scoped mimariye geçildi. | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 02:05:00** | **Kullanıcı Borsa API Anahtarı Yönetimi**: `GET/POST /api/v1/settings/api-keys` ile web üzerinden şifreli anahtar yönetimi tamamlandı. | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 03:33:00** | **Hesap İçi Transfer Motoru Tamamlandı**: `transfer_funds` ve `POST /api/v1/account/transfer` ile Spot, Funding, Margin ve Futures arasında çift yönlü transfer devreye alındı (toplam 326/326 test). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 13:40:00** | **Futures Pozisyon ve Bakiye Senkronizasyonu**: KuCoin Futures borsa kaldıracı ve marjin modu yapılandırması tamamlandı; toplam 330/330 test %100 yeşil. | **Onaylandı & Tamamlandı (%100) ✅** |
 
 
 

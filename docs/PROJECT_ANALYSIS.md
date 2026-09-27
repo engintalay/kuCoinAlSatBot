@@ -1,50 +1,37 @@
 # KuCoin Al-Sat Botu - Proje Analiz ve Tasarım Dokümanı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket, Çoklu Piyasa & Eğitici Analiz Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (180/180 Test %100 Yeşil, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-20 17:35:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Modüller, Ayarlar, Akıllı Paket, Çoklu Piyasa & Eğitici Analiz Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (330/330 Test %100 Yeşil, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-27 14:20:00 (+03:00)
 
 ## 1. Proje Genel Bakışı
-Bu doküman, KuCoin kripto para borsasında çalışacak modüler **Al-Sat Botu** uygulamasının mimarisini, veri akışını ve modül detaylarını içerir. 
-
-Proje, gelecekte yeni stratejiler ve özellikler eklenebilecek esnek ve modüler bir yapıda tasarlanmıştır.
-
----
-
-## 2. Modüler Yapı ve Faz Planı
-
-```
-+-----------------------------------------------------------------------+
-|                         KULLANICI ARAYÜZÜ / PANEL                     |
-+-----------------------------------------------------------------------+
-        |                                   |                    |
-        v                                   v                    v
-+-----------------------+   +-----------------------+   +-----------------------+
-|       MODÜL 1         |   |       MODÜL 2         |   |       MODÜL 3         |
-| KuCoin Bağlantısı &   |   |  Anlık Piyasa Verisi  |   |   Al-Sat Emirleri     |
-|    Hesap Durumu       |   |     ve Analiz         |   |     Entegrasyonu      |
-+-----------------------+   +-----------------------+   +-----------------------+
-        |                                   |                    |
-        +-----------------------------------+--------------------+
-                                            |
-                                            v
-                                 [ KuCoin API & WebSocket ]
-```
-
----
-
-### Modül 1: KuCoin API Entegrasyonu & Hesap Durumu
-**Amaca Uygunluk**: Kullanıcının KuCoin hesabını güvenli bir şekilde bağlamak ve bakiye/hesap durumunu anlık olarak görüntülemek.
-
-#### İşlevsel Gereksinimler:
-1. **API Anahtarı Yönetimi (.env Saklama)**:
-   - KuCoin `API Key`, `API Secret` ve `API Passphrase` bilgileri projenin kök dizinindeki `.env` dosyasında saklanacaktır.
-Proje; hesap doğrulama ve bakiye takibinden, canlı piyasa analizi ve göstergelere, akıllı otomatik seviye hesaplamalı paket emir yönetimine, çoklu kripto para (multi-coin) desteğine ve kapsamlı ayarlar paneline kadar uçtan uca bir al-sat otomasyonu sunar.
+Bu doküman, KuCoin kripto para borsasında çalışacak modüler **Al-Sat Botu** uygulamasının mimarisini, veri akışını ve modül detaylarını içerir. Proje; çok kullanıcılı kimlik doğrulama, hesap doğrulama ve bakiye takibinden, canlı piyasa analizi ve göstergelere, akıllı otomatik seviye hesaplamalı paket emir yönetimine, çoklu kripto para (multi-coin) desteğine ve kapsamlı ayarlar paneline kadar uçtan uca bir al-sat otomasyonu sunar.
 
 ---
 
 ## 2. Modüler Mimari ve İşlevsel Kapsam
 
-### Modül 1: KuCoin Bağlantısı, Kimlik Doğrulama ve Hesap Yönetimi
-**Amaca Uygunluk**: Borsa API'sine güvenli bağlanmak, yetkileri doğrulamak, hesap bakiyesini ve portföy dağılımını canlı olarak sorgulamak.
+```
++-----------------------------------------------------------------------+
+|                         KULLANICI ARAYÜZÜ / PANEL                     |
+|           (Web Dashboard / Login / 2FA / Analiz / Emirler / Ayarlar)   |
++-----------------------------------------------------------------------+
+        |                                   |                    |
+        v                                   v                    v
++-----------------------+   +-----------------------+   +-----------------------+
+|       MODÜL 1         |   |       MODÜL 2         |   |       MODÜL 3         |
+| KuCoin Bağlantısı,    |   |  Anlık Piyasa Verisi, |   |   Al-Sat Emirleri,    |
+| Çoklu Cüzdan & Transfer|  |  SMC & Analiz Motoru  |   |   Paket & TP/SL Motoru|
++-----------------------+   +-----------------------+   +-----------------------+
+        |                                   |                    |
+        +-----------------------------------+--------------------+
+                                            |
+                                            v
+                       [ KuCoin API & Canlı WebSocket /ws/live ]
+```
+
+---
+
+### Modül 1: KuCoin Bağlantısı, Kimlik Doğrulama, Çoklu Cüzdan ve Hesap Yönetimi
+**Amaca Uygunluk**: Borsa API'sine güvenli bağlanmak, kullanıcıları şifreli kasada (`CryptoVault`) izole etmek, yetkileri doğrulamak, hesap bakiyesini (Spot, Funding, Margin, Futures) ve portföy dağılımını canlı olarak sorgulamak, hesaplar arası iç transferleri yönetmek.
 
 #### İşlevsel Gereksinimler:
 1. **API Anahtarı Güvenliği**:
@@ -217,11 +204,14 @@ Kullanıcının yalnızca Spot piyasada değil, Vadeli ve Marjin piyasalarında 
 
 ## 4. Proje Dokümantasyon İndeksi (`docs/`)
 - [PROJECT_ANALYSIS.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/PROJECT_ANALYSIS.md): Genel proje mimarisi ve 3 modülün işlevsel özet analizi.
+- [USER_GUIDE.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/USER_GUIDE.md): Kapsamlı sistem kullanım kılavuzu, 2FA kurulumu, TP/SL, hesap transferi ve emir yönetimi.
 - [GLOBAL_STANDARDS.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/GLOBAL_STANDARDS.md): Tüm ekranlarda geçerli genel arayüz (UI/UX) düzeni, tema, bildirimler ve ortak hata yönetim standartları.
-- [MODULE_1_SPEC.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/MODULE_1_SPEC.md): Modül 1 (KuCoin Bağlantısı, .env Saklama ve Hesap Durumu) detaylı spesifikasyonu.
-- [MODULE_2_SPEC.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/MODULE_2_SPEC.md): Modül 2 (Canlı Piyasa Fiyatları ve Strateji Analiz Altyapısı) detaylı spesifikasyonu.
-- [MODULE_3_SPEC.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/MODULE_3_SPEC.md): Modül 3 (Al-Sat Emir Entegrasyonu, Risk ve Simülasyon) detaylı spesifikasyonu.
-- [workflow.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/workflow.md): Proje iş akışı, geliştirme fazları ve kontrol listesi.
+- [MODULE_1_SPEC.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/MODULE_1_SPEC.md): Modül 1 (KuCoin Bağlantısı, Çoklu Cüzdan, Bakiye Kırılımı ve İç Transfer) detaylı spesifikasyonu.
+- [MODULE_2_SPEC.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/MODULE_2_SPEC.md): Modül 2 (Canlı Piyasa Verileri, 10 Katmanlı İndikatör, WebSocket Live Ticker ve SMC Analiz Motoru) detaylı spesifikasyonu.
+- [MODULE_3_SPEC.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/MODULE_3_SPEC.md): Modül 3 (Al-Sat Emir Entegrasyonu, Futures Kaldıraç/Marjin, Pozisyona TP/SL Bağlama, Geçmiş Emirler ve Gerçekleşen PnL) detaylı spesifikasyonu.
+- [AUTH_MULTIUSER_PLAN.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/AUTH_MULTIUSER_PLAN.md): Kimlik doğrulama, çoklu kullanıcı, şifreli kasa (`CryptoVault`), TOTP 2FA ve yol haritası.
+- [BUG_REPORTS.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/BUG_REPORTS.md): Hata raporlama sistemi, kök neden analizleri ve kayıtlı sorun günlüğü.
+- [workflow.md](file:///home/engintalay/projects/kuCoinAlSatBot/docs/workflow.md): Proje iş akışı, geliştirme fazları ve zaman damgalı çalışma günlüğü.
 
 ---
 
@@ -236,15 +226,26 @@ Kullanıcının yalnızca Spot piyasada değil, Vadeli ve Marjin piyasalarında 
 | **2026-09-17 21:35:00** | Review düzeltmeleri tamamlandı, proje iskeleti standardı `src/` olarak teyit edildi, tamamlama rozeti ve log tablosu eklendi. | Tamamlandı |
 | **2026-09-17 22:06:00** | Rozet ayrımı (Tasarım %100 vs Kodlama %20) yapıldı ve güncellendi. | Onaylandı & Tamamlandı (%100) |
 | **2026-09-17 22:50:00** | Modül 2 analizi `crypto_indicators_coding_agent_reference.md` doğrultusunda 10 katmanlı indikatör mimarisi, SMC, MTF ve 0-100 composite scoring motoru ile senkronize edilerek genişletildi. | Onaylandı & Genişletildi (%100) |
-| **2026-09-20 01:00:00** | **Kullanım Kılavuzu Sayfası ve Bağlamsal Info Düğmeleri Eklendi**: Kullanıcı gereksinimi doğrultusunda ana sayfadan erişilebilir rehber sayfası/görünümü ve kritik arayüz öğelerine (Portföy, Mod, Panic Stop, Scoring, MTF, SMC, Emirler) öğretici `ℹ️` (Info) düğmeleri gereksinimi analiz dokümanına eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
-| **2026-09-20 01:05:00** | **Ayarlar Ekranı, Çoklu Coin, Akıllı Paket Emir & Dinamik Öneri Motoru Eklendi**: Ayarlar sekmesi (`⚙️ Ayarlar`), dinamik çoklu coin izleme/işlem listesi (Watchlist & KuCoin symbols), analiz motorundan otomatik Entry/TP1/TP2/SL seviye hesaplamalı akıllı paket emir iletimi ("🚀 Akıllı Emri İlet"), açık emir düzenleme (Edit/Amend) ve canlı piyasa durumuna göre akıllı güncelleme tavsiyeleri üreten Dinamik Öneri Motoru gereksinimleri analiz dokümanına eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
-| **2026-09-20 01:15:00** | **Kullanım Kılavuzu, Info Düğmeleri ve Ayarlar Paneli Kodlandı & Doğrulandı**: `view-guide` görünümü, 7 noktada bağlamsal `ℹ️` info butonu ve glass popover'lar, `view-settings` paneli, çoklu coin watchlist yönetimi ve SQLite kalıcılığı (`src/modules/settings.py`, 5 REST endpoint'i) kodlanıp 8 yeni test ile doğrulandı (toplam 137/137 test %100 yeşil, coverage %78). | **Onaylandı & Uygulandı (%100) ✅** |
-| **2026-09-20 01:30:00** | **Akıllı Paket Emir (Bracket Order) Kodlandı & Doğrulandı**: Analiz motoru seviye hesaplayıcısı (`get_trade_setup`: Entry, SL, TP1 %50, TP2 %50, R:R), `POST /orders/bracket` tek tıkla paket icra motoru ve UI formu 8 yeni test ile tamamlandı (toplam 145/145 test %100 yeşil). | **Onaylandı & Uygulandı (%100) ✅** |
-| **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11), Öneri Motoru (M3-C12) & İzleme Listesi Entegrasyonu Tamamlandı**: `amend_order` açık emir güncelleme, `RecommendationEngine` dinamik öneri sistemi ve Watchlist'in Analiz/Emir/Bracket formları ile tam iki yönlü etkileşimi (mini widget, datalist) 9 yeni birim test ile doğrulanarak tamamlandı (toplam 154/154 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
-| **2026-09-20 16:40:00** | **Sub-15m Zaman Dilimleri (1m/3m/5m), Çoklu Piyasa (Spot/Margin/Futures) & Seviyeli Mum Grafiği Tamamlandı**: 15m altı zaman dilimi desteği (`1m`, `3m`, `5m`), KuCoin Futures USDT-M swap mum ve fonlama/OI veri entegrasyonu, spot/marjin/vadeli çoklu analiz ve analiz ekranı seviye bindirmeli (Entry/SL/TP1/TP2/Liq) SVG mum grafiği 11 yeni test (`test_market_types.py`, `test_frontend.py`) ile doğrulanarak tamamlandı (toplam 165/165 test %100 yeşil, %80 coverage). | **Onaylandı & Tamamlandı (%100) ✅** |
-| **2026-09-20 16:45:00** | **Sade Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme Motoru Tamamlandı**: Analiz ekranı teknik jargondan arındırılarak üst kısma sade dille durum, eylem tavsiyesi ve risk seviyesi kartı eklendi. Gerekçeler ve uyarılar her biri için "İndikatör", "Neden Oldu?", "Neyi Gösterir?", "Neye Sebep Olur?" ve "Korunma Tavsiyesi" alanlarını içeren eğitici kartlarla zenginleştirildi; Katman 9 piyasa rejimi tamamlandı. | **Onaylandı & Tamamlandı (%100) ✅** |
-| **2026-09-20 17:15:00** | **Yan Yana 4-Sütunlu Eğitici Gerekçe Tablosu & Katman 9 Canlı Widget'ı Tamamlandı**: Analiz ekranındaki gerekçeler masaüstü ve mobilde "İndikatör & Sinyal", "Neden Oldu? (Koşul)", "İndikatör Neyi Gösterir?", "Neye Sebep Olur?" başlıklarıyla 4 sütunlu yan yana tablo düzenine kavuşturuldu. Katman 9 CoinGecko rejim verileri ön yüze entegre edildi (toplam 174/174 test %100 yeşil, %81 coverage). | **Onaylandı & Tamamlandı (%100) ✅** |
-| **2026-09-20 17:35:00** | **Hata Raporlama (Issue Tracker), Sistem Teşhis Paneli & Koin Combo Çözümü Tamamlandı**: Kullanıcı talebiyle bağımsız Hata Raporlama bölümü (`#view-issues`), SQLite kalıcı veri tablosu (`bug_reports`), REST API (`/issues`, `/system/diagnostics`) ve teşhis log konsolu devreye alındı. Kullanıcının bildirdiği 1. Hata (Analiz ekranındaki koin combo'sunda yalnızca BTC olması) sisteme tohumlandı ve çözüldü: gerçek açılır kutu (`<select id="analysis-symbol-select">`), Watchlist + Popüler 20 KuCoin çifti optgroup'ları ve tek tıkla analiz yapan hızlı koin çipleri (`quick-chips`) eklendi. (Toplam 180/180 test %100 yeşil, %81 coverage). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 01:00:00** | **Kullanım Kılavuzu Sayfası ve Bağlamsal Info Düğmeleri Eklendi**: Kullanıcı gereksinimi doğrultusunda ana sayfadan erişilebilir rehber sayfası/görünümü ve kritik arayüz öğelerine öğretici `ℹ️` (Info) düğmeleri eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
+| **2026-09-20 01:05:00** | **Ayarlar Ekranı, Çoklu Coin, Akıllı Paket Emir & Dinamik Öneri Motoru Eklendi**: Ayarlar sekmesi (`⚙️ Ayarlar`), dinamik çoklu coin izleme/işlem listesi (Watchlist & KuCoin symbols), analiz motorundan otomatik Entry/TP1/TP2/SL seviye hesaplamalı akıllı paket emir iletimi, açık emir düzenleme ve Dinamik Öneri Motoru eklendi. | **Onaylandı & Genişletildi (%100) ✅** |
+| **2026-09-20 01:15:00** | **Kullanım Kılavuzu, Info Düğmeleri ve Ayarlar Paneli Kodlandı & Doğrulandı**: `view-guide`, 7 noktada `ℹ️` info popover, `view-settings` paneli, çoklu coin watchlist ve SQLite kalıcılığı kodlanıp 8 yeni test ile doğrulandı (toplam 137/137 test %100 yeşil). | **Onaylandı & Uygulandı (%100) ✅** |
+| **2026-09-20 01:30:00** | **Akıllı Paket Emir (Bracket Order) Kodlandı & Doğrulandı**: Analiz motoru seviye hesaplayıcısı (`get_trade_setup`), `POST /orders/bracket` tek tıkla paket icra motoru ve UI formu 8 yeni test ile tamamlandı (toplam 145/145 test %100 yeşil). | **Onaylandı & Uygulandı (%100) ✅** |
+| **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11), Öneri Motoru (M3-C12) & İzleme Listesi Entegrasyonu Tamamlandı**: `amend_order` açık emir güncelleme, `RecommendationEngine` dinamik öneri sistemi ve Watchlist etkileşimi tamamlandı (toplam 154/154 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 16:40:00** | **Sub-15m Zaman Dilimleri (1m/3m/5m), Çoklu Piyasa (Spot/Margin/Futures) & Seviyeli Mum Grafiği Tamamlandı**: 15m altı zaman dilimi desteği (`1m`, `3m`, `5m`), KuCoin Futures USDT-M swap mumları ve seviye bindirmeli SVG mum grafiği tamamlandı (toplam 165/165 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 16:45:00** | **Sade Piyasa Özeti ve 4-Boyutlu Eğitici Gerekçelendirme Motoru Tamamlandı**: Analiz ekranı teknik jargondan arındırılarak sade durum ve eylem tavsiyesi kartı eklendi. Gerekçeler 4 boyutta eğitici kartlarla zenginleştirildi; Katman 9 piyasa rejimi tamamlandı. | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 17:15:00** | **Yan Yana 4-Sütunlu Eğitici Gerekçe Tablosu & Katman 9 Canlı Widget'ı Tamamlandı**: Analiz ekranındaki gerekçeler 4 sütunlu yan yana tablo düzenine kavuşturuldu. Katman 9 CoinGecko rejim verileri ön yüze entegre edildi (toplam 174/174 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-20 17:35:00** | **Hata Raporlama (Issue Tracker), Sistem Teşhis Paneli & Koin Combo Çözümü Tamamlandı**: Bağımsız Hata Raporlama bölümü (`#view-issues`), SQLite kalıcı veri tablosu (`bug_reports`), REST API ve teşhis log konsolu devreye alındı. Koin combo kutusu ve hızlı çipleri eklendi (toplam 180/180 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-21 21:30:00** | **Açık Emirlerde Anlık Fiyat & Fiyat Farkı Gösterimi**: `_attach_current_prices` önbellek destekli canlı fiyat iliştirme motoru yazıldı. Açık emirler tablosuna "Emir Fiyatı", "Anlık Fiyat" ve "Fark (%)" rozetleri eklendi (toplam 202/202 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-21 21:42:00** | **Giriş Fiyatları, Stop Fiyatları & Açık Pozisyonlar Paneli**: `get_positions` motoru canlı futures ve simülasyon pozisyonlarını anlık değer ve PnL ile listeledi. Emirler ekranına "Açık Pozisyonlar (Aktif İşlemler)" tablosu eklendi (toplam 205/205 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-23 19:41:00** | **Gerçekleşen Kâr/Zarar (Realized PnL) Raporlama Motoru**: Emir geçmişinden ortalama maliyet yöntemiyle net realize kâr/zarar ve komisyon hesaplayan motor ve bağımsız "💰 Kar / Zarar" arayüzü kodlandı (toplam 210/210 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-24 20:56:00** | **Bollinger Bantları Puanlama Katmanı**: Bollinger %B ile aşırı alım (+8 boğa) ve aşırı satım (+8 ayı) puanlaması eklendi; maksimum puan 88 (spot) / 98 (futures) olarak güncellendi (toplam 216/216 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-25 16:30:00** | **Geçmiş Tüm Emirler Tablosu & Varlık Maliyetleri (Holding Costs)**: Dolan emirlerden ağırlıklı ortalama maliyet (`avg_cost`) ve eldeki varlıkların güncel değeri hem portföyde hem pozisyonlarda gösterildi. Geçmiş emirler tablosu eklendi (toplam 224/224 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-25 17:15:00** | **Analiz Ekranında WebSocket Canlı Fiyat Paneli & Dinamik Abonelik**: `/ws/live` çift yönlü dinleme ve anlık push akışı; yanıp sönen fiyat flaşları ve trade setup seviye mesafeleri paneli tamamlandı (toplam 228/228 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 00:48:00** | **Çok Kullanıcılı Kimlik Doğrulama, TOTP 2FA ve Kasa (`CryptoVault`)**: Master-key Fernet kasa, bcrypt şifre, pyotp TOTP, brute-force kilitleme, yerel ağ /24 istisnası, session cookie ve login ekranı tamamlandı (toplam 299/299 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 02:05:00** | **Kullanıcı Bazlı Borsa API Anahtarları Arayüzü**: Ayarlar ekranında her kullanıcının kendi borsa anahtarlarını maskeli görüp şifreli kaydedebileceği arayüz kodlandı (toplam 306/306 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 02:18:00** | **Kullanıcı-Yönetimli 2FA (QR Kod ile Opt-in)**: CLI kurulumunda 2FA'nın opt-in hale getirilmesi, Ayarlar ekranında QR kod ile 2FA kurma ve devre dışı bırakma özelliği tamamlandı (toplam 317/317 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 03:33:00** | **Hesaplar Arası İç Para Transferi (Spot ↔ Margin ↔ Futures ↔ Funding)**: ccxt transfer entegrasyonu, hesap tipi eşleme, doğrulama kuralları ve Hesap ekranı transfer kartı tamamlandı (toplam 326/326 test %100 yeşil). | **Onaylandı & Tamamlandı (%100) ✅** |
+| **2026-09-27 13:40:00** | **Futures Marjin Modu/Kaldıraç & Pozisyona TP/SL Bağlama Motoru**: KuCoin Futures'ta emir öncesi `set_leverage` ve `set_margin_mode` borsa yapılandırması entegre edildi (330005 ve cross 3x kilitlenmesi çözüldü). Canlı pozisyona anlık `reduceOnly` TP limit ve SL market tetikleyici bağlayan `set_position_tp_sl` motoru ve arayüzde "🛡️ TP/SL" modalı eklendi. Tablolara `[CROSS]` / `[ISOLATED]` rozetleri yerleştirildi. Toplam **330/330 test %100 yeşil**. | **Onaylandı & Tamamlandı (%100) ✅** |
 
 
 

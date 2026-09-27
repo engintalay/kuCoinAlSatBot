@@ -1,8 +1,8 @@
 # KuCoin Al-Sat Botu — Hata Raporlama ve Sorun Takip Sistemi (Bug Reports & Diagnostics)
 
 > **Modül Durumu:** %100 Tamamlandı (Canlı Arayüz + SQLite Veritabanı + REST API + Teşhis Konsolu) ✅  
-> **Test Durumu:** 181 / 181 Test %100 Yeşil (%81 Coverage) ✅  
-> **Son Güncelleme:** 2026-09-20 17:42:00 (+03:00)
+> **Test Durumu:** 330 / 330 Test %100 Yeşil (%81 Coverage) ✅  
+> **Son Güncelleme:** 2026-09-27 14:20:00 (+03:00)
 
 ---
 
@@ -111,4 +111,92 @@ CREATE TABLE IF NOT EXISTS bug_reports (
 - **Doğrulama**:
   - `tests/test_bug_reports.py` içerisine `test_settings_live_mode_switch` testi eklendi.
   - Proje genelinde 181 / 181 test %100 yeşil, test kapsamı %81.
+
+---
+
+### 📌 Hata #3 (Issue #3)
+- **Başlık**: Ayarlar ekranında kısmi değişiklik yapıldığında diğer ayarların sıfırlanması
+- **Kategori**: `settings` (Ayarlar / Kalıcılık)
+- **Önem Derecesi**: `high` (Yüksek)
+- **Durum**: `resolved` (Çözüldü) ✅
+- **Kök Neden Analizi**:
+  - `SettingsManager.save()` metodu her çağrıda diskteki mevcut ayarları okumak yerine `DEFAULT_SETTINGS` sözlüğünden başlayarak yalnızca gelen payload anahtarlarını yazıyordu.
+  - Örneğin yalnızca `default_mode` değiştirildiğinde `watchlist` ve `default_symbol` gibi kullanıcı tercihleri varsayılan değerlere sıfırlanıyordu.
+- **Uygulanan Düzeltme & Çözüm**:
+  - `save()` fonksiyonu diskteki mevcut ayarları (`_read_raw`) okuyup üzerine merge edecek şekilde güncellendi; `risk` gibi iç içe dict yapıları derin birleştirme (deep merge) ile korundu.
+- **Doğrulama**:
+  - `test_settings.py` içerisine kısmi güncelleme regresyon testi eklendi.
+
+---
+
+### 📌 Hata #4 (Issue #4)
+- **Başlık**: KuCoin Futures paket emrinde "kucoinfutures does not have market symbol PEPE/USDT" hatası
+- **Kategori**: `orders` (Futures / Sembol Biçimi)
+- **Önem Derecesi**: `critical` (Kritik)
+- **Durum**: `resolved` (Çözüldü) ✅
+- **Kök Neden Analizi**:
+  - KuCoin Futures USDT-M sözleşmeleri ccxt üzerinde `BASE/QUOTE:SETTLE` formatında tanımlıdır (`PEPE/USDT:USDT`).
+  - Spot sembolü doğrudan vadeli borsaya gönderildiğinde borsa sembolü tanıyamayıp işlemi reddediyordu.
+- **Uygulanan Düzeltme & Çözüm**:
+  - `_normalize_symbol()` metodu yazılarak vadeli piyasalarda `:SETTLE` eki otomatik denetlendi ve borsanın market sözlüğüne göre doğrulandı.
+
+---
+
+### 📌 Hata #5 (Issue #5)
+- **Başlık**: Futures 5x izole seçildiğinde 3x cross açılması ve 330005 marjin modu uyuşmazlığı
+- **Kategori**: `orders` (Futures / Marjin & Kaldıraç)
+- **Önem Derecesi**: `critical` (Kritik)
+- **Durum**: `resolved` (Çözüldü) ✅
+- **Kök Neden Analizi**:
+  1. KuCoin Futures'ta marjin modu (`CROSS` vs `ISOLATED`) emir bazında değil, borsadaki sembol ayarı düzeyindedir. Borsa ayarı CROSS iken ISOLATED parametresiyle emir verilirse borsa `330005: "The order's margin mode does not match the selected one"` hatası fırlatır.
+  2. Eski kod bu hatayı sessizce yakalayıp emri otomatik `cross` modunda yeniden gönderiyordu.
+  3. KuCoin cross moddayken `create_order` içindeki `params['leverage']` parametresini tamamen yoksayar ve borsadaki cross kaldıraç ayarını (kullanıcı hesabında 3x idi) zorunlu kılar.
+  4. Açık pozisyon veya bekleyen emir varken borsa marjin modu değişimini (`CROSS` $\leftrightarrow$ `ISOLATED`) kesinlikle reddeder (`500020`).
+- **Uygulanan Düzeltme & Çözüm**:
+  1. `_create_live_order` öncesinde borsanın `set_leverage(lev, symbol)` ve `set_margin_mode(mode, symbol)` API metotları çağrılarak borsadaki sembol yapılandırması güncellendi.
+  2. Borsa mevcut pozisyon sebebiyle izole moda geçişe izin vermezse kullanıcıya detaylı bir `warning` mesajı iletildi.
+  3. Tablolara `[CROSS]` ve `[ISOLATED]` rozetleri eklendi.
+  4. Canlıdaki SUI pozisyonunun kaldıracı borsada doğrudan 5x'e yükseltildi.
+
+---
+
+### 📌 Hata #6 (Issue #6)
+- **Başlık**: Take profit ve stop loss emirlerinin borsaya geçmemesi
+- **Kategori**: `orders` (Futures / TP & SL İcrası)
+- **Önem Derecesi**: `critical` (Kritik)
+- **Durum**: `resolved` (Çözüldü) ✅
+- **Kök Neden Analizi**:
+  - KuCoin Futures'ta stop emirleri standart emir defterine değil, borsanın koşullu tetikleme motoruna (`/api/v1/st-orders` ve `/api/v1/stop-order`) `stopPrice`, `triggerStopUpPrice`, `triggerStopDownPrice` ve `reduceOnly=True` bayraklarıyla iletilmelidir.
+  - Açıkta duran bir pozisyona sonradan TP/SL bağlama imkanı bulunmuyordu.
+- **Uygulanan Düzeltme & Çözüm**:
+  - `KuCoinOrders.set_position_tp_sl()` motoru ve `POST /api/v1/orders/position/set-tp-sl` uç noktası yazıldı.
+  - Açık pozisyon büyüklüğü kadar `reduceOnly` TP limit ve SL market tetikleyici emirleri KuCoin stop-order uç noktasına bağlandı.
+  - Açık Pozisyonlar tablosundaki her pozisyona tek tıkla hedef ve stop belirleyen **"🛡️ TP/SL"** modal butonu eklendi.
+
+---
+
+### 📌 Hata #7 (Issue #7)
+- **Başlık**: Portföyde yalnızca Spot/Funding görünmesi ve hesaplar arası transfer eksikliği
+- **Kategori**: `account` (Hesap / Çoklu Cüzdan & Transfer)
+- **Önem Derecesi**: `high` (Yüksek)
+- **Durum**: `resolved` (Çözüldü) ✅
+- **Kök Neden Analizi**:
+  - Bakiye sorguları yalnızca spot ve funding cüzdanlarını tarıyordu; marjin ve futures cüzdanları listelenmiyordu.
+- **Uygulanan Düzeltme & Çözüm**:
+  - `get_balances` Spot, Funding, Margin ve KuCoin Futures cüzdanlarını birleştirecek şekilde genişletildi.
+  - `transfer_funds()` ve `POST /api/v1/account/transfer` yazılarak tüm cüzdanlar arasında iki yönlü transfer devreye alındı.
+
+---
+
+### 📌 Hata #8 (Issue #8)
+- **Başlık**: Dashboard ekranında piyasa rejim ve izleme listesi widget'larının "Yükleniyor"da takılması
+- **Kategori**: `frontend` (Dashboard / Asenkron Yükleme)
+- **Önem Derecesi**: `medium` (Orta)
+- **Durum**: `resolved` (Çözüldü) ✅
+- **Kök Neden Analizi**:
+  - `apiGet` geçersiz yanıtta throw ediyordu ve sıralı `await` çağrısı tek bir başarısız istekte (CoinGecko rate limit vb.) sonraki tüm widget'ları kilitliyordu.
+- **Uygulanan Düzeltme & Çözüm**:
+  - `apiGet` `try/catch` + `{success:false,error}` korumasına alındı; `refreshDashboard` `Promise.allSettled` ile widget izolasyonuna kavuşturuldu.
+- **Doğrulama**:
+  - Toplam 330/330 test %100 yeşil.
 

@@ -193,16 +193,21 @@ Bot, KuCoin'in sunduğu üç farklı piyasa yapısıyla tam entegre çalışır:
 - **Güvenlik:** Teminat oranı KuCoin risk protokolleri çerçevesinde izlenir.
 
 ### 3. Futures (Vadeli İşlemler - USDT-M)
-- **İşlem Mantığı:** KuCoin sürekli vadeli işlem sözleşmeleridir. Standart sembol biçimi `BASE/QUOTE:SETTLE` (örnek: `BTC/USDT:USDT`) şeklindedir.
-- **Özellikler:**
-  - **Kaldıraç:** Sözleşme büyüklüğüne göre seçilen kaldıraç oranı (1x - 100x).
-  - **Fonlama Oranı (Funding Rate):** Spot ve vadeli fiyat farkını dengeleyen 8 saatlik fonlama ödemeleri analiz motoruna dahil edilir.
-  - **Açık Pozisyon (Open Interest):** Vadeli tahtadaki açık kontrat sayısı ve kurumsal likidite yoğunluğu takip edilir.
-  - **Tasfiye Fiyatı (Liquidation Price):** Teminatın sıfırlanacağı risk sınırı mum grafiğinde mor çizgiyle net olarak gösterilir.
+- **İşlem Mantığı:** KuCoin sürekli vadeli işlem sözleşmeleridir. Standart sembol biçimi `BASE/QUOTE:SETTLE` (örnek: `BTC/USDT:USDT`, `SUI/USDT:USDT`) şeklindedir.
+- **Marjin Modu (`ISOLATED` vs `CROSS`):**
+  - KuCoin Futures'ta marjin modu emre özel değil, **hesabınızın o semboldeki borsa yapılandırmasına** bağlıdır.
+  - Açık pozisyon veya bekleyen emir varken borsa marjin modunun değiştirilmesine izin vermez (`500020: You currently have open positions or orders`).
+  - Botumuz, yeni bir emir iletmeden önce borsa API'si üzerinden `venue.set_margin_mode(mode, symbol)` çağrısı yaparak sembol yapılandırmasını seçiminize getirmeye çalışır. Eğer borsa mevcut pozisyon sebebiyle izin vermezse işlem borsa modunda güvenle tamamlanır ve arayüze bilgilendirici bir uyarı yansıtılır.
+- **Kaldıraç Yönetimi (`set_leverage`):**
+  - KuCoin Futures **CROSS** marjin modundayken, emir parametresindeki kaldıracı yoksayar ve hesabınızda tanımlanmış cross kaldıraç katsayısını uygular.
+  - Bu sebeple sistem, emir iletilmeden hemen önce borsa tarafında `venue.set_leverage(leverage, symbol)` çağrısını otomatik olarak gerçekleştirerek kaldıracınızı (örneğin 5x) borsada günceller.
+  - Tablolarda her pozisyon ve emrin yanında `Futures 5x [CROSS]` veya `Futures 5x [ISOLATED]` rozetleri açıkça gösterilir.
+- **Fonlama Oranı (Funding Rate) & Açık Pozisyon (OI):** Vadeli tahtadaki fonlama maliyeti ve açık sözleşme hacmi analiz motoruna entegre edilmiştir.
+- **Tasfiye Fiyatı (Liquidation Price):** Teminatın sıfırlanacağı risk sınırı mum grafiğinde mor çizgiyle net olarak gösterilir.
 
 ---
 
-## 6. Çoklu Cüzdan, Kullanıcı İzolasyonu ve Bakiye Kırılımı
+## 6. Çoklu Cüzdan, Hesap İçi Transfer ve Varlık Maliyetleri
 
 KuCoin borsasında tek bir hesap altında bağımsız cüzdan hesapları bulunur. Sistem, oturum açan kullanıcının şifreli anahtarlarını çözerek yalnızca o kullanıcıya ait bakiye kırılımını listeler:
 
@@ -217,10 +222,18 @@ KuCoin borsasında tek bir hesap altında bağımsız cüzdan hesapları bulunur
 └─────────────────┴──────────────────┴────────────────────────┘
 ```
 
-Arayüzdeki **"Detaylı Hesap Kırılımı"** paneli sayesinde:
-- Hangi cüzdanda kaç USDT serbest (free), kaç USDT emirde kilitli (used) olduğu anlık listelenir.
-- Bir piyasada emir verirken yetersiz bakiye uyarısı alırsanız, varlıklarınızın hangi cüzdanda kaldığını tek bakışta görebilirsiniz.
-- Kullanıcı İzolasyonu sayesinde bir kullanıcının emirleri ve bakiyesi diğer kullanıcılar tarafından kesinlikle görüntülenemez.
+### 1. Detaylı Hesap Kırılımı
+- Hangi cüzdanda kaç USDT serbest (free), kaç USDT emirde kilitli (used) olduğu anlık listelenir (`total_by_account`).
+- Varlık tablosunda her kripto paranın hangi cüzdanlarda bulunduğu (`Spot`, `Futures`, `Funding`, `Margin`) renkli rozetlerle belirtilir.
+
+### 2. Hesaplar Arası İç Para Transferi (`🔄 Transfer`)
+- KuCoin cüzdanlarınız arasında (Spot $\leftrightarrow$ Futures, Funding $\leftrightarrow$ Spot, Margin vb.) sıfır komisyonla ve anında bakiye aktarabilirsiniz.
+- **Kullanım:** Hesap sekmesindeki **"🔄 Hesaplar Arası Transfer"** formundan para birimini (örn. USDT), miktarı, kaynak cüzdanı ve hedef cüzdanı seçip **"Transfer Et"** butonuna basmanız yeterlidir.
+- Transfer sonrasında portföy bakiyeleriniz ve hesap kırılımınız anında yenilenir.
+
+### 3. Varlık Maliyetleri (Kaça Mal Oldu / Holding Costs)
+- Dolan alış ve satış emirlerinizden hareketle elinizdeki her spot kripto paranın ağırlıklı ortalama alış maliyeti (`avg_cost`) ve toplam maliyeti (`total_cost`) hesaplanır.
+- Anlık piyasa fiyatıyla karşılaştırılarak gerçekleşmemiş kâr/zarar tutarı (`unrealized_pnl`) ve yüzdesi (`pnl_percent`) hesap tablosuna iliştirilir.
 
 ---
 
@@ -338,24 +351,40 @@ $$\text{R:R Oranı} = \frac{\text{Beklenen Ortalama Kazanç}}{\text{Göze Alına
 
 ---
 
-## 12. Açık Pozisyonlar ve Canlı Emir Takip Ekranı
+## 12. Açık Pozisyonlar, Geçmiş Emirler ve Kar/Zarar Takip Ekranları
 
-Emirler sekmesi iki ana yönetim panelinden oluşur:
+Emirler sekmesi ve finansal raporlama modülü, aktif ve geçmiş işlemlerinizi tam şeffaflıkla yönetmenizi sağlar:
 
 ### 1. Açık Pozisyonlar Kartı (`#card-positions`)
-- **Giriş Fiyatı:** Pozisyonun açıldığı ortalama maliyet.
-- **Anlık Fiyat:** KuCoin canlı tahtasındaki son işlem fiyatı.
+- **Sembol & Piyasa Rozetleri:** Parite adı, piyasa türü, kaldıraç ve marjin modu rozeti (örn: `Futures 5x [CROSS]` veya `Futures 5x [ISOLATED]`).
+- **Yön (Side):** `LONG` (Yeşil) veya `SHORT` (Kırmızı).
+- **Miktar & Giriş Fiyatı:** Pozisyonun kontrat/kripto büyüklüğü ve açıldığı ortalama maliyet.
+- **Toplam Maliyet & Güncel Değer:** Pozisyonun açılış tutarı ve anlık piyasa fiyatına göre güncel dolar değeri.
 - **Stop Fiyatı & Mesafe:** Stop seviyeniz ve fiyata olan yüzde uzaklığı (örn. `-1.85%`).
 - **Hedefler (TP1 / TP2):** Pozisyon için belirlenen kâr alma fiyat seviyeleri.
 - **Kâr / Zarar (PnL):** Gerçekleşmemiş net kâr/zarar durumu (hem USDT değeri hem de yeşil/kırmızı yüzde rozeti olarak).
-- **🛡️ TP/SL Belirle Butonu:** Açıkta duran veya stop/hedef emri eksik kalmış herhangi bir pozisyonunuza sonradan tek tıkla TP ve SL bağlamanızı sağlar. Açılan pencerede otomatik +%2/-%1, +%4/-%2 hazır yüzdeleri kullanabilir veya istediğiniz seviyeleri elle girebilirsiniz.
+- **🛡️ TP/SL Belirle Butonu:** Açıkta duran veya stop/hedef emri eksik kalmış herhangi bir pozisyonunuza sonradan tek tıkla TP ve SL bağlamanızı sağlar. Açılan pencerede otomatik +%2/-%1, +%4/-%2 hazır yüzdeleri kullanabilir veya istediğiniz seviyeleri elle girebilirsiniz. KuCoin'in yerel stop-order tetikleme uç noktasına `reduceOnly: True` bayrağı ile anında iletilir.
 
-### 2. Açık Emirler Tablosu
-- **Piyasa Türü:** `Spot`, `Margin` veya `Futures` rozeti.
-- **Bacak Rolü:** Emrin niteliği (`🎯 TP1`, `🎯 TP2`, `🛑 STOP LOSS`, `🔵 Giriş`).
-- **Anlık Fiyat & Fark Rozeti:** Emrin gerçekleşmesi veya stopun tetiklenmesi için piyasa fiyatının kaç yüzde uzaklıkta olduğunu dinamik renklerle gösterir.
+### 2. Açık Emirler Tablosu (`#open-orders-table`)
+- **Piyasa Türü:** `Spot`, `Margin` veya `Futures` rozeti ile birlikte kaldıraç ve marjin modu bilgisi.
+- **Bacak Rolü:** Emrin niteliği (`🎯 TP1`, `🎯 TP2`, `🛑 STOP LOSS`, `🚀 GİRİŞ`).
+- **Giriş ve Stop Fiyatları:** Emrin ait olduğu pozisyonun maliyet ve stop koordinatları.
+- **Emir Fiyatı, Anlık Fiyat & Fark Rozeti:** Hedef fiyata göre anlık piyasa fiyatının nerede olduğunu ve tetiklenmeye kalan yüzde farkını renkli rozetlerle (`diff-badge`) gösterir.
 - **🔄 Anlık Yenile Butonu:** Tahta verilerini ve açık stop emirlerini gecikmesiz tazelemek için kullanılır.
-- **İptal & Düzenle (Amend):** Bekleyen limit ve stop emirlerinizi piyasa koşullarına göre anında iptal edebilir veya fiyatını güncelleyebilirsiniz.
+- **İptal & Düzenle (Amend):** Bekleyen limit ve stop emirlerinizi piyasa koşullarına göre anında iptal edebilir veya fiyatını/miktarını güncelleyebilirsiniz.
+
+### 3. Geçmiş Emirler Tablosu (`#order-history-table`)
+- Emirler ekranının alt kısmında yer alır. Dolan veya kapanan tüm emirlerinizi (Spot, Margin, Futures) tarih/saat damgasıyla listeler.
+- Sembol, Alış/Satış yönü, emir tipi (Market/Limit), dolan miktar, gerçekleşen ortalama fiyat, toplam USDT işlem hacmi ve başarı durumu (`Dolan`, `İptal`) görüntülenir.
+- Üst filtre kutusu ile sembol bazlı arama yapabilir ve **"🔄 Yenile"** butonuyla geçmişi tazeleyebilirsiniz.
+
+### 4. 💰 Kar / Zarar (PnL) Raporu Ekranı (`#view-pnl`)
+- Sol menüdeki **"💰 Kar / Zarar"** sekmesinden erişilir.
+- Emir geçmişinizdeki tüm dolan işlemleri sembol bazında **ağırlıklı ortalama maliyet (Average Cost)** yöntemiyle hesaplar:
+  * **Net Gerçekleşen Kâr/Zarar (Realized PnL):** Kasaya giren veya çıkan net USDT kâr/zararı (büyük yeşil/kırmızı gösterge).
+  * **Ödenen Toplam Komisyon:** Borsaya ödenen net işlem ücretleri.
+  * **Toplam İşlem Hacmi:** Tamamlanan işlemlerin toplam USDT cirosu.
+  * **Sembol Bazlı Detay Tablosu:** Her bir kripto çifti için kaç alış/satış yapıldığı, ödenen komisyon, realize kâr ve halen açıkta duran net miktar (`open_qty`) raporlanır.
 
 ---
 

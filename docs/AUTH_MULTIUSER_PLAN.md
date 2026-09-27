@@ -1,6 +1,6 @@
 # Kimlik Doğrulama, Çok Kullanıcı, Transfer & Binance — Yol Haritası
 
-> **Durum:** Faz 1 TAMAMLANDI ✅ | **Son Güncelleme:** 2026-09-27
+> **Durum:** Faz 1 & Faz 2 TAMAMLANDI ✅ (330/330 Test %100 Yeşil) | **Son Güncelleme:** 2026-09-27 14:20:00 (+03:00)
 
 ## Faz 1 Tamamlanma Özeti (Auth & Multi-user)
 - ✅ CryptoVault (master key, Fernet) — `src/auth/crypto_vault.py`
@@ -12,7 +12,8 @@
 - ✅ Kullanıcı-bazlı ayarlar (`user_settings`) — `src/modules/settings.py`
 - ✅ Admin CLI (setup/reset-password/migrate-env) — `src/auth/cli.py`
 - ✅ Frontend giriş ekranı — `static/login.html`, `static/js/login.js`, dashboard entegrasyonu
-- **299/299 test %100 yeşil, %81 coverage.** Uçtan uca doğrulandı (admin oluştur→TOTP login→korumalı endpoint→reset ile oturum düşme).
+- ✅ Kullanıcı-yönetimli QR kodlu 2FA (opt-in) — `src/auth/auth_service.py`, `static/js/app.js`
+- **330/330 test %100 yeşil, %81 coverage.** Uçtan uca doğrulandı (admin oluştur→TOTP login→korumalı endpoint→reset ile oturum düşme).
 
 ## Onaylanan Kararlar
 
@@ -46,7 +47,7 @@
 - Uzun vadeli. Bu turda dokunulmaz. Kod borsa-agnostik hale getirilecek (exchange adapter/factory), sonra Binance tam entegrasyon.
 
 ## Yol Haritası (fazlar; her faz testler yeşil olunca bir sonrakine geçilir)
-1. **Faz 1 — Auth & Multi-user:** kullanıcı/şifre + TOTP, session, brute-force+kilitleme, yerel-ağ istisnası, master-key şifreli API deposu, request-scoped client, kullanıcı-bazlı ayarlar, admin CLI (setup/reset/migrate-env), giriş ekranı. **(AKTİF)**
+1. **Faz 1 — Auth & Multi-user:** kullanıcı/şifre + TOTP, session, brute-force+kilitleme, yerel-ağ istisnası, master-key şifreli API deposu, request-scoped client, kullanıcı-bazlı ayarlar, admin CLI (setup/reset/migrate-env), giriş ekranı. ✅ TAMAMLANDI (299/299 test)
 2. **Faz 2 — Hesap içi transfer:** Spot↔Futures↔Margin tüm yönler, sonrası bakiye yenileme. ✅ TAMAMLANDI (transfer_funds + POST /account/transfer + Hesap ekranı formu; 326/326 test)
 3. **Faz 3 — Dondurma + e-posta:** 2 günlük işlem dondurma, kilit/kurtarma e-posta bildirimleri.
 4. **Faz 4 — Binance / çoklu borsa:** exchange adapter soyutlaması + Binance entegrasyonu.

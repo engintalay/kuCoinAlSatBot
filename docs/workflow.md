@@ -1,6 +1,6 @@
 # KuCoin Al-Sat Botu — Workflow & Geliştirme Planı
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Hata Raporlama + Emir/Bakiye/Pozisyon/PnL + **Faz 1: Çok Kullanıcılı Kimlik Doğrulama (TOTP 2FA, şifreli API deposu + kullanıcı API anahtar arayüzü, brute-force kilit, yerel-ağ istisnası, admin CLI)** %100 ✅ (326/326 Test Geçiyor, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-27 03:33:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Onaylandı & Genişletildi ✅) | **Kodlama & Test Durumu:** Tüm modüller + Frontend + Hata Raporlama + Emir/Bakiye/Pozisyon/PnL + **Faz 1: Çok Kullanıcılı Kimlik Doğrulama & Faz 2: Hesaplar Arası Transfer + Futures TP/SL & Marjin/Kaldıraç** %100 ✅ (330/330 Test Geçiyor, %81 Coverage ✅) | **Son Güncelleme:** 2026-09-27 14:20:00 (+03:00)
 
 ---
 
@@ -11,20 +11,19 @@
 | Tasarım Dokümantasyonu | ✅ Tamamlandı (`docs/`, `docs/USER_GUIDE.md`) |
 | `.env` Yapılandırma Dosyası | ✅ Oluşturuldu (Kök dizinde mevcut) |
 | Sanal Ortam & Yönetim Scriptleri | ✅ Tamamlandı (`install.sh`, `first_run.sh`, `run.sh`, `run_tests.sh`) |
-| `requirements.txt` | ✅ Güncellendi (`aiosqlite`, `requests` dahil) & Sanal ortama kuruldu |
-| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`, `analysis`, `settings`, `recommendations`) |
-| Modül 1 (Hesap & Bağlantı) | ✅ **%100 Tamamlandı** (Bağlantı, bakiye, portföy payı, yetki denetimi, WebSocket stream) — 29 test |
+| `requirements.txt` | ✅ Güncellendi (`aiosqlite`, `requests`, `pyotp`, `cryptography`, `qrcode` dahil) & Sanal ortama kuruldu |
+| Proje İskeleti (`src/`) | ✅ Oluşturuldu (`config`, `database`, `utils`, `models`, `modules`, `indicators`, `analysis`, `settings`, `recommendations`, `auth`, `exchanges`) |
+| Modül 1 (Hesap, Bakiye & Transfer) | ✅ **%100 Tamamlandı** (Bağlantı, bakiye, portföy payı, tüm hesap tipleri, hesap kırılımı, varlık maliyeti, hesap içi transfer, şifreli borsa anahtarları) |
 | Modül 2 — Faz 2a (Veri & Çekirdek İndikatörler) | ✅ **%100 Tamamlandı** (Ticker, L2 Order Book, Ring Buffer, Repaint Guard, Trend, Momentum, Volatilite, 5 REST endpoint'i) |
 | Modül 2 — Faz 2b (İleri SMC, Scoring & MTF) | ✅ **%100 Tamamlandı** (Supertrend, Ichimoku, Parabolic SAR, ADX, Aroon, Choppiness, Squeeze, SMC Swings/BOS/CHoCH/FVG/OB, 0-100 Puanlama Motoru, MTF Hiyerarşisi, 3 REST endpoint'i) |
-| Modül 2 — İleri Katmanlar (Hacim & Seviyeler) | ✅ **%100 Tamamlandı** (`indicators/volume.py`: RVOL, OBV, VWAP, MFI, CMF, Volume Profile; `indicators/levels.py`: Pivots, Fib, Donchian; Hacim Puanlaması) — 10 test |
-| Modül 2 — Faz 2c (Ek Osilatörler, Türev, Çoklu Piyasa, Sub-15m, Katman 9) | ✅ **%100 Tamamlandı** (StochRSI, CCI, Williams %R, ROC; KuCoin Futures USDT-M funding/OI, 1m/3m/5m timeframe, Spot/Margin/Futures analiz, trade-setup; Katman 9 CoinGecko BTC.D/Total MCap/Stablecoin.D) — 22 test |
-| Modül 2 — Sadeleştirilmiş & Eğitici Analiz Motoru | ✅ **%100 Tamamlandı** (Sade durum & tavsiye özeti, 4-boyutlu gerekçeler: İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur; Korunma tavsiyeli risk uyarıları) — 2 test |
-| Modül 2 — Test Dağılımı | ✅ 79 test: `market: 8`, `indicators: 19`, `volume_levels: 10`, `structure: 8`, `analysis: 12`, `phase2c: 10`, `market_types: 12` |
-| Modül 3 (Emir Yönetimi, Bracket & Öneriler) | ✅ **%100 Tamamlandı** (Market/Limit, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k, mod geçişi, pre-trade risk, Bracket orders, Amend, RecommendationEngine) — 31 test |
-| Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, sembol arama; 5 REST endpoint'i) — 6 test |
-| Frontend Dashboard (Adım 5) | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 6 görünüm, SVG mum grafiği, WebSocket canlı akış, Modern 10 Bölümlü Kılavuz, 7 Info butonu, Ayarlar paneli, Seviyeli mum grafiği, Sade özet kartı & 4-boyutlu eğitici gerekçe gridleri; `static/` mount) — 11 servis testi |
-| Yardımcı Fonksiyonlar (`utils/`) | ✅ **%100 Tamamlandı** (`crypto.py`, `time_sync.py`, `logger.py` — %100 coverage) — 14 test |
-| Toplam Birim Test Durumu | ✅ **210/210 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %80 coverage) |
+| Modül 2 — İleri Katmanlar (Hacim & Seviyeler) | ✅ **%100 Tamamlandı** (`indicators/volume.py`: RVOL, OBV, VWAP, MFI, CMF, Volume Profile; `indicators/levels.py`: Pivots, Fib, Donchian; Hacim Puanlaması) |
+| Modül 2 — Faz 2c (Ek Osilatörler, Türev, Çoklu Piyasa, Sub-15m, Katman 9, Bollinger & WS) | ✅ **%100 Tamamlandı** (StochRSI, CCI, Williams %R, ROC; KuCoin Futures USDT-M funding/OI, 1m/3m/5m timeframe, Spot/Margin/Futures analiz, trade-setup; Katman 9 CoinGecko; Bollinger %B puanlama; `/ws/live` canlı fiyat kartı) |
+| Modül 2 — Sadeleştirilmiş & Eğitici Analiz Motoru | ✅ **%100 Tamamlandı** (Sade durum & tavsiye özeti, 4-boyutlu gerekçeler: İndikatör, Neden Oldu, Neyi Gösterir, Neye Sebep Olur; Korunma tavsiyeli risk uyarıları) |
+| Modül 3 (Emir Yönetimi, Futures TP/SL, Pozisyonlar & PnL) | ✅ **%100 Tamamlandı** (Market/Limit, açık emir & geçmiş, iptal, Panic Stop, Paper Trading $10k, mod geçişi, pre-trade risk, Bracket orders, Amend, RecommendationEngine, Futures set_leverage/set_margin_mode, set_position_tp_sl, Realized PnL raporu) |
+| Ayarlar & Çoklu Coin Modülü (`settings.py`) | ✅ **%100 Tamamlandı** (Watchlist yönetimi, mod/sembol ayarları, SQLite kalıcılık, kullanıcı bazlı ayarlar) |
+| Frontend Dashboard | ✅ **%100 Tamamlandı** (Dark glassmorphism SPA: header/sidebar/footer + Panic Stop, 8 görünüm, SVG mum grafiği, WebSocket canlı akış, Modern Kılavuz, Info butonları, Ayarlar paneli, Seviyeli grafik, TP/SL modalı, Transfer kartı, PnL ekranı; `static/` mount) |
+| Yardımcı Fonksiyonlar (`utils/` & `auth/`) | ✅ **%100 Tamamlandı** (`crypto_vault.py`, `user_store.py`, `auth_service.py`, `lockout.py`, `time_sync.py`, `logger.py`) |
+| Toplam Birim Test Durumu | ✅ **330/330 test başarıyla geçiyor** (`run_tests.sh` %100 yeşil, %81 coverage) |
 
 
 

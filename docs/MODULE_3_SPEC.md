@@ -1,9 +1,9 @@
 # Modül 3 Spesifikasyonu: Al-Sat Emir Entegrasyonu, Akıllı Paket Emir ve Yönetimi
 
-> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Emir & Öneri Özellikleri Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (Tüm M3-C01..M3-C13 Maddeleri Tamamlandı, Proje Geneli 174/174 Test %100 Yeşil ✅) | **Son Güncelleme:** 2026-09-20 17:27:00 (+03:00)
+> **Tasarım & Spesifikasyon Durumu:** %100 (Tüm Emir, Pozisyon & TP/SL Özellikleri Onaylandı ✅) | **Kodlama & Test Durumu:** %100 Tamamlandı (Futures Kaldıraç/Marjin, Pozisyona TP/SL Bağlama, Geçmiş Emirler & Realize PnL Dahil, Proje Geneli 330/330 Test %100 Yeşil ✅) | **Son Güncelleme:** 2026-09-27 14:20:00 (+03:00)
 
 ## 1. Modülün Amacı
-Bu modül; gelen al-sat sinyallerine ve analiz motorundan türetilen hazır seviyelere (Giriş, TP1, TP2, Stop-Loss) göre KuCoin veya Simülasyon ortamında otomatik hesaplamalı **Akıllı Paket Emirler (Bracket Orders)** oluşturur; açık emirleri dinamik olarak düzenler, piyasa şartları değiştikçe kullanıcıya anlık güncelleme tavsiyeleri (Öneri Motoru) sunar ve çoklu koin destekli ayarlar altyapısını yönetir.
+Bu modül; gelen al-sat sinyallerine ve analiz motorundan türetilen hazır seviyelere (Giriş, TP1, TP2, Stop-Loss) göre KuCoin veya Simülasyon ortamında otomatik hesaplamalı **Akıllı Paket Emirler (Bracket Orders)** oluşturur; açık emirleri dinamik olarak düzenler, açık pozisyonlara anlık TP/SL bağlar, piyasa şartları değiştikçe kullanıcıya anlık güncelleme tavsiyeleri (Öneri Motoru) sunar ve çoklu koin destekli ayarlar altyapısını yönetir.
 
 ---
 
@@ -73,6 +73,27 @@ Bu modül; gelen al-sat sinyallerine ve analiz motorundan türetilen hazır sevi
   * `POST /api/v1/settings`: Ayarları kaydeder ve SQLite `settings` tablosunda kalıcı kılar.
   * `GET /api/v1/settings/symbols`: KuCoin üzerindeki geçerli sembolleri arama ve listeleme imkanı sunar.
 
+### 2.9. KuCoin Futures Kaldıraç & Marjin Modu Yapılandırması
+* KuCoin Futures'ta marjin modu (`CROSS` vs `ISOLATED`) ve cross kaldıraç sembol yapılandırması düzeyinde belirlenir.
+* Emir iletilmeden önce `venue.set_leverage(lev, symbol)` (`POST /api/v1/change-cross-user-leverage`) ve `venue.set_margin_mode(mode, symbol)` çağrıları yapılarak borsa ayarları seçime göre güncellenir.
+* KuCoin kuralı gereği açık pozisyon varken marjin modunun değiştirilmesine izin verilmez (`330005` fallback ve kullanıcıya bilgilendirici uyarı).
+
+### 2.10. Açık Pozisyona Anlık TP / SL Bağlama Motoru
+* Açık pozisyonlara tek tıkla veya arayüz üzerinden `reduceOnly: True` bayrağıyla TP ve SL bağlanabilir.
+* Endpoint: `POST /api/v1/orders/position/set-tp-sl`
+* TP emirleri limit kâr alma olarak, SL emirleri ise KuCoin'in yerel koşullu tetikleme uç noktasına (`/api/v1/st-orders` ve `/api/v1/stop-order`) market stop tetikleyici olarak iletilir.
+
+### 2.11. Açık Emirlerde Anlık Piyasa Fiyatı ve Fiyat Farkı
+* `_attach_current_prices` önbellek destekli yardımcı metoduyla açık emirler listesindeki her emre KuCoin son işlem fiyatı (`current_price`), fiyat farkı (`price_diff`) ve yüzde farkı (`diff_percent`) dinamik iliştirilir.
+
+### 2.12. Geçmiş Tüm Emirler Tablosu ve Varlık Maliyetleri (Holding Costs)
+* Dolan alış ve satış emirlerinden ağırlıklı ortalama alış maliyeti (`avg_cost`) ve eldeki varlığın maliyeti hesaplanır.
+* Pozisyonlar tablosunda hem eldeki spot varlıklar hem vadeli sözleşmeler giriş fiyatı, güncel değer ve gerçekleşmemiş PnL ile listelenir.
+
+### 2.13. Gerçekleşen Kâr/Zarar (Realized PnL) Raporlama Motoru
+* Emir geçmişindeki dolan emirleri ortalama maliyet yöntemiyle işleyip sembol bazında net realize kâr/zararı, komisyonları ve hacmi raporlar.
+* Endpoint: `GET /api/v1/orders/pnl`
+
 ---
 
 ## 3. Modül 3 REST API Endpoint'leri ve Swagger Spesifikasyonu
@@ -91,6 +112,32 @@ Swagger Tag: `Orders & Execution`
 | `POST` | `/api/v1/orders/recommendations/{id}/apply` | Seçilen güncelleme önerisini doğrudan ilgili emre uygular. | `ApplyRecommendationResponse` |
 | `POST` | `/api/v1/orders/panic-stop` | **Acil Durum**: Tüm açık emirleri anında iptal eder ve botu durdurur. | `PanicStopResponse` |
 | `POST` | `/api/v1/orders/switch-mode` | Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar. | `SwitchModeResponse` |
+| `GET` | `/api/v1/settings` | Çoklu coin izleme listesi, mod ve risk ayarlarını döner. | `SettingsResponse` |
+| `POST` | `/api/v1/settings` | Çoklu coin listesi, mod ve risk ayarlarını günceller ve kaydeder. | `SettingsResponse` |
+| `GET` | `/api/v1/settings/symbols` | KuCoin aktif işlem çiftlerini arar ve listeler. | `SymbolsListResponse` |
+
+---
+
+## 3. Modül 3 REST API Endpoint'leri ve Swagger Spesifikasyonu
+
+Swagger Tag: `Orders & Execution`
+
+| Metod | Endpoint | Açıklama | Swagger Yanıt Modeli |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/orders/create` | Yeni Market veya Limit Al/Sat emri iletir (Spot/Margin/Futures). | `OrderCreateResponse` |
+| `POST` | `/api/v1/orders/bracket` | **Akıllı Paket Emir**: Giriş + TP1 (%50) + TP2 (%50) + SL seviyelerini tek seferde iletir. | `BracketOrderResponse` |
+| `GET` | `/api/v1/orders/open` | Borsada dolmayı bekleyen açık emirleri anlık piyasa fiyatı ve farkla listeler. | `OpenOrdersResponse` |
+| `GET` | `/api/v1/orders/positions` | Canlı ve simülasyon açık pozisyonlarını maliyet, anlık fiyat ve PnL ile döner. | `PositionsResponse` |
+| `POST` | `/api/v1/orders/position/set-tp-sl` | Açık bir pozisyona anlık TP1, TP2 ve Stop Loss emirleri bağlar. | `SetPositionTpSlResponse` |
+| `GET` | `/api/v1/orders/pnl` | Emir geçmişinden ortalama maliyetle hesaplanan net kâr/zarar raporunu döner. | `PnLReportResponse` |
+| `PUT` | `/api/v1/orders/{order_id}` | Açık emrin fiyat, miktar veya TP/SL parametrelerini günceller. | `OrderModifyResponse` |
+| `DELETE` | `/api/v1/orders/{order_id}` | Belirtilen açık emri iptal eder. | `OrderCancelResponse` |
+| `GET` | `/api/v1/orders/history` | Geçmişte dolan veya kapanan tüm emir geçmişini döner. | `OrderHistoryResponse` |
+| `GET` | `/api/v1/orders/recommendations` | Canlı piyasaya göre üretilen dinamik güncelleme önerilerini listeler. | `RecommendationsResponse` |
+| `POST` | `/api/v1/orders/recommendations/{id}/apply` | Seçilen güncelleme önerisini doğrudan ilgili emre uygular. | `ApplyRecommendationResponse` |
+| `POST` | `/api/v1/orders/panic-stop` | **Acil Durum**: Tüm açık emirleri anında iptal eder ve botu durdurur. | `PanicStopResponse` |
+| `POST` | `/api/v1/orders/switch-mode` | Gerçek KuCoin modu ile Simülasyon (Paper Trading) modu arasında geçiş yapar. | `SwitchModeResponse` |
+| `GET` | `/api/v1/orders/mode` | Aktif çalışma modunu ve borsa API durumunu döner. | `ModeStatusResponse` |
 | `GET` | `/api/v1/settings` | Çoklu coin izleme listesi, mod ve risk ayarlarını döner. | `SettingsResponse` |
 | `POST` | `/api/v1/settings` | Çoklu coin listesi, mod ve risk ayarlarını günceller ve kaydeder. | `SettingsResponse` |
 | `GET` | `/api/v1/settings/symbols` | KuCoin aktif işlem çiftlerini arar ve listeler. | `SymbolsListResponse` |
@@ -116,6 +163,12 @@ Bu bölüm, **Coding AI** tarafından Modül 3 kodlama aşamasında eksiksiz tak
 | **M3-C11** | Düzenleme | Açık Emir Güncelleme / Revizyon (`amend_order`, fiyat/miktar değişimi) | `src/modules/module3_orders.py` | `tests/test_amend_recommendations.py` | ✅ Tamamlandı (4 test geçiyor) |
 | **M3-C12** | Akıllı Öneri | Dinamik Öneri Motoru (Breakeven trailing, TP realizasyon uyarısı & apply) | `src/modules/recommendations.py` | `tests/test_amend_recommendations.py` | ✅ Tamamlandı (4 test geçiyor) |
 | **M3-C13** | Ayarlar | Ayarlar ve Çoklu Coin Yönetimi (Watchlist, işlem modu, risk parametreleri, SQLite) | `src/modules/settings.py` / `src/main.py` | `tests/test_settings.py` | ✅ Tamamlandı (6 test geçiyor) |
+| **M3-C14** | Piyasa Fiyatı | Açık Emirlerde Anlık Piyasa Fiyatı ve Fiyat Farkı (`_attach_current_prices`) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | ✅ Tamamlandı (4 test geçiyor) |
+| **M3-C15** | Pozisyon Motoru | Açık Pozisyonlar ve Varlık Maliyetleri (`get_positions`, `avg_cost`, `holding_costs`) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | ✅ Tamamlandı (8 test geçiyor) |
+| **M3-C16** | Realize PnL | Geçmiş Emirlerden Gerçekleşen Kâr/Zarar Raporu (`get_pnl_report`) | `src/modules/module3_orders.py` | `tests/test_module_3_orders.py` | ✅ Tamamlandı (4 test geçiyor) |
+| **M3-C17** | Futures TP/SL | Koşullu Tetikleyici Stop-Order Yönlendirmesi (`/api/v1/st-orders`, `reduceOnly`) | `src/modules/module3_orders.py` | `tests/test_bracket_orders.py` | ✅ Tamamlandı |
+| **M3-C18** | Pozisyona TP/SL | Açık Pozisyona Anlık TP/SL Bağlama Motoru (`set_position_tp_sl`) | `src/modules/module3_orders.py` / `main.py` | `tests/test_bracket_orders.py` | ✅ Tamamlandı |
+| **M3-C19** | Futures Yapılandırma | Önceden Borsa Kaldıraç (`set_leverage`) ve Marjin Modu (`set_margin_mode`) | `src/modules/module3_orders.py` | `tests/test_bracket_orders.py` | ✅ Tamamlandı |
 
 ---
 
@@ -132,6 +185,11 @@ Bu bölüm, **Coding AI** tarafından Modül 3 kodlama aşamasında eksiksiz tak
 | **2026-09-20 01:15:00** | **Ayarlar ve Çoklu Coin (M3-C13) Kodlandı & Doğrulandı**: `src/modules/settings.py`, 5 REST API endpoint'i ve frontend Ayarlar ekranı tamamlandı. SQLite kalıcılığı ve Watchlist yönetimi 6 yeni test (`test_settings.py`) ile doğrulandı. İzlenebilirlik matrisinde M3-C13 tamamlandı olarak güncellendi. | **M3-C13 Tamamlandı (%100) ✅** |
 | **2026-09-20 01:30:00** | **Akıllı Paket Emir (M3-C10) Kodlandı & Doğrulandı**: `src/modules/module2_market.py` (`get_trade_setup`), `src/modules/module3_orders.py` (`create_bracket_order`), `GET /market/trade-setup` ve `POST /orders/bracket` endpoint'leri, Frontend Akıllı Paket Emir kartı tamamlandı. 7 backend + 1 frontend yeni test ile doğrulandı (toplam 145/145 test %100 yeşil). | **M3-C10 Tamamlandı (%100) ✅** |
 | **2026-09-20 16:30:00** | **Emir Düzenleme (M3-C11) ve Öneri Motoru (M3-C12) Tamamlandı**: `amend_order` (`PUT /orders/{id}`) ile açık emir fiyat/miktar revizyonu ve `RecommendationEngine` (`GET/POST /orders/recommendations`) canlı tavsiye sistemi 8 yeni birim test ile doğrulandı. Modül 3 tüm gereksinimleriyle (M3-C01..M3-C13) %100 tamamlandı (toplam 154/154 test %100 yeşil). | **Modül 3 %100 Tamamlandı ✅** |
+| **2026-09-21 21:30:00** | **Açık Emirlerde Anlık Fiyat & Fiyat Farkı Gösterimi (M3-C14)**: `_attach_current_prices` önbellek destekli canlı fiyat iliştirme motoru yazıldı. Açık emirler tablosuna "Emir Fiyatı", "Anlık Fiyat" ve renkli "Fark (%)" rozetleri eklendi (toplam 202/202 test %100 yeşil). | **M3-C14 Tamamlandı (%100) ✅** |
+| **2026-09-21 21:42:00** | **Açık Pozisyonlar & Stop Mesafesi Paneli (M3-C15)**: `get_positions` motoru canlı futures ve simülasyon pozisyonlarını anlık değer ve PnL ile listeledi. Emirler ekranına "Açık Pozisyonlar (Aktif İşlemler)" tablosu eklendi (toplam 205/205 test %100 yeşil). | **M3-C15 Tamamlandı (%100) ✅** |
+| **2026-09-23 19:41:00** | **Gerçekleşen Kâr/Zarar (Realized PnL) Raporlama Motoru (M3-C16)**: Emir geçmişinden ortalama maliyet yöntemiyle net realize kâr/zarar ve komisyon hesaplayan motor ve bağımsız "💰 Kar / Zarar" arayüzü kodlandı (toplam 210/210 test %100 yeşil). | **M3-C16 Tamamlandı (%100) ✅** |
+| **2026-09-25 16:30:00** | **Geçmiş Tüm Emirler Tablosu & Varlık Maliyetleri (Holding Costs)**: Dolan emirlerden ağırlıklı ortalama maliyet (`avg_cost`) ve eldeki varlıkların güncel değeri hem portföyde hem pozisyonlarda gösterildi. Geçmiş emirler tablosu eklendi (toplam 224/224 test %100 yeşil). | **Holding Costs Tamamlandı (%100) ✅** |
+| **2026-09-27 13:40:00** | **Futures Marjin Modu/Kaldıraç & Pozisyona TP/SL Bağlama Motoru (M3-C17..M3-C19)**: KuCoin Futures'ta emir öncesi `set_leverage` ve `set_margin_mode` borsa yapılandırması entegre edildi (330005 ve cross 3x kilitlenmesi çözüldü). Canlı pozisyona anlık `reduceOnly` TP limit ve SL market tetikleyici bağlayan `set_position_tp_sl` motoru ve arayüzde "🛡️ TP/SL" modalı eklendi. Tablolara `[CROSS]` / `[ISOLATED]` rozetleri yerleştirildi. Toplam **330/330 test %100 yeşil**. | **Futures TP/SL & Marjin/Kaldıraç Tamamlandı (%100) ✅** |
 
 
 
