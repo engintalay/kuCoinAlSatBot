@@ -47,7 +47,7 @@
 
 ## Yol Haritası (fazlar; her faz testler yeşil olunca bir sonrakine geçilir)
 1. **Faz 1 — Auth & Multi-user:** kullanıcı/şifre + TOTP, session, brute-force+kilitleme, yerel-ağ istisnası, master-key şifreli API deposu, request-scoped client, kullanıcı-bazlı ayarlar, admin CLI (setup/reset/migrate-env), giriş ekranı. **(AKTİF)**
-2. **Faz 2 — Hesap içi transfer:** Spot↔Futures↔Margin tüm yönler, sonrası bakiye yenileme.
+2. **Faz 2 — Hesap içi transfer:** Spot↔Futures↔Margin tüm yönler, sonrası bakiye yenileme. ✅ TAMAMLANDI (transfer_funds + POST /account/transfer + Hesap ekranı formu; 326/326 test)
 3. **Faz 3 — Dondurma + e-posta:** 2 günlük işlem dondurma, kilit/kurtarma e-posta bildirimleri.
 4. **Faz 4 — Binance / çoklu borsa:** exchange adapter soyutlaması + Binance entegrasyonu.
 
