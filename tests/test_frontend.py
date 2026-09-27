@@ -151,6 +151,21 @@ def test_pnl_view(client):
     assert "renderDailyPnlChart" in js
     assert "/orders/pnl" in js
 
+
+def test_close_position_safe_ui(client):
+    """Pozisyonu Kapat butonu, güvenli kapatma modalı ve JS işleyicileri bulunmalı."""
+    r = client.get("/")
+    assert 'id="close-position-modal"' in r.text
+    assert 'id="close-pos-step-1"' in r.text
+    assert 'id="close-pos-step-2"' in r.text
+    assert 'id="close-pos-chk-market"' in r.text
+    assert 'id="close-pos-orders-list"' in r.text
+    assert 'id="close-pos-confirm-btn"' in r.text
+    js = client.get("/static/js/app.js").text
+    assert "btn-close-pos" in js
+    assert "openClosePositionModal" in js
+    assert "/orders/position/close-safe" in js
+
 def test_market_regime_widget(client):
     """Katman 9 piyasa geneli rejim göstergesi ve info düğmesi bulunmalı."""
     r = client.get("/")

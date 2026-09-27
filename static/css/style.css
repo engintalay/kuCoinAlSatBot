@@ -1369,4 +1369,44 @@ body {
   box-shadow: 0 0 6px rgba(41, 121, 255, 0.4);
 }
 
+/* Kapat Butonları & Güvenli Pozisyon Kapatma Stilleri */
+.btn-danger {
+  background: #da3633;
+  color: #fff;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-danger:hover {
+  background: #b62324;
+  border-color: rgba(248, 81, 73, 0.7);
+}
+.btn-mini.btn-danger {
+  background: rgba(248, 81, 73, 0.15);
+  color: #ff7b72;
+  border: 1px solid rgba(248, 81, 73, 0.35);
+  font-weight: 600;
+  border-radius: 4px;
+}
+.btn-mini.btn-danger:hover {
+  background: rgba(248, 81, 73, 0.35);
+  color: #fff;
+  border-color: #f85149;
+}
+.close-pos-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.82rem;
+}
+.close-pos-order-row:last-child {
+  border-bottom: none;
+}
+.close-pos-order-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 

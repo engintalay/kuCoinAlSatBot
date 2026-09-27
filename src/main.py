@@ -651,6 +651,29 @@ async def set_position_tp_sl(req: SetTpSlRequest, orders=Depends(get_user_orders
     return result
 
 
+class ClosePositionSafeRequest(_PydBaseModel):
+    symbol: str
+    market_type: str = "futures"
+    side: str = "long"
+    amount: float | None = None
+    cancel_order_ids: list[str] = []
+    close_position: bool = True
+
+
+@app.post("/api/v1/orders/position/close-safe")
+async def close_position_safe(req: ClosePositionSafeRequest, orders=Depends(get_user_orders)):
+    """Pozisyona ait açık emirleri ve pozisyonu güvenli sırayla (önce iptal, sonra piyasa satışı) kapatır."""
+    result = await orders.close_position_safe(
+        symbol=req.symbol,
+        market_type=req.market_type,
+        side=req.side,
+        amount=req.amount,
+        cancel_order_ids=req.cancel_order_ids,
+        close_position=req.close_position,
+    )
+    return result
+
+
 
 @app.get("/api/v1/orders/history")
 async def get_order_history(symbol: str | None = None, limit: int | None = 200, orders=Depends(get_user_orders)):

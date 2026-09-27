@@ -772,9 +772,13 @@ async function loadPositions() {
       // TP Targets
       let tpHtml = `<span class="text-dim">-</span>`;
       if (p.tp1_price || p.tp2_price) {
-        const tp1Str = p.tp1_price ? `TP1: ${fmtOrderPrice(p.tp1_price)}` : "";
-        const tp2Str = p.tp2_price ? `TP2: ${fmtOrderPrice(p.tp2_price)}` : "";
-        tpHtml = `<span style="color:var(--green); font-size:0.82rem;">${[tp1Str, tp2Str].filter(Boolean).join("<br>")}</span>`;
+        const tp1Dist = p.tp_distance_percent !== null && p.tp_distance_percent !== undefined
+          ? ` <small class="text-dim">(${p.tp_distance_percent > 0 ? '+' : ''}${p.tp_distance_percent}%)</small>` : "";
+        const tp2Dist = p.tp2_distance_percent !== null && p.tp2_distance_percent !== undefined
+          ? ` <small class="text-dim">(${p.tp2_distance_percent > 0 ? '+' : ''}${p.tp2_distance_percent}%)</small>` : "";
+        const tp1Str = p.tp1_price ? `TP1: ${fmtOrderPrice(p.tp1_price)}${tp1Dist}` : "";
+        const tp2Str = p.tp2_price ? `TP2: ${fmtOrderPrice(p.tp2_price)}${tp2Dist}` : "";
+        tpHtml = `<span style="color:var(--green); font-size:0.82rem; font-weight:600;">${[tp1Str, tp2Str].filter(Boolean).join("<br>")}</span>`;
       }
 
       // PnL
@@ -798,7 +802,8 @@ async function loadPositions() {
         <td>${tpHtml}</td>
         <td>${pnlHtml}</td>
         <td>
-          <button class="btn-mini btn-tpsl" data-symbol="${escapeHtml(p.symbol)}" data-market="${escapeHtml(mt)}" data-side="${escapeHtml(side)}" data-amount="${p.amount || ''}" data-entry="${p.entry_price || ''}" data-curr="${p.current_price || ''}" data-lev="${p.leverage || ''}" data-tp1="${p.tp1_price || ''}" data-sl="${p.stop_loss_price || ''}" title="Pozisyona Kâr Al (TP) ve Zarar Durdur (SL) bağla">🛡️ TP/SL</button>
+          <button class="btn-mini btn-tpsl" data-symbol="${escapeHtml(p.symbol)}" data-market="${escapeHtml(mt)}" data-side="${escapeHtml(side)}" data-amount="${p.amount || ''}" data-entry="${p.entry_price || ''}" data-curr="${p.current_price || ''}" data-lev="${p.leverage || ''}" data-tp1="${p.tp1_price || ''}" data-tp2="${p.tp2_price || ''}" data-sl="${p.stop_loss_price || ''}" title="Pozisyona Kâr Al (TP) ve Zarar Durdur (SL) bağla">🛡️ TP/SL</button>
+          <button class="btn-mini btn-danger btn-close-pos" data-symbol="${escapeHtml(p.symbol)}" data-market="${escapeHtml(mt)}" data-side="${escapeHtml(side)}" data-amount="${p.amount || ''}" data-entry="${p.entry_price || ''}" data-curr="${p.current_price || ''}" data-lev="${p.leverage || ''}" data-pnl="${p.unrealized_pnl ?? 0}" data-pnlpct="${p.pnl_percent ?? 0}" title="Pozisyonu ve ilişkili tüm açık emirleri güvenle kapat">❌ Kapat</button>
         </td>
       </tr>`;
     }).join("");
@@ -814,7 +819,24 @@ async function loadPositions() {
           current_price: btn.dataset.curr ? Number(btn.dataset.curr) : null,
           leverage: btn.dataset.lev ? Number(btn.dataset.lev) : null,
           tp1_price: btn.dataset.tp1 ? Number(btn.dataset.tp1) : null,
+          tp2_price: btn.dataset.tp2 ? Number(btn.dataset.tp2) : null,
           stop_loss_price: btn.dataset.sl ? Number(btn.dataset.sl) : null,
+        });
+      });
+    });
+
+    tbody.querySelectorAll(".btn-close-pos").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        openClosePositionModal({
+          symbol: btn.dataset.symbol,
+          market_type: btn.dataset.market,
+          side: btn.dataset.side,
+          amount: btn.dataset.amount ? Number(btn.dataset.amount) : null,
+          entry_price: btn.dataset.entry ? Number(btn.dataset.entry) : null,
+          current_price: btn.dataset.curr ? Number(btn.dataset.curr) : null,
+          leverage: btn.dataset.lev ? Number(btn.dataset.lev) : null,
+          unrealized_pnl: btn.dataset.pnl ? Number(btn.dataset.pnl) : 0,
+          pnl_percent: btn.dataset.pnlpct ? Number(btn.dataset.pnlpct) : 0,
         });
       });
     });
@@ -1052,7 +1074,7 @@ async function loadOpenOrders() {
 
       // Rol / Bacak
       let legHtml = `<span class="text-dim">${o.type || 'limit'}</span>`;
-      if (o.bracket_leg === "tp1") legHtml = `<span class="leg-badge leg-tp1">🎯 TP1</span>`;
+      if (o.bracket_leg === "tp1" || o.bracket_leg === "tp") legHtml = `<span class="leg-badge leg-tp1">🎯 TP1</span>`;
       else if (o.bracket_leg === "tp2") legHtml = `<span class="leg-badge leg-tp2">🎯 TP2</span>`;
       else if (o.bracket_leg === "sl" || o.is_stop || (o.type && o.type.includes("stop"))) legHtml = `<span class="leg-badge leg-sl">🛑 STOP LOSS</span>`;
       else if (o.bracket_leg === "entry") legHtml = `<span class="leg-badge leg-entry">🚀 GİRİŞ</span>`;
@@ -1061,18 +1083,23 @@ async function loadOpenOrders() {
       const entryPrice = o.entry_price !== null && o.entry_price !== undefined ? Number(o.entry_price) : null;
       const entryPriceStr = entryPrice !== null ? `<strong>${fmtOrderPrice(entryPrice)}</strong>` : `<span class="text-dim">-</span>`;
 
-      // Stop Fiyatı
+      // Stop / Hedef Fiyatı
       const stopPrice = o.stop_loss_price !== null && o.stop_loss_price !== undefined ? Number(o.stop_loss_price) : null;
+      const tpPrice = o.tp1_price !== null && o.tp1_price !== undefined ? Number(o.tp1_price) : (o.tp2_price !== null && o.tp2_price !== undefined ? Number(o.tp2_price) : null);
       let stopPriceStr = `<span class="text-dim">-</span>`;
-      if (stopPrice !== null) {
+      if (tpPrice !== null) {
+        const tpDist = o.price_diff_percent !== null && o.price_diff_percent !== undefined
+          ? ` <small class="text-dim">(${o.price_diff_percent > 0 ? '+' : ''}${o.price_diff_percent}%)</small>` : "";
+        stopPriceStr = `<span style="color:var(--green); font-weight:600;">🎯 ${fmtOrderPrice(tpPrice)}</span>${tpDist}`;
+      } else if (stopPrice !== null) {
         const stopDist = o.stop_distance_percent !== null && o.stop_distance_percent !== undefined
           ? ` <small class="text-dim">(${o.stop_distance_percent > 0 ? '+' : ''}${o.stop_distance_percent}%)</small>` : "";
-        stopPriceStr = `<span style="color:var(--red); font-weight:600;">${fmtOrderPrice(stopPrice)}</span>${stopDist}`;
+        stopPriceStr = `<span style="color:var(--red); font-weight:600;">🛑 ${fmtOrderPrice(stopPrice)}</span>${stopDist}`;
       }
 
       // Emir fiyatı
       const orderPrice = o.price !== null && o.price !== undefined ? Number(o.price) : null;
-      const orderPriceStr = orderPrice !== null ? fmtOrderPrice(orderPrice) : "-";
+      const orderPriceStr = orderPrice !== null ? fmtOrderPrice(orderPrice) : (tpPrice !== null ? fmtOrderPrice(tpPrice) : (stopPrice !== null ? fmtOrderPrice(stopPrice) : "-"));
 
       // Anlık piyasa fiyatı
       const currPrice = o.current_price !== null && o.current_price !== undefined ? Number(o.current_price) : null;
@@ -1080,7 +1107,7 @@ async function loadOpenOrders() {
 
       // Fiyat farkı & Mesafe (%)
       let diffHtml = `<span class="text-dim">--</span>`;
-      const targetPrice = (orderPrice !== null && orderPrice > 0) ? orderPrice : stopPrice;
+      const targetPrice = (orderPrice !== null && orderPrice > 0) ? orderPrice : (tpPrice !== null ? tpPrice : stopPrice);
       if (currPrice !== null && targetPrice !== null && targetPrice > 0) {
         const diff = currPrice - targetPrice;
         const diffPct = (diff / targetPrice) * 100;
@@ -1347,6 +1374,237 @@ if (tpslSaveBtn) {
     } finally {
       tpslSaveBtn.disabled = false;
       tpslSaveBtn.textContent = "🛡️ TP / SL Emirlerini İlet";
+    }
+  });
+}
+
+// ------------------------------------------------------------------ //
+// Güvenli Pozisyon ve İlgili Emirleri Kapatma Modalı (Close Position Modal)
+// ------------------------------------------------------------------ //
+async function openClosePositionModal(p) {
+  const modal = document.getElementById("close-position-modal");
+  if (!modal) return;
+
+  const symbol = p.symbol || "";
+  const mt = (p.market_type || "spot").toLowerCase();
+  const side = (p.side || "long").toLowerCase();
+  const amount = p.amount ? Number(p.amount) : 0;
+  const entry = p.entry_price ? Number(p.entry_price) : 0;
+  const curr = p.current_price ? Number(p.current_price) : 0;
+  const pnl = Number(p.unrealized_pnl ?? 0);
+  const pnlPct = Number(p.pnl_percent ?? 0);
+
+  const titleEl = document.getElementById("close-pos-title");
+  if (titleEl) {
+    titleEl.textContent = `🚪 Pozisyonu ve Emirleri Kapat — ${symbol}`;
+  }
+
+  // Bilgi kutusunu doldur
+  const sideCls = side === "short" ? "side-sell" : "side-buy";
+  const sideLabel = side === "short" ? "SHORT" : (side === "spot" ? "SPOT" : "LONG");
+  const pnlSign = pnl >= 0 ? "+" : "";
+  const pnlCls = pnl >= 0 ? "up" : "down";
+  const levStr = p.leverage ? ` ${p.leverage}x` : "";
+
+  const infoDiv = document.getElementById("close-pos-info");
+  if (infoDiv) {
+    infoDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-weight:700; font-size:1.02rem;">${escapeHtml(symbol)}</span>
+        <span class="side-badge ${sideCls}">${sideLabel}</span>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <div>Piyasa: <strong>${mt.toUpperCase()}${levStr}</strong></div>
+        <div>Açık Miktar: <strong>${amount}</strong></div>
+        <div>Giriş Fiyatı: <strong>${entry > 0 ? fmtOrderPrice(entry) : "-"}</strong></div>
+        <div>Anlık Fiyat: <strong>${curr > 0 ? fmtOrderPrice(curr) : "-"}</strong></div>
+        <div style="grid-column: span 2;">Kâr / Zarar: <strong class="${pnlCls}">${pnlSign}${pnl.toFixed(2)} USDT (${pnlSign}${pnlPct.toFixed(2)}%)</strong></div>
+      </div>
+    `;
+  }
+
+  // Gizli inputlar ve varsayılanlar
+  document.getElementById("close-pos-symbol").value = symbol;
+  document.getElementById("close-pos-market").value = mt;
+  document.getElementById("close-pos-side").value = side;
+  document.getElementById("close-pos-max-amount").value = amount;
+  document.getElementById("close-pos-amount").value = amount;
+  document.getElementById("close-pos-chk-market").checked = true;
+
+  const amtWrap = document.getElementById("close-pos-amount-wrap");
+  if (amtWrap) amtWrap.style.display = "flex";
+
+  // Adımları sıfırla
+  document.getElementById("close-pos-step-1").hidden = false;
+  document.getElementById("close-pos-step-2").hidden = true;
+
+  // Açık emirleri listele
+  const ordersListEl = document.getElementById("close-pos-orders-list");
+  if (ordersListEl) {
+    ordersListEl.innerHTML = '<div style="font-size:0.82rem; color:var(--text-dim); text-align:center; padding:12px;">Emirler taranıyor...</div>';
+  }
+
+  modal.hidden = false;
+
+  try {
+    const resOrders = await apiGet("/orders/open");
+    const openOrders = (resOrders.success && resOrders.data && resOrders.data.orders) ? resOrders.data.orders : [];
+
+    // Sembol ve piyasa türü eşleşen açık emirleri filtrele
+    const cleanSym = symbol.split(":")[0];
+    const matchedOrders = openOrders.filter((o) => {
+      const oSym = o.symbol || "";
+      const oClean = oSym.split(":")[0];
+      const oMt = (o.market_type || "spot").toLowerCase();
+      const symMatches = oSym === symbol || oClean === cleanSym || (cleanSym && oSym.replace("/", "").replace("-", "").startsWith(cleanSym.replace("/", "").replace("-", "")));
+      return symMatches && oMt === mt;
+    });
+
+    if (ordersListEl) {
+      if (matchedOrders.length > 0) {
+        ordersListEl.innerHTML = matchedOrders.map((o) => {
+          let badge = o.bracket_leg ? o.bracket_leg.toUpperCase() : (o.type || "limit");
+          if (o.bracket_leg === "tp1" || o.bracket_leg === "tp") badge = "🎯 TP1";
+          else if (o.bracket_leg === "tp2") badge = "🎯 TP2";
+          else if (o.bracket_leg === "sl" || o.is_stop) badge = "🛑 STOP LOSS";
+
+          const sideText = (o.side || "").toUpperCase() === "BUY" ? "ALIŞ" : "SATIŞ";
+          const oPrice = o.price || o.stopPrice || o.stop_loss_price || o.tp1_price || 0;
+          const priceStr = oPrice ? fmtOrderPrice(Number(oPrice)) : "-";
+
+          return `
+            <div class="close-pos-order-row">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; width:100%;">
+                <input type="checkbox" class="chk-close-ord" value="${escapeHtml(o.id)}" checked style="accent-color:var(--accent); width:15px; height:15px;" />
+                <span style="font-weight:600; color:var(--text);">${badge}</span>
+                <span style="color:var(--text-dim); font-size:0.8rem;">[${sideText} ${o.amount} @ ${priceStr}]</span>
+                <span style="margin-left:auto; font-size:0.75rem; color:var(--text-dim); font-family:monospace;">#${escapeHtml(o.id.slice(0, 8))}</span>
+              </label>
+            </div>
+          `;
+        }).join("");
+      } else {
+        ordersListEl.innerHTML = '<div style="font-size:0.82rem; color:var(--text-dim); text-align:center; padding:12px;">Bu pozisyona bağlı açık bekleyen emir bulunamadı.</div>';
+      }
+    }
+  } catch (err) {
+    if (ordersListEl) {
+      ordersListEl.innerHTML = `<div style="font-size:0.82rem; color:var(--red); text-align:center; padding:12px;">Açık emirler alınamadı: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+}
+
+// Modal etkileşim dinleyicileri
+const closePosX = document.getElementById("close-pos-x");
+const closePosCancel = document.getElementById("close-pos-cancel-btn");
+if (closePosX) closePosX.addEventListener("click", () => { document.getElementById("close-position-modal").hidden = true; });
+if (closePosCancel) closePosCancel.addEventListener("click", () => { document.getElementById("close-position-modal").hidden = true; });
+
+const closePosBtnAll = document.getElementById("close-pos-btn-all");
+if (closePosBtnAll) {
+  closePosBtnAll.addEventListener("click", () => {
+    const maxAmt = document.getElementById("close-pos-max-amount")?.value || "";
+    const amtInput = document.getElementById("close-pos-amount");
+    if (amtInput && maxAmt) amtInput.value = maxAmt;
+  });
+}
+
+const closePosChkMarket = document.getElementById("close-pos-chk-market");
+if (closePosChkMarket) {
+  closePosChkMarket.addEventListener("change", (e) => {
+    const amtWrap = document.getElementById("close-pos-amount-wrap");
+    if (amtWrap) amtWrap.style.display = e.target.checked ? "flex" : "none";
+  });
+}
+
+const closePosToggleOrders = document.getElementById("close-pos-toggle-orders");
+if (closePosToggleOrders) {
+  closePosToggleOrders.addEventListener("click", () => {
+    const checkboxes = document.querySelectorAll(".chk-close-ord");
+    const anyUnchecked = Array.from(checkboxes).some(cb => !cb.checked);
+    checkboxes.forEach(cb => { cb.checked = anyUnchecked; });
+  });
+}
+
+const closePosStep1Next = document.getElementById("close-pos-step1-next");
+if (closePosStep1Next) {
+  closePosStep1Next.addEventListener("click", () => {
+    const chkMarket = document.getElementById("close-pos-chk-market")?.checked;
+    const checkedOrders = Array.from(document.querySelectorAll(".chk-close-ord:checked")).map(el => el.value);
+
+    if (!chkMarket && checkedOrders.length === 0) {
+      toast("Lütfen en az bir açık emri iptal etmeyi veya pozisyonu piyasadan kapatmayı seçin.", "warning");
+      return;
+    }
+
+    const symbol = document.getElementById("close-pos-symbol")?.value || "";
+    const market = document.getElementById("close-pos-market")?.value || "futures";
+    const side = document.getElementById("close-pos-side")?.value || "long";
+    const amount = parseFloat(document.getElementById("close-pos-amount")?.value) || 0;
+    const exitSide = side === "short" ? "Piyasa ALIŞ (Buy to Cover)" : "Piyasa SATIŞ (Market Sell)";
+
+    let html = `<div><strong>Sembol / Piyasa:</strong> ${escapeHtml(symbol)} (${market.toUpperCase()})</div>`;
+    html += `<div style="margin-top:8px;"><strong>1. Öncelikli Adım (Emir İptalleri):</strong> ${checkedOrders.length} adet açık emir (SL/TP) önce güvenle iptal edilecek.</div>`;
+    if (chkMarket) {
+      html += `<div style="margin-top:8px;"><strong>2. Takip Eden Adım (Piyasa Kapanışı):</strong> ${amount} miktarındaki ${side.toUpperCase()} pozisyonu <strong>${exitSide}</strong> emri ile derhal kapatılacak.</div>`;
+    } else {
+      html += `<div style="margin-top:8px; color:var(--text-dim);">2. Takip Eden Adım: Pozisyon kapatılmayacak (yalnızca seçilen açık emirler iptal edilecek).</div>`;
+    }
+
+    document.getElementById("close-pos-confirm-summary").innerHTML = html;
+    document.getElementById("close-pos-step-1").hidden = true;
+    document.getElementById("close-pos-step-2").hidden = false;
+  });
+}
+
+const closePosStep2Back = document.getElementById("close-pos-step2-back");
+if (closePosStep2Back) {
+  closePosStep2Back.addEventListener("click", () => {
+    document.getElementById("close-pos-step-1").hidden = false;
+    document.getElementById("close-pos-step-2").hidden = true;
+  });
+}
+
+const closePosConfirmBtn = document.getElementById("close-pos-confirm-btn");
+if (closePosConfirmBtn) {
+  closePosConfirmBtn.addEventListener("click", async () => {
+    const symbol = document.getElementById("close-pos-symbol")?.value || "";
+    const market = document.getElementById("close-pos-market")?.value || "futures";
+    const side = document.getElementById("close-pos-side")?.value || "long";
+    const chkMarket = document.getElementById("close-pos-chk-market")?.checked;
+    const amount = chkMarket ? (parseFloat(document.getElementById("close-pos-amount")?.value) || null) : null;
+    const checkedOrders = Array.from(document.querySelectorAll(".chk-close-ord:checked")).map(el => el.value);
+
+    closePosConfirmBtn.disabled = true;
+    closePosConfirmBtn.textContent = "⏳ Güvenle Kapatılıyor...";
+
+    try {
+      const res = await apiSend("/orders/position/close-safe", "POST", {
+        symbol: symbol,
+        market_type: market,
+        side: side,
+        amount: amount,
+        cancel_order_ids: checkedOrders,
+        close_position: Boolean(chkMarket),
+      });
+
+      if (res.success) {
+        const count = res.data?.cancelled_count || 0;
+        const msg = chkMarket
+          ? `✅ ${symbol} pozisyonu kapatıldı ve ${count} ilişkili emir iptal edildi!`
+          : `✅ ${symbol} için seçilen ${count} emir iptal edildi!`;
+        toast(msg, "success");
+        document.getElementById("close-position-modal").hidden = true;
+        await loadOpenOrders();
+        await loadPositions();
+      } else {
+        toast("Kapatma işlemi tamamlanamadı: " + (res.error || "Hata"), "error");
+      }
+    } catch (e) {
+      toast("Bağlantı hatası: " + e.message, "error");
+    } finally {
+      closePosConfirmBtn.disabled = false;
+      closePosConfirmBtn.textContent = "⚠️ Onayla ve Güvenle Kapat";
     }
   });
 }

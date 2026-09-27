@@ -656,6 +656,90 @@ class TestHoldingCostsAndHistory:
         assert pos["stop_distance_percent"] == 10.0
 
     @pytest.mark.asyncio
+    async def test_get_positions_attaches_open_tp1_and_tp2_orders(self):
+        """Short pozisyon için açık TP1 ve TP2 kâr alım emirleri otomatik olarak eşleşmeli."""
+        from unittest.mock import AsyncMock
+        from src.modules.module3_orders import KuCoinOrders
+        from src.models.orders import OpenOrdersResponse
+
+        o = KuCoinOrders()
+        o.mode = "paper"
+        o.paper_positions = {
+            "SUI/USDT-futures": {
+                "id": "live-pos-SUI/USDT:USDT",
+                "symbol": "SUI/USDT:USDT",
+                "side": "short",
+                "market_type": "futures",
+                "amount": 100.0,
+                "entry_price": 2.0,
+                "current_price": 2.0,
+                "stop_loss_price": None,
+                "tp1_price": None,
+                "tp2_price": None,
+                "created_at": "t1",
+            }
+        }
+        # Açık SL, TP1 ve TP2 emir simülasyonu
+        mock_open_orders = [
+            # SL: Short için yukarı tetik (fiyat 2.2)
+            {
+                "id": "sl-order-1",
+                "symbol": "SUI/USDT:USDT",
+                "market_type": "futures",
+                "side": "buy",
+                "type": "stop_market",
+                "price": 2.2,
+                "stopPrice": 2.2,
+                "amount": 100.0,
+                "is_stop": True,
+                "info": {"stop": "up"},
+                "status": "open",
+            },
+            # TP1: Short için kâr alımı (fiyat 1.8)
+            {
+                "id": "tp-order-1",
+                "symbol": "SUI/USDT:USDT",
+                "market_type": "futures",
+                "side": "buy",
+                "type": "limit",
+                "price": 1.8,
+                "amount": 50.0,
+                "is_stop": False,
+                "status": "open",
+            },
+            # TP2: Short için 2. kâr alımı (fiyat 1.6)
+            {
+                "id": "tp-order-2",
+                "symbol": "SUI/USDT:USDT",
+                "market_type": "futures",
+                "side": "buy",
+                "type": "limit",
+                "price": 1.6,
+                "amount": 50.0,
+                "is_stop": False,
+                "status": "open",
+            },
+        ]
+        o.get_open_orders = AsyncMock(return_value=OpenOrdersResponse(
+            success=True,
+            data={"count": 3, "orders": mock_open_orders},
+            error=None,
+            timestamp="t1"
+        ))
+
+        res = await o.get_positions()
+        assert res["success"] is True
+        assert len(res["data"]["positions"]) == 1
+        pos = res["data"]["positions"][0]
+        assert pos["symbol"] == "SUI/USDT:USDT"
+        assert pos["stop_loss_price"] == 2.2
+        assert pos["tp1_price"] == 1.8
+        assert pos["tp2_price"] == 1.6
+        assert pos["stop_distance_percent"] == 10.0
+        assert pos["tp_distance_percent"] == -10.0
+        assert pos["tp2_distance_percent"] == -20.0
+
+    @pytest.mark.asyncio
     async def test_get_pnl_report_includes_daily_pnl(self):
         """get_pnl_report günlük PnL, kümülatif PnL ve işlem sayılarını hesaplamalı."""
         from unittest.mock import AsyncMock
@@ -746,3 +830,40 @@ class TestHoldingCostsAndHistory:
         assert d2["sell_count"] == 1
         assert d2["total_fee"] == 1.0
         assert d2["volume_usdt"] == 230.0
+
+    @pytest.mark.asyncio
+    async def test_close_position_safe_executes_cancellations_before_market_close(self):
+        """close_position_safe önce açık emirleri iptal etmeli, ardından piyasa emri ile pozisyonu kapatmalı."""
+        from unittest.mock import AsyncMock
+        from src.modules.module3_orders import KuCoinOrders
+        from src.models.orders import OrderCancelResponse, OrderCreateResponse
+
+        o = KuCoinOrders()
+        o.mode = "paper"
+
+        execution_log = []
+
+        async def mock_cancel(order_id, symbol=None):
+            execution_log.append(f"cancel_{order_id}")
+            return OrderCancelResponse(success=True, data={"id": order_id, "status": "canceled"}, error=None, timestamp="t1")
+
+        async def mock_create(symbol, side, order_type, amount, price=None, market_type="spot", **kwargs):
+            execution_log.append(f"close_{side}_{order_type}_{amount}")
+            return OrderCreateResponse(success=True, data={"id": "close-order-1", "side": side, "status": "closed"}, error=None, timestamp="t1")
+
+        o.cancel_order = AsyncMock(side_effect=mock_cancel)
+        o.create_order = AsyncMock(side_effect=mock_create)
+
+        res = await o.close_position_safe(
+            symbol="SUI/USDT:USDT",
+            market_type="futures",
+            side="short",
+            amount=100.0,
+            cancel_order_ids=["ord-sl-1", "ord-tp-1"],
+            close_position=True,
+        )
+
+        assert res["success"] is True
+        assert res["data"]["cancelled_count"] == 2
+        # Sıralama kontrolü: İptaller kesinlikle piyasa emrinden ÖNCE gelmeli
+        assert execution_log == ["cancel_ord-sl-1", "cancel_ord-tp-1", "close_buy_market_100.0"]

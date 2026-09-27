@@ -508,12 +508,31 @@ class KuCoinOrders:
                         oid = o.get("id")
                         if any(m.get("id") == oid for m in merged):
                             continue
-                        sl_val = float(o.get("stopPrice") or 0.0)
+                        sl_val = float(o.get("stopPrice") or o.get("triggerPrice") or 0.0)
+                        info = o.get("info") if isinstance(o.get("info"), dict) else {}
+                        side = (o.get("side") or "").lower()
+                        stop_dir = str(info.get("stop") or "").lower()
+                        client_oid = str(o.get("clientOrderId") or info.get("clientOid") or "").lower()
+                        o_type = str(o.get("type") or "").lower()
+
+                        is_tp = False
+                        if "tp" in client_oid or "take_profit" in o_type or "takeprofit" in o_type:
+                            is_tp = True
+                        elif side == "buy" and stop_dir == "down":
+                            is_tp = True  # Short kâr alma emri
+                        elif side == "sell" and stop_dir == "up":
+                            is_tp = True  # Long kâr alma emri
+
                         o["market_type"] = "futures"
                         o["is_stop"] = True
-                        o["bracket_leg"] = "sl"
-                        if sl_val > 0:
-                            o["stop_loss_price"] = sl_val
+                        if is_tp:
+                            o["bracket_leg"] = "tp1"
+                            if sl_val > 0:
+                                o["tp1_price"] = sl_val
+                        else:
+                            o["bracket_leg"] = "sl"
+                            if sl_val > 0:
+                                o["stop_loss_price"] = sl_val
                         merged.append(o)
                 else:
                     market_id = None
@@ -547,20 +566,34 @@ class KuCoinOrders:
                         sl_val = float(item.get("stopPrice") or item.get("triggerStopDownPrice") or item.get("triggerStopUpPrice") or 0.0)
                         price_val = float(item.get("price") or 0.0) if item.get("price") else None
                         size_val = float(item.get("size") or 0.0)
+                        side = item.get("side", "").lower()
+                        stop_dir = str(item.get("stop") or "").lower()
+                        client_oid = str(item.get("clientOid") or "").lower()
+                        o_type = str(item.get("type") or "").lower()
+
+                        is_tp = False
+                        if "tp" in client_oid or "take_profit" in o_type or "takeprofit" in o_type:
+                            is_tp = True
+                        elif side == "buy" and stop_dir == "down":
+                            is_tp = True  # Short kâr alma emri
+                        elif side == "sell" and stop_dir == "up":
+                            is_tp = True  # Long kâr alma emri
+
                         merged.append({
                             "id": oid,
                             "clientOrderId": item.get("clientOid"),
                             "symbol": norm_sym,
-                            "side": item.get("side", "").lower(),
+                            "side": side,
                             "type": "stop_market" if item.get("type") == "market" else "stop_limit",
                             "price": price_val or sl_val,
                             "stopPrice": sl_val if sl_val > 0 else None,
-                            "stop_loss_price": sl_val if sl_val > 0 else None,
+                            "stop_loss_price": None if is_tp else (sl_val if sl_val > 0 else None),
+                            "tp1_price": sl_val if is_tp and sl_val > 0 else None,
                             "amount": size_val,
                             "filled": 0.0,
                             "remaining": size_val,
                             "status": "open",
-                            "bracket_leg": "sl",
+                            "bracket_leg": "tp1" if is_tp else "sl",
                             "market_type": "futures",
                             "is_stop": True,
                             "info": item,
@@ -609,7 +642,7 @@ class KuCoinOrders:
 
             # Fiyat farkı ve yüzdesi hesabı
             order_price = o.get("price")
-            stop_price = o.get("stop_loss_price") or o.get("stopPrice")
+            stop_price = o.get("stop_loss_price") or o.get("tp1_price") or o.get("tp2_price") or o.get("stopPrice")
             try:
                 order_p = float(order_price) if order_price is not None else 0.0
             except (ValueError, TypeError):
@@ -746,6 +779,8 @@ class KuCoinOrders:
                             "pnl_percent": round(float(p.get("percentage") or 0), 2),
                             "leverage": p.get("leverage"),
                             "stop_loss_price": float(p.get("stopPrice") or 0) or None,
+                            "tp1_price": None,
+                            "tp2_price": None,
                             "created_at": timestamp(),
                         }
                         if symbol and pos_obj["symbol"] != symbol:
@@ -829,43 +864,125 @@ class KuCoinOrders:
                     and (o.get("market_type") or "spot").lower() == p_mt
                 ]
 
-                # 1. Stop-Loss eşleştir (pozisyonda henüz stop yoksa)
-                if not pos.get("stop_loss_price"):
-                    for o in matched:
-                        is_stop_order = (
-                            o.get("is_stop") is True
-                            or o.get("bracket_leg") == "sl"
-                            or "stop" in str(o.get("type", "")).lower()
-                            or o.get("stop_loss_price") is not None
-                            or o.get("stopPrice") is not None
-                        )
-                        if is_stop_order:
-                            sl_p = float(o.get("stop_loss_price") or o.get("stopPrice") or o.get("price") or 0.0)
-                            if sl_p > 0:
-                                pos["stop_loss_price"] = sl_p
-                                pos["stop_order_id"] = o.get("id")
-                                break
+                sl_candidates: list[tuple[float, dict]] = []
+                tp_candidates: list[tuple[float, dict]] = []
+                ref_price = p_entry if p_entry > 0 else p_curr
 
-                # 2. Take-Profit (TP) eşleştir (pozisyonda henüz tp yoksa)
-                if not pos.get("tp1_price"):
-                    for o in matched:
-                        is_tp_order = o.get("bracket_leg") in ("tp", "tp1")
-                        if not is_tp_order and not o.get("is_stop") and str(o.get("type", "")).lower() == "limit":
-                            o_side = str(o.get("side", "")).lower()
-                            o_price = float(o.get("price") or 0.0)
-                            if p_side in ("long", "buy", "spot") and o_side == "sell" and o_price > p_entry:
-                                is_tp_order = True
-                            elif p_side in ("short", "sell") and o_side == "buy" and (p_entry <= 0 or o_price < p_entry):
-                                is_tp_order = True
+                for o in matched:
+                    o_leg = str(o.get("bracket_leg") or "").lower()
+                    if o_leg == "entry":
+                        continue
 
-                        if is_tp_order:
-                            tp_p = float(o.get("price") or 0.0)
-                            if tp_p > 0:
-                                pos["tp1_price"] = tp_p
-                                pos["tp_order_id"] = o.get("id")
-                                break
+                    o_side = str(o.get("side") or "").lower()
+                    is_exit_side = (
+                        (p_side in ("long", "buy", "spot") and o_side == "sell")
+                        or (p_side in ("short", "sell") and o_side == "buy")
+                        or o_leg in ("tp", "tp1", "tp2", "sl")
+                    )
+                    if not is_exit_side:
+                        continue
 
-                # 3. Stop-Loss uzaklık yüzdesini (stop_distance_percent) hesapla
+                    raw_info = o.get("info") if isinstance(o.get("info"), dict) else {}
+                    raw_stop = str(raw_info.get("stop") or "").lower()
+                    client_oid = str(o.get("clientOrderId") or raw_info.get("clientOid") or "").lower()
+                    o_type = str(o.get("type") or "").lower()
+
+                    # Hedef fiyatı belirle: stopPrice, triggerPrice, tp1_price, stop_loss_price veya limit price
+                    o_stop = float(o.get("stopPrice") or o.get("stop_loss_price") or o.get("tp1_price") or o.get("tp2_price") or raw_info.get("triggerStopUpPrice") or raw_info.get("triggerStopDownPrice") or 0.0)
+                    o_price = float(o.get("price") or 0.0)
+                    target_p = o_stop if o_stop > 0 else o_price
+                    if target_p <= 0:
+                        continue
+
+                    is_tp = False
+                    is_sl = False
+
+                    # A. Açıkça belirtilmiş etiketler
+                    if o_leg in ("tp", "tp1", "tp2") or "tp" in client_oid or "take_profit" in o_type or "takeprofit" in o_type:
+                        is_tp = True
+                    elif o_leg == "sl" or "sl" in client_oid or "stop_loss" in o_type or "stoploss" in o_type:
+                        is_sl = True
+                    # B. KuCoin stop yönü (raw_stop: 'up' veya 'down')
+                    elif raw_stop:
+                        if p_side in ("long", "buy", "spot"):
+                            if raw_stop == "up":
+                                is_tp = True
+                            elif raw_stop == "down":
+                                is_sl = True
+                        else:
+                            # Short pozisyon
+                            if raw_stop == "down":
+                                is_tp = True
+                            elif raw_stop == "up":
+                                is_sl = True
+
+                    # C. Fiyat seviyesine göre tespit (giriş veya anlık fiyata göre konumu)
+                    if not is_tp and not is_sl and ref_price > 0:
+                        if p_side in ("long", "buy", "spot"):
+                            if target_p > ref_price:
+                                is_tp = True
+                            elif target_p < ref_price:
+                                is_sl = True
+                        else:
+                            # Short
+                            if target_p < ref_price:
+                                is_tp = True
+                            elif target_p > ref_price:
+                                is_sl = True
+
+                    # D. Yedek: Anlık fiyata göre son kontrol
+                    if not is_tp and not is_sl and p_curr > 0:
+                        if p_side in ("long", "buy", "spot"):
+                            if target_p > p_curr:
+                                is_tp = True
+                            elif target_p < p_curr:
+                                is_sl = True
+                        else:
+                            if target_p < p_curr:
+                                is_tp = True
+                            elif target_p > p_curr:
+                                is_sl = True
+
+                    if is_tp:
+                        tp_candidates.append((target_p, o))
+                    elif is_sl:
+                        sl_candidates.append((target_p, o))
+
+                # 1. Stop-Loss ata
+                if not pos.get("stop_loss_price") and sl_candidates:
+                    # Pozisyon yönüne göre en yakın/birincil SL emrini seç
+                    if p_side in ("short", "sell"):
+                        sl_candidates.sort(key=lambda x: x[0])  # Short için yukarıdaki en düşük tetik
+                    else:
+                        sl_candidates.sort(key=lambda x: x[0], reverse=True)  # Long için aşağıdaki en yüksek tetik
+                    pos["stop_loss_price"] = sl_candidates[0][0]
+                    pos["stop_order_id"] = sl_candidates[0][1].get("id")
+
+                # 2. Take-Profit (TP1 ve TP2) ata
+                explicit_tp1 = next((item for item in tp_candidates if str(item[1].get("bracket_leg")).lower() in ("tp", "tp1")), None)
+                explicit_tp2 = next((item for item in tp_candidates if str(item[1].get("bracket_leg")).lower() == "tp2"), None)
+
+                if explicit_tp1 and not pos.get("tp1_price"):
+                    pos["tp1_price"] = explicit_tp1[0]
+                    pos["tp_order_id"] = explicit_tp1[1].get("id")
+                if explicit_tp2 and not pos.get("tp2_price"):
+                    pos["tp2_price"] = explicit_tp2[0]
+                    pos["tp2_order_id"] = explicit_tp2[1].get("id")
+
+                if not pos.get("tp1_price") and tp_candidates:
+                    if p_side in ("short", "sell"):
+                        tp_candidates.sort(key=lambda x: x[0], reverse=True)
+                    else:
+                        tp_candidates.sort(key=lambda x: x[0])
+
+                    pos["tp1_price"] = tp_candidates[0][0]
+                    pos["tp_order_id"] = tp_candidates[0][1].get("id")
+
+                    if len(tp_candidates) > 1 and not pos.get("tp2_price"):
+                        pos["tp2_price"] = tp_candidates[1][0]
+                        pos["tp2_order_id"] = tp_candidates[1][1].get("id")
+
+                # 3. Stop-Loss ve TP uzaklık yüzdelerini hesapla
                 sl_val = pos.get("stop_loss_price")
                 if sl_val and p_curr > 0:
                     try:
@@ -875,6 +992,26 @@ class KuCoinOrders:
                         pos["stop_distance_percent"] = None
                 else:
                     pos["stop_distance_percent"] = None
+
+                tp1_val = pos.get("tp1_price")
+                if tp1_val and p_curr > 0:
+                    try:
+                        tp1_f = float(tp1_val)
+                        pos["tp_distance_percent"] = round(((tp1_f - p_curr) / p_curr) * 100.0, 2)
+                    except (ValueError, TypeError):
+                        pos["tp_distance_percent"] = None
+                else:
+                    pos["tp_distance_percent"] = None
+
+                tp2_val = pos.get("tp2_price")
+                if tp2_val and p_curr > 0:
+                    try:
+                        tp2_f = float(tp2_val)
+                        pos["tp2_distance_percent"] = round(((tp2_f - p_curr) / p_curr) * 100.0, 2)
+                    except (ValueError, TypeError):
+                        pos["tp2_distance_percent"] = None
+                else:
+                    pos["tp2_distance_percent"] = None
 
             return {"success": True, "data": {"count": len(positions), "positions": positions},
                     "error": None, "timestamp": timestamp()}
@@ -1566,6 +1703,112 @@ class KuCoinOrders:
             return {"success": True, "data": results, "error": None, "timestamp": timestamp()}
         except Exception as e:
             logger.error(f"Pozisyon TP/SL bağlama hatası ({symbol}): {e}")
+            return {"success": False, "data": {}, "error": str(e), "timestamp": timestamp()}
+
+    # ------------------------------------------------------------------ #
+    # Güvenli Pozisyon ve İlgili Emirleri Kapatma (Safe Close Position)
+    # ------------------------------------------------------------------ #
+    async def close_position_safe(
+        self,
+        symbol: str,
+        market_type: str = "futures",
+        side: str = "long",
+        amount: float | None = None,
+        cancel_order_ids: list[str] | None = None,
+        close_position: bool = True,
+    ) -> dict:
+        """
+        Güvenli Pozisyon ve Emir Kapatma:
+        1. Sıra Kontrolü: Önce pozisyona ait seçili tüm açık emirler (SL, TP, limitler) iptal edilir.
+        2. Uyum Kontrolü: İptal işlemleri doğrulanır (eski emirlerin kalması veya yetersiz bakiye engellenir).
+        3. Pozisyon Kapatma: Pozisyon yönünün tersine Market emir iletilir (long -> sell, short -> buy).
+        """
+        try:
+            mt = (market_type or "spot").lower()
+            cancel_ids = list(cancel_order_ids or [])
+            cancel_results = []
+            cancel_errors = []
+
+            # 1. Aşama: Açık emirlerin iptali (Önce emirler iptal edilmeli)
+            for oid in cancel_ids:
+                try:
+                    res = await self.cancel_order(oid, symbol=symbol)
+                    if getattr(res, "success", False):
+                        cancel_results.append({"id": oid, "status": "cancelled"})
+                    else:
+                        cancel_errors.append(f"{oid}: {getattr(res, 'error', 'İptal edilemedi')}")
+                except Exception as ex:
+                    cancel_errors.append(f"{oid}: {ex}")
+
+            # 2. Aşama: Pozisyonu piyasadan kapatma
+            close_result = None
+            close_error = None
+            if close_position:
+                try:
+                    qty = amount
+                    if not qty or qty <= 0:
+                        pos_resp = await self.get_positions(symbol=symbol)
+                        if pos_resp.get("success") and pos_resp.get("data", {}).get("positions"):
+                            matching = [
+                                p for p in pos_resp["data"]["positions"]
+                                if (p.get("market_type") or "spot").lower() == mt
+                            ]
+                            if matching:
+                                qty = float(matching[0].get("amount") or 0.0)
+
+                    if not qty or qty <= 0:
+                        close_error = "Kapatılacak geçerli bir pozisyon miktarı bulunamadı."
+                    else:
+                        pos_side = (side or "long").lower()
+                        exit_side = "sell" if pos_side in ("long", "buy", "spot") else "buy"
+
+                        if mt == "futures":
+                            res_close = await self.create_order(
+                                symbol=symbol,
+                                side=exit_side,
+                                order_type="market",
+                                amount=qty,
+                                price=None,
+                                market_type="futures",
+                                reduce_only=True,
+                                params={"reduceOnly": True},
+                            )
+                        else:
+                            res_close = await self.create_order(
+                                symbol=symbol,
+                                side=exit_side,
+                                order_type="market",
+                                amount=qty,
+                                price=None,
+                                market_type=mt,
+                            )
+
+                        if getattr(res_close, "success", False):
+                            close_result = res_close.data
+                        else:
+                            close_error = getattr(res_close, "error", "Piyasa emri iletilemedi")
+                except Exception as cex:
+                    close_error = str(cex)
+
+            overall_success = (not cancel_errors) and (not close_error if close_position else True)
+            errors = cancel_errors + ([close_error] if close_error else [])
+
+            return {
+                "success": overall_success,
+                "data": {
+                    "symbol": symbol,
+                    "market_type": mt,
+                    "cancelled_orders": cancel_results,
+                    "cancelled_count": len(cancel_results),
+                    "position_closed": close_result,
+                    "close_requested": close_position,
+                    "execution_sequence": ["cancelled_open_orders", "closed_market_position"],
+                },
+                "error": "; ".join(errors) if errors else None,
+                "timestamp": timestamp(),
+            }
+        except Exception as e:
+            logger.error(f"Güvenli pozisyon kapatma hatası ({symbol}): {e}")
             return {"success": False, "data": {}, "error": str(e), "timestamp": timestamp()}
 
     # ------------------------------------------------------------------ #

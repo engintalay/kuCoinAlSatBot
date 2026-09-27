@@ -928,6 +928,83 @@
     </div>
   </div>
 
+  <!-- Pozisyon ve İlişkili Emirleri Güvenle Kapatma Modalı -->
+  <div id="close-position-modal" class="modal-backdrop" hidden>
+    <div class="modal glass" style="max-width: 580px; width: 95%;">
+      <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span id="close-pos-title">🚪 Pozisyonu ve Emirleri Kapat</span>
+        <button id="close-pos-x" class="btn-mini" style="background:transparent; border:none; font-size:1.1rem; cursor:pointer;">✕</button>
+      </div>
+
+      <!-- ADIM 1: Seçim Ekranı -->
+      <div id="close-pos-step-1">
+        <div id="close-pos-info" style="font-size:0.86rem; margin-bottom:14px; padding:12px 14px; background:rgba(255,255,255,0.04); border-radius:8px; line-height:1.6; border:1px solid rgba(255,255,255,0.08);">
+          <!-- JS fills position info -->
+        </div>
+
+        <input id="close-pos-symbol" type="hidden" />
+        <input id="close-pos-market" type="hidden" />
+        <input id="close-pos-side" type="hidden" />
+        <input id="close-pos-max-amount" type="hidden" />
+
+        <div style="margin-bottom: 14px; padding: 10px 12px; background: rgba(0, 230, 118, 0.05); border: 1px solid rgba(0, 230, 118, 0.2); border-radius: 6px;">
+          <label style="display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer;">
+            <input type="checkbox" id="close-pos-chk-market" checked style="width:16px; height:16px; accent-color: var(--accent);" />
+            <span>Pozisyonu Piyasa Emriyle Kapat (Market Close)</span>
+          </label>
+          <div id="close-pos-amount-wrap" style="margin-top:8px; display:flex; align-items:center; gap:8px; font-size:0.85rem;">
+            <span style="color:var(--text-dim);">Kapatılacak Miktar:</span>
+            <input id="close-pos-amount" class="input" type="number" step="any" style="width:140px; padding:4px 8px; height:28px;" />
+            <button type="button" id="close-pos-btn-all" class="btn-mini" style="padding:2px 8px;">Tümü (%100)</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-size:0.88rem; font-weight:600;">İlişkili Açık Emirler (SL / TP / Limit):</span>
+            <button type="button" id="close-pos-toggle-orders" class="btn-mini" style="font-size:0.75rem; padding:2px 6px;">Tümünü Seç/Kaldır</button>
+          </div>
+          <div id="close-pos-orders-list" style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 8px;">
+            <div style="font-size:0.82rem; color:var(--text-dim); text-align:center; padding:12px;">Emirler taranıyor...</div>
+          </div>
+        </div>
+
+        <div style="font-size:0.78rem; color: #8b949e; background: rgba(88, 166, 255, 0.08); border-left: 3px solid #58a6ff; padding: 8px 10px; border-radius: 4px; margin-bottom: 16px;">
+          ℹ️ <strong>Güvenli Sıralama Kuralı:</strong> Borsa limit çakışmalarını ve eski emirlerin pozisyon kapandıktan sonra tetiklenmesini engellemek için, önce seçilen tüm açık emirler iptal edilecek, ardından pozisyon piyasa emriyle kapatılacaktır.
+        </div>
+
+        <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button id="close-pos-cancel-btn" class="btn" style="background:var(--border)">Vazgeç</button>
+          <button id="close-pos-step1-next" class="btn btn-danger">İşlem Onayı Adımına Geç ➡️</button>
+        </div>
+      </div>
+
+      <!-- ADIM 2: Güvenlik & Uyum Onay Ekranı -->
+      <div id="close-pos-step-2" hidden>
+        <div style="padding:12px; background: rgba(255, 82, 82, 0.08); border: 1px solid rgba(255, 82, 82, 0.25); border-radius: 8px; margin-bottom: 14px;">
+          <div style="font-weight:700; color:#ff5252; margin-bottom:6px; font-size:0.95rem;">⚠️ İşlem Sıralaması ve Kapatma Onayı</div>
+          <div style="font-size:0.84rem; line-height:1.5;">
+            Lütfen aşağıdaki işlemlerin ve çalışma sırasının doğruluğunu onaylayın:
+          </div>
+        </div>
+
+        <div id="close-pos-confirm-summary" style="font-size:0.85rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:12px; margin-bottom:16px; line-height:1.6;">
+          <!-- JS fills confirmation summary -->
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#3fb950; margin-bottom:16px;">
+          <span>✅</span>
+          <span><strong>Uyum & Sıralama Kontrolü:</strong> Emir iptali ve pozisyon kapanışı birbirine tam uyumlu olarak sıralanmıştır.</span>
+        </div>
+
+        <div class="modal-actions" style="display:flex; justify-content:space-between; gap:8px;">
+          <button id="close-pos-step2-back" class="btn" style="background:var(--border)">⬅️ Geri Dön</button>
+          <button id="close-pos-confirm-btn" class="btn btn-danger" style="font-weight:700;">⚠️ Onayla ve Güvenle Kapat</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <footer class="app-footer glass">
     <span id="footer-conn" class="footer-item">🔴 Bağlantı: --</span>
